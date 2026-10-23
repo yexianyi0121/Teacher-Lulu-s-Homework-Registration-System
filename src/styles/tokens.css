@@ -1,0 +1,43 @@
+/* 设计令牌（设计 §10.1，【必须】照抄） */
+:root {
+  /* 背景与表面 */
+  --bg-gradient: linear-gradient(135deg, #FDEBF3 0%, #F6EFFB 45%, #EAF3FD 100%);
+  --surface: #FFFFFF;
+  --surface-alt: #FBFBFD;
+
+  /* 品牌 */
+  --brand: #FF6FA5;
+  --brand-soft: #FFE3EE;
+
+  /* 文字 */
+  --text-1: #33415C;
+  --text-2: #8A93A6;
+  --text-3: #B8BFCC;
+
+  /* 线 */
+  --line: #E8EBF2;
+  --cell-line-empty: #DCE1EA;
+
+  /* 语义色（文字 / 底 / 边） */
+  --green: #5BAE4B;  --green-bg: #EDF7E4;  --green-line: #8CC46A;
+  --blue:  #3B6FA8;  --blue-bg:  #E9F1FB;  --blue-line:  #7FB3E8;
+  --amber: #B07C22;  --amber-bg: #FDF7E3;  --amber-line: #EBC96A;
+  --red:   #C0392B;  --red-bg:   #FDECEA;  --red-line:   #E8615A;
+  --gray:  #9AA3B2;  --gray-bg:  #F3F4F6;  --gray-line:  #C9CEDA;
+
+  --focus: #4A90E2;
+
+  /* 几何 */
+  --radius-card: 24px;
+  --radius-cell: 10px;
+  --cell-h: 76px;
+  --cell-gap: 8px;
+  --radius-pill: 999px;
+  --gap: 8px;
+
+  --shadow-card: 0 8px 32px rgba(170, 140, 190, .16);
+  --shadow-cell: 0 1px 2px rgba(120, 120, 140, .06);
+
+  /* 字体 */
+  --font-sans: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Hiragino Sans GB", system-ui, sans-serif;
+}
