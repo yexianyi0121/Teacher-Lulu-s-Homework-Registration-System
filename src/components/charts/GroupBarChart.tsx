@@ -87,12 +87,11 @@ export function GroupBarChart({ current, history }: GroupBarChartProps) {
         <line x1={X0} y1={Y1} x2={X1} y2={Y1} stroke="var(--line)" />
       </svg>
       <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--text-2)' }}>
-        {history ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span className="donut-swatch" style={{ background: 'var(--gray)', opacity: 0.4 }} />
-            历史选择
-          </span>
-        ) : null}
+        {/* 设计 §16-3：图例「历史选择」常显，色块固定 40% 透明 */}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span className="donut-swatch" style={{ background: 'var(--gray)', opacity: 0.4 }} />
+          历史选择
+        </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <span className="donut-swatch" style={{ background: 'var(--blue)' }} />
           本次成绩
