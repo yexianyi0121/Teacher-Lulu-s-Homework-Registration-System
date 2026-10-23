@@ -3,7 +3,7 @@ import type { MouseEvent } from 'react';
 import { useStore } from '../store';
 import { cellDisplay } from '../domain/tone';
 import type { Entry } from '../domain/types';
-import { TEXT_DISPLAY, TEXT_MAX } from '../domain/constants';
+import { TEXT_MAX } from '../domain/constants';
 import { CellView } from './CellView';
 
 export interface CellProps {
@@ -60,20 +60,28 @@ function InlineEditor({ no, draft }: { no: number; draft: string }) {
 export const Cell = memo(function Cell({ no, name, showName }: CellProps) {
   const entry = useStore((s) => s.draft.entries[String(no)] as Entry | undefined);
   const scheme = useStore((s) => s.draft.scheme);
+  const settings = useStore((s) => s.settings);
   const focused = useStore((s) => s.focusedNo === no);
   const selected = useStore((s) => s.selection.has(no));
   const buffer = useStore((s) => (s.buffer?.no === no ? s.buffer.text : null));
   const editing = useStore((s) => (s.editing?.no === no ? s.editing.draft : null));
   const flash = useStore((s) => s.flashNo === no);
-  const filterNotPassed = useStore((s) => s.filterNotPassed);
+  const error = useStore((s) => s.cellError === no);
 
   const setFocusedNo = useStore((s) => s.setFocusedNo);
   const setSelection = useStore((s) => s.setSelection);
   const setEditing = useStore((s) => s.setEditing);
 
-  const d = cellDisplay(entry, scheme);
-  const text = buffer !== null ? buffer : d.text;
-  const tone = buffer !== null ? 'blue' : d.tone;
+  const d = cellDisplay(entry, scheme, {
+    passRule: settings.passRule,
+    showEmoji: settings.showEmoji,
+    gradeEmoji: settings.gradeEmoji,
+  });
+
+  // 输入缓冲区预览：只显示数字，不带角标/表情，避免误导「已录入」
+  const display = buffer !== null
+    ? { ...d, text: buffer, kind: 'score' as const, tone: 'blue' as const, emoji: undefined, badge: undefined, subText: undefined }
+    : d;
 
   const handleClick = (e: MouseEvent) => {
     const s = useStore.getState();
@@ -88,38 +96,40 @@ export const Cell = memo(function Cell({ no, name, showName }: CellProps) {
     setFocusedNo(no);
   };
 
+  const statusText =
+    entry?.status === 'leave' ? '请假'
+      : entry?.status === 'missing' ? '缺交'
+        : '';
+
   return (
     <div
       className="cell-slot"
-      onDoubleClick={() => setEditing({ no, draft: d.text === '假' || d.text === '×' ? '' : d.full })}
+      onDoubleClick={() => setEditing({ no, draft: statusText ? '' : d.full })}
       onClick={handleClick}
     >
       <CellView
         no={no}
-        text={text}
-        tone={tone}
+        display={display}
         stamp={entry?.stamp ?? 'none'}
         status={entry?.status ?? 'normal'}
         pass={!!entry?.pass}
         makeup={!!entry?.makeup}
         focused={focused}
         selected={selected}
-        title={
-          [
-            `${no}号${name ? ` ${name}` : ''}`,
-            d.full ? `值：${d.full}` : '空',
-            entry?.pass ? '已过关' : '',
-            entry?.makeup ? `已补交：${entry.makeup.note || '无说明'}` : '',
-            filterNotPassed ? '' : '',
-          ]
-            .filter(Boolean)
-            .join(' · ')
-        }
+        error={error}
+        title={[
+          `${no}号${name ? ` ${name}` : ''}`,
+          d.full ? `值：${d.full}` : '空',
+          entry?.pass ? '已过关' : '',
+          entry?.makeup ? `已补交：${entry.makeup.note || '无说明'}` : '',
+          statusText,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
       />
       {showName && name ? <span className="cell-name">{name}</span> : null}
       {editing !== null ? <InlineEditor no={no} draft={editing} /> : null}
       {flash ? <span className="sr-only" role="status">已写入 {no} 号</span> : null}
-      {text.length > TEXT_DISPLAY ? null : null}
     </div>
   );
 });

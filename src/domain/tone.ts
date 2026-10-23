@@ -1,24 +1,57 @@
-import type { CellTone, Entry, ScoringScheme } from './types';
+import type { CellTone, Entry, GradeLetter, PassRule, ScoringScheme } from './types';
 import { percentOf, tierOfPercent, tierTone } from './scoring';
 import { classifyDictation, formatScore, formatValue } from './grading';
+import { isManualPass, isPassed } from './passRule';
+import { DEFAULT_GRADE_EMOJI } from './constants';
+import { DEFAULT_PASS_RULE } from './passRule';
 
 /**
- * 单元格显示（设计 04 §9.1）—— 纯函数。
- * 优先级（必须按此实现）：请假 > 缺交 > 值 > 空；stamp / makeup 是角标，与主值不互斥。
+ * 单元格显示（V3 设计 06 §3.2）—— 纯函数。
+ *
+ * 两套色系并存（L-6）：
+ *   - 等级格子：主色由 `grade` 驱动（CSS `data-grade` → GRADE_TONE 七档），`tone` 只留给图表；
+ *   - 分数格子：由 `tone`（四档百分比色）驱动。
+ * UI 不允许自己判断「是否过关」，一律走 passRule.isPassed()。
  */
+
+export interface GradeTone {
+  bg: string;
+  line: string;
+  fg: string;
+  borderStyle: 'solid' | 'dashed' | 'dotted';
+}
+
+export const GRADE_TONE: Record<GradeLetter, GradeTone> = {
+  'A+': { bg: '#E8F5EC', line: '#3F8F5F', fg: '#2F7A4E', borderStyle: 'solid' },
+  'A': { bg: '#EDF8F1', line: '#5FA97C', fg: '#3E8A5E', borderStyle: 'solid' },
+  'A-': { bg: '#F3FAEA', line: '#8FBF6F', fg: '#6E9B4C', borderStyle: 'solid' },
+  'B+': { bg: '#FEF9E4', line: '#E3B93F', fg: '#A9851F', borderStyle: 'solid' },
+  'B': { bg: '#FDF2E3', line: '#E89A4A', fg: '#B4701F', borderStyle: 'dashed' },
+  'C': { bg: '#FDEDE6', line: '#E0704F', fg: '#B24A2C', borderStyle: 'dashed' },
+  'D': { bg: '#FCE8E6', line: '#D1453B', fg: '#A32A22', borderStyle: 'dotted' },
+};
+
+export type CellKind = 'grade' | 'score' | 'text' | 'pass' | 'missing' | 'leave' | 'empty';
+export type CellBadge = 'missing' | 'leave' | 'madeup' | 'passed';
 
 export interface CellDisplay {
   text: string;
+  kind: CellKind;
+  /** 供图表/统计沿用（四档色）；等级格子的实际颜色看 grade */
   tone: CellTone;
-  /** 主值展示（用于 title / 工具栏） */
+  grade?: GradeLetter;
+  emoji?: string;
+  badge?: CellBadge;
+  subText?: string;
   full: string;
 }
 
-/**
- * 听的「错N」色调（V1 §4.2 继承，设计 04 §9.1 补注）：
- * 全对 → 绿、错 1–3 → 琥珀、错 ≥4 → 红、其他文字（缺交/备注）→ 灰。
- * 文本值折算不出百分，若走 tier 兜底会一律变灰，和「缺交/请假」同色（评审 F4）。
- */
+export interface DisplayOptions {
+  passRule?: PassRule;
+  showEmoji?: boolean;
+  gradeEmoji?: Record<GradeLetter, string>;
+}
+
 function textTone(text: string): CellTone {
   const k = classifyDictation(text);
   if (k.kind === 'perfect') return 'green';
@@ -26,43 +59,77 @@ function textTone(text: string): CellTone {
   return 'gray';
 }
 
-/**
- * 等级色调：沿用 V1 的批改直觉 —— `A-` 固定琥珀（「很好但有错要订正」），
- * 其余按档位（A+/A 绿、B+/B 蓝、C 琥珀、D 红）。
- * 不这样做的话 `A-`(90%) 会被 tier 判成绿色，与 V1 的黄色语义相反（评审 §4 待裁定项）。
- */
-function gradeTone(grade: string, fallback: CellTone): CellTone {
-  return grade === 'A-' ? 'amber' : fallback;
-}
+export function cellDisplay(entry: Entry | undefined, s: ScoringScheme, opts: DisplayOptions = {}): CellDisplay {
+  const rule = opts.passRule ?? DEFAULT_PASS_RULE;
+  const showEmoji = opts.showEmoji ?? false;
+  const emojiMap = opts.gradeEmoji ?? DEFAULT_GRADE_EMOJI;
 
-export function cellDisplay(entry: Entry | undefined, s: ScoringScheme): CellDisplay {
-  if (!entry) return { text: '', tone: 'empty', full: '' };
-  if (entry.status === 'leave') return { text: '假', tone: 'gray', full: '请假' };
-  if (entry.status === 'missing') return { text: '×', tone: 'gray', full: '缺交' };
+  if (!entry) return { text: '', kind: 'empty', tone: 'empty', full: '' };
 
-  if (entry.pass || entry.value?.kind === 'pass') {
-    return { text: '√', tone: 'green', full: '已过关' };
+  const makeupBadge = entry.makeup ? 'madeup' : undefined;
+  const makeupText = entry.makeup ? '补交' : undefined;
+
+  if (entry.status === 'leave') {
+    return {
+      text: '假', kind: 'leave', tone: 'gray',
+      badge: makeupBadge ?? 'leave', subText: makeupText, full: '请假',
+    };
+  }
+  if (entry.status === 'missing') {
+    return {
+      text: '×', kind: 'missing', tone: 'gray',
+      badge: makeupBadge ?? 'missing', subText: makeupText, full: '缺交',
+    };
+  }
+
+  // 手工过关：主值 √（自动过关不抢占主值，用右上角 ✅）
+  if (isManualPass(entry)) {
+    return {
+      text: '√', kind: 'pass', tone: 'green',
+      badge: makeupBadge, subText: makeupText, full: '已过关',
+    };
   }
 
   const v = entry.value;
-  if (!v) return { text: '', tone: 'empty', full: '' };
+  if (!v) return { text: '', kind: 'empty', tone: 'empty', full: '' };
 
-  const p = percentOf(entry, s);
-  const tone = p === null ? 'gray' : tierTone(tierOfPercent(p, s));
+  const passed = isPassed(entry, s, rule);
+  const badge: CellBadge | undefined = makeupBadge ?? (passed ? 'passed' : undefined);
 
-  if (v.kind === 'score') return { text: formatScore(v.score), tone, full: formatScore(v.score) };
-  if (v.kind === 'grade') return { text: v.grade, tone: gradeTone(v.grade, tone), full: v.grade };
-  return { text: v.text, tone: textTone(v.text), full: v.text };
+  if (v.kind === 'grade') {
+    const p = percentOf(entry, s);
+    const tone = p === null ? 'gray' : tierTone(tierOfPercent(p, s));
+    return {
+      text: v.grade, kind: 'grade', tone, grade: v.grade,
+      emoji: showEmoji ? emojiMap[v.grade] : undefined,
+      badge, subText: makeupText, full: v.grade,
+    };
+  }
+
+  if (v.kind === 'score') {
+    const p = percentOf(entry, s);
+    const tone = p === null ? 'gray' : tierTone(tierOfPercent(p, s));
+    return { text: formatScore(v.score), kind: 'score', tone, badge, subText: makeupText, full: formatScore(v.score) };
+  }
+
+  if (v.kind === 'text') {
+    return {
+      text: v.text, kind: 'text', tone: textTone(v.text),
+      badge, subText: makeupText, full: v.text,
+    };
+  }
+
+  return { text: '', kind: 'empty', tone: 'empty', full: '' };
 }
 
 /** 仅文本（海报/导出用） */
-export function cellText(entry: Entry | undefined, s: ScoringScheme): string {
-  return cellDisplay(entry, s).text;
+export function cellText(entry: Entry | undefined, s: ScoringScheme, opts?: DisplayOptions): string {
+  return cellDisplay(entry, s, opts).text;
 }
 
 /** 单元格色调（兼容旧调用） */
-export function cellTone(entry: Entry | undefined, s: ScoringScheme): CellTone {
-  return cellDisplay(entry, s).tone;
+export function cellTone(entry: Entry | undefined, s: ScoringScheme, opts?: DisplayOptions): CellTone {
+  return cellDisplay(entry, s, opts).tone;
 }
 
 /** 值的紧凑文本（不含状态位） */

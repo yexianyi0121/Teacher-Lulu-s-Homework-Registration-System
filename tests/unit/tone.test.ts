@@ -1,86 +1,96 @@
 import { describe, expect, it } from 'vitest';
-import { cellDisplay } from '../../src/domain/tone';
+import { GRADE_TONE, cellDisplay } from '../../src/domain/tone';
+import { GRADE_ORDER, DEFAULT_GRADE_EMOJI } from '../../src/domain/constants';
+import { DEFAULT_PASS_RULE } from '../../src/domain/passRule';
 import { e, g, makeScheme, score, text } from '../fixtures';
 
-/**
- * 单元格配色（设计 04 §9.1 + 评审 F4 / §4 待裁定项）
- * 规则：
- *   - 状态位优先：请假/缺交 → 灰
- *   - 过关 → 绿 √
- *   - 分数/等级按档位；但等级 A- 固定琥珀（沿用 V1「很好但要订正」）
- *   - 文字按 classifyDictation：全对绿、错1–3 琥珀、错≥4 红、其他灰
- */
+/** V3 显示：两套色系（等级七档 / 分数四档）+ 三态角标 + 表情 */
 
 const check = makeScheme('check');
 const grade = makeScheme('grade');
 const scoreScheme = makeScheme('score');
+const opts = { passRule: DEFAULT_PASS_RULE, showEmoji: true, gradeEmoji: DEFAULT_GRADE_EMOJI };
 
-describe('cellDisplay：状态位', () => {
-  it('请假 → 假 / gray；缺交 → × / gray', () => {
-    expect(cellDisplay(e(null, { status: 'leave' }), check)).toEqual({ text: '假', tone: 'gray', full: '请假' });
-    expect(cellDisplay(e(null, { status: 'missing' }), check)).toEqual({ text: '×', tone: 'gray', full: '缺交' });
+describe('GRADE_TONE：七档两两可辨（AC-37.1 / INV-17）', () => {
+  it('底色 + 边框色 + 边框样式 组合唯一', () => {
+    const keys = GRADE_ORDER.map((x) => `${GRADE_TONE[x].bg}|${GRADE_TONE[x].line}|${GRADE_TONE[x].borderStyle}`);
+    expect(new Set(keys).size).toBe(7);
   });
 
-  it('过关 → √ / green（pass=true 与 value.kind=pass 等价）', () => {
-    expect(cellDisplay(e(null, { pass: true }), check)).toMatchObject({ text: '√', tone: 'green' });
-    expect(cellDisplay(e({ kind: 'pass' }), check)).toMatchObject({ text: '√', tone: 'green' });
-  });
-
-  it('空格子 → empty', () => {
-    expect(cellDisplay(undefined, check)).toMatchObject({ text: '', tone: 'empty' });
+  it('A- 是黄绿（#8FBF6F），不再是 V2 的琥珀', () => {
+    expect(GRADE_TONE['A-'].line).toBe('#8FBF6F');
   });
 });
 
-describe('cellDisplay：听写「错N」配色（V1 §4.2 继承，F4 回归）', () => {
-  it('错1 / 错2 / 错3 → amber', () => {
-    for (const t of ['错1', '错2', '错3', '错 2']) {
-      expect(cellDisplay(e(text(t)), check).tone).toBe('amber');
-    }
+describe('cellDisplay：状态位与角标', () => {
+  it('请假 → 假 / leave 角标 / 灰', () => {
+    const d = cellDisplay(e(null, { status: 'leave' }), check, opts);
+    expect(d).toMatchObject({ text: '假', kind: 'leave', tone: 'gray', badge: 'leave' });
   });
 
-  it('错4 / 错5 → red', () => {
-    expect(cellDisplay(e(text('错4')), check).tone).toBe('red');
-    expect(cellDisplay(e(text('错12')), check).tone).toBe('red');
+  it('缺交 → × / missing 角标', () => {
+    const d = cellDisplay(e(null, { status: 'missing' }), check, opts);
+    expect(d).toMatchObject({ text: '×', kind: 'missing', badge: 'missing' });
   });
 
-  it('全对 → green；其他文字 → gray', () => {
-    expect(cellDisplay(e(text('全对')), check).tone).toBe('green');
-    expect(cellDisplay(e(text('字迹工整')), check).tone).toBe('gray');
+  it('缺交 + 补交 → 仍显示 ×，角标改为「补」并带辅助文字（FR-31.3）', () => {
+    const d = cellDisplay(e(null, { status: 'missing', makeup: { at: 1, note: '' } }), check, opts);
+    expect(d).toMatchObject({ text: '×', kind: 'missing', badge: 'madeup', subText: '补交' });
   });
 
-  it('文字值保留原文（不截断，截断在 Cell 层做）', () => {
-    expect(cellDisplay(e(text('错3')), check).text).toBe('错3');
-  });
-});
-
-describe('cellDisplay：等级配色（V1 黄色语义）', () => {
-  it('A+ 绿、A 绿（95% ≥ 优秀线）', () => {
-    expect(cellDisplay(e(g('A+')), grade).tone).toBe('green');
-    expect(cellDisplay(e(g('A')), grade).tone).toBe('green');
-  });
-
-  it('A- 固定 amber：统计里算优秀，但老师的批改直觉是「要订正」', () => {
-    expect(cellDisplay(e(g('A-')), grade).tone).toBe('amber');
-  });
-
-  it('B+/B 蓝、C 琥珀、D 红（按档位）', () => {
-    expect(cellDisplay(e(g('B+')), grade).tone).toBe('blue');
-    expect(cellDisplay(e(g('B')), grade).tone).toBe('blue');
-    expect(cellDisplay(e(g('C')), grade).tone).toBe('amber');
-    expect(cellDisplay(e(g('D')), grade).tone).toBe('red');
+  it('手工过关 → 主值 √（不是自动 ✅）', () => {
+    const d = cellDisplay(e(null, { pass: true }), check, opts);
+    expect(d).toMatchObject({ text: '√', kind: 'pass', tone: 'green' });
+    expect(d.badge).toBeUndefined();
   });
 });
 
-describe('cellDisplay：分数配色（按百分比）', () => {
-  it('90 绿、72 琥珀、43 红', () => {
-    expect(cellDisplay(e(score(90)), scoreScheme).tone).toBe('green');
-    expect(cellDisplay(e(score(72)), scoreScheme).tone).toBe('amber');
-    expect(cellDisplay(e(score(43)), scoreScheme).tone).toBe('red');
+describe('cellDisplay：听写「全对」不重复显示 √（AC-32.1）', () => {
+  it('全对 → 主值「全对」+ ✅ 角标（自动过关），无 √ 字符', () => {
+    const d = cellDisplay(e(text('全对')), check, opts);
+    expect(d.text).toBe('全对');
+    expect(d.text).not.toContain('√');
+    expect(d.badge).toBe('passed');
+    expect(d.tone).toBe('green');
   });
 
-  it('满分 120 时按比例判定：108 = 90% 绿，72 = 60% 琥珀', () => {
-    const s120 = makeScheme('score', { maxScore: 120 });
-    expect(cellDisplay(e(score(108)), s120).tone).toBe('green');
-    expect(cellDisplay(e(score(72)), s120).tone).toBe('amber');
+  it('错1–3 琥珀、错≥4 红', () => {
+    expect(cellDisplay(e(text('错1')), check, opts).tone).toBe('amber');
+    expect(cellDisplay(e(text('错4')), check, opts).tone).toBe('red');
+  });
+});
+
+describe('cellDisplay：等级色与表情', () => {
+  it('返回 grade 字段供 CSS 选色；A+ 与 A- 的 grade 不同', () => {
+    expect(cellDisplay(e(g('A+')), grade, opts).grade).toBe('A+');
+    expect(cellDisplay(e(g('A-')), grade, opts).grade).toBe('A-');
+  });
+
+  it('默认 mixed：A- 百分达标 → ✅ 角标', () => {
+    expect(cellDisplay(e(g('A-')), grade, opts).badge).toBe('passed');
+  });
+
+  it('规则改为 grade + 只认 A/A+ → A- 的 ✅ 消失（AC-32.2）', () => {
+    const strict = { ...DEFAULT_PASS_RULE, kind: 'grade' as const, gradePass: ['A+', 'A'] as const };
+    const d = cellDisplay(e(g('A-')), grade, { ...opts, passRule: { ...strict, gradePass: [...strict.gradePass] } });
+    expect(d.badge).toBeUndefined();
+  });
+
+  it('showEmoji=true 时 A+ 带 😄；false 时不带（AC-38.1）', () => {
+    expect(cellDisplay(e(g('A+')), grade, opts).emoji).toBe('😄');
+    expect(cellDisplay(e(g('A+')), grade, { ...opts, showEmoji: false }).emoji).toBeUndefined();
+  });
+});
+
+describe('cellDisplay：分数四档色（AC-37.2）', () => {
+  it('95 绿 / 85 蓝 / 65 琥珀 / 30 红，绝不 gray', () => {
+    const tones = [95, 85, 65, 30].map((x) => cellDisplay(e(score(x)), scoreScheme, opts).tone);
+    expect(tones).toEqual(['green', 'blue', 'amber', 'red']);
+    expect(tones).not.toContain('gray');
+  });
+
+  it('mixed 方案 maxScore 缺失时按 100 折算（INV-21，不再全灰）', () => {
+    const broken = makeScheme('mixed', { maxScore: null });
+    expect(cellDisplay(e(score(95)), broken, opts).tone).toBe('green');
   });
 });
