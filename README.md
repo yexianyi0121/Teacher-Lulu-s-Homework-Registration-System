@@ -71,6 +71,14 @@
 
 ## 6. 给开发者
 
+### 环境要求
+
+| 项 | 要求 | 说明 |
+|---|---|---|
+| Node | **≥ 22** | `package.json` 的 `engines` 已声明。Node 20 下 `vite-plugin-pwa@0.20` 的 ESM 产物执行 `require('workbox-build')` 会抛 `Dynamic require of "workbox-build" is not supported`，`vite build` 直接中断——这不是代码坏了。升级 `vite-plugin-pwa` 后才可放宽到 Node 20 |
+| pnpm | 9.x | `corepack enable` 后 `corepack prepare pnpm@9.15.0 --activate` |
+| 浏览器 | Chrome / Edge | E2E 走本机已装 Edge（`PW_CHANNEL=msedge`），不额外下载浏览器 |
+
 ```bash
 pnpm install --frozen-lockfile
 pnpm dev          # 本地开发
