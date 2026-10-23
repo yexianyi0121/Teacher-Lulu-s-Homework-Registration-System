@@ -1,10 +1,14 @@
-import type { Mode } from '../domain/types';
-
 /**
- * recordKey（设计 §4.4）：同日期 + 同内容 + 同模式 = 同一条记录（PRD BR-36）
+ * recordKey（设计 04 §4.3）：`classId|date|content|sheetId`
+ * 键含 sheetId：同日同内容不同登记表互不覆盖（FR-24 的前提）。
  */
-export function recordKey(date: string, content: string, mode: Mode): string {
-  return `${date}||${encodeURIComponent(content)}||${mode}`;
+export function recordKey(r: {
+  classId: string;
+  date: string;
+  content: string;
+  sheetId: string;
+}): string {
+  return `${r.classId}|${r.date}|${r.content.trim()}|${r.sheetId}`;
 }
 
 let counter = 0;
