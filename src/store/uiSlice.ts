@@ -1,51 +1,35 @@
-import type { AppState, StoreGet, StoreSet } from './store-types';
+import type { AppState, StoreGet, StoreSet, VoiceBanner } from './store-types';
 
 type UiSlice = Pick<
   AppState,
-  | 'setFocusedNo'
-  | 'moveFocus'
-  | 'setSelection'
-  | 'exitSelection'
-  | 'toggleSelectAll'
-  | 'setCurrentStamp'
-  | 'setEditing'
-  | 'setBuffer'
-  | 'setSearchOpen'
-  | 'setSearchQuery'
-  | 'setModal'
-  | 'openConfirm'
-  | 'closeConfirm'
-  | 'showToast'
-  | 'clearToast'
-  | 'setPoster'
-  | 'setPosterLoading'
-  | 'setStorageDegraded'
-  | 'markSaved'
-  | 'setPulsingNo'
-  | 'setFlashNo'
-  | 'setChartsOpen'
-  | 'setCompareId'
-  | 'setVoiceListening'
-  | 'setVoiceInterim'
+  | 'setFocusedNo' | 'moveFocus' | 'setSelection' | 'exitSelection' | 'toggleSelectAll'
+  | 'setCurrentStamp' | 'setEditing' | 'setBuffer' | 'setSearchOpen' | 'setSearchQuery'
+  | 'setModal' | 'openConfirm' | 'closeConfirm' | 'showToast' | 'clearToast'
+  | 'setPoster' | 'setPosterLoading' | 'setPosterMode' | 'setStorageDegraded' | 'setReadOnly'
+  | 'markSaved' | 'setPulsingNo' | 'setFlashNo' | 'setChartsOpen' | 'setCompareId'
+  | 'setFilterNotPassed' | 'setVoiceListening' | 'setVoiceInterim'
+  | 'pushVoiceBanner' | 'removeVoiceBanner' | 'clearVoiceBanners'
 >;
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
 let toastSeq = 0;
+let bannerSeq = 0;
 
 export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
   return {
     setFocusedNo(no) {
       const s = get();
-      const next = no === null ? null : Math.min(Math.max(1, no), s.settings.count);
-      set({ focusedNo: next });
+      const count = s.classes.find((c) => c.id === s.activeClassId)?.count ?? 0;
+      set({ focusedNo: no === null ? null : Math.min(Math.max(1, no), count) });
     },
 
     moveFocus(delta) {
       const s = get();
+      const count = s.classes.find((c) => c.id === s.activeClassId)?.count ?? 0;
       const from = s.focusedNo ?? 1;
       const next = from + delta;
-      if (next < 1 || next > s.settings.count) {
-        if (delta > 0 && from === s.settings.count) get().showToast('已完成最后一格 ✓', 'ok');
+      if (next < 1 || next > count) {
+        if (delta > 0 && from === count) s.showToast('已完成最后一格 ✓', 'ok');
         return;
       }
       set({ focusedNo: next, selection: new Set<number>(), selectionAnchor: null });
@@ -74,16 +58,14 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
         });
         return;
       }
-      const rec = s.drafts[s.activeKey];
+      const count = s.classes.find((c) => c.id === s.activeClassId)?.count ?? 0;
       const sel = new Set<number>();
-      if (rec) {
-        for (let no = 1; no <= s.settings.count; no++) {
-          const e = rec.entries[String(no)];
-          if (e && (e.value !== null || e.stamp !== 'none')) sel.add(no);
-        }
+      for (let no = 1; no <= count; no++) {
+        const e = s.draft.entries[String(no)];
+        if (e && (e.value !== null || e.stamp !== 'none' || e.status !== 'normal' || e.pass)) sel.add(no);
       }
       if (sel.size === 0) {
-        get().showToast('还没有可选的单元格', 'warn');
+        s.showToast('还没有可选的单元格', 'warn');
         return;
       }
       set({ selection: sel, selectionAnchor: s.focusedNo ?? 1 });
@@ -125,9 +107,7 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
       toastSeq += 1;
       set({ toast: { id: toastSeq, text, tone } });
       if (toastTimer) clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => {
-        set({ toast: null });
-      }, 2600);
+      toastTimer = setTimeout(() => set({ toast: null }), 2600);
     },
 
     clearToast() {
@@ -143,8 +123,16 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
       set({ posterLoading: loading });
     },
 
+    setPosterMode(mode) {
+      set({ posterMode: mode });
+    },
+
     setStorageDegraded(v) {
       set({ storageDegraded: v });
+    },
+
+    setReadOnly(v) {
+      set({ readOnly: v });
     },
 
     markSaved(at) {
@@ -167,12 +155,30 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
       set({ compareId: id });
     },
 
+    setFilterNotPassed(v) {
+      set({ filterNotPassed: v });
+    },
+
     setVoiceListening(v) {
       set({ voiceListening: v, ...(v ? {} : { voiceInterim: '' }) });
     },
 
     setVoiceInterim(v) {
       set({ voiceInterim: v });
+    },
+
+    pushVoiceBanner(b) {
+      bannerSeq += 1;
+      const banner: VoiceBanner = { ...b, id: `${b.id}-${bannerSeq}` };
+      set({ voiceBanners: [...get().voiceBanners, banner].slice(-5) });
+    },
+
+    removeVoiceBanner(id) {
+      set({ voiceBanners: get().voiceBanners.filter((b) => b.id !== id) });
+    },
+
+    clearVoiceBanners() {
+      set({ voiceBanners: [] });
     },
   };
 }

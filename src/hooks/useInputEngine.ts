@@ -1,268 +1,350 @@
-import { useCallback, useEffect } from 'react';
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import type { AppState } from '../store/store-types';
-import { isEditableElement, isPrintableKey } from '../domain/keymap';
-import { GRADE_KEY_MAP } from '../domain/grades';
+import { selectVisibleNos } from '../store/selectors';
+import { gradeAllowed, normalizeScore } from '../domain/grading';
+import { schemeAllowsGrade, schemeAllowsScore } from '../domain/scoring';
+import type { GradeLetter } from '../domain/types';
 import { gridColumns } from '../domain/layout';
+import { MAX_STUDENTS } from '../domain/constants';
 
-type AnyKeyEvent = KeyboardEvent | ReactKeyboardEvent;
+/** 键位引擎（设计 04 §9.2 / V1 BR-08）：命令键挂 document，弹窗内仍生效 */
 
-export const VOICE_TOGGLE_EVENT = 'xq:toggle-voice';
+const GRADE_DIGITS: Record<string, GradeLetter> = {
+  '1': 'A+', '2': 'A', '3': 'A-', '4': 'B', '5': 'C', '6': 'D',
+};
 
-function afterCommit(st: AppState, no: number) {
-  if (st.settings.secondsJump) st.moveFocus(1);
-  else st.setPulsingNo(no);
+const LETTERS = new Set(['a', 'b', 'c', 'd']);
+const MODIFIERS = new Set(['+', '-', '=', '_']);
+
+function isEditableElement(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+  return el.isContentEditable;
 }
 
-function commitBuffer(st: AppState, advance: boolean): boolean {
-  const buf = st.buffer;
-  if (!buf) return false;
-  const raw = buf.text;
-  st.setBuffer(null);
-  if (raw === '' || raw === '.') return false;
-  const num = Number(raw);
-  if (!Number.isFinite(num)) return false;
-  st.setValue(buf.no, { kind: 'score', score: Math.min(100, Math.max(0, num)) });
-  if (advance && st.settings.secondsJump) st.moveFocus(1);
-  return true;
+export function maxStudents(): number {
+  return MAX_STUDENTS;
 }
 
-function appendBuffer(st: AppState, key: string) {
-  const no = st.focusedNo;
-  if (no === null) return;
-
-  const cur = st.buffer && st.buffer.no === no ? st.buffer.text : '';
-  let next: string;
-
-  if (key === '.') {
-    if (cur.includes('.')) return;
-    next = cur === '' ? '0.' : `${cur}.`;
-  } else if (cur.includes('.')) {
-    const dec = cur.split('.')[1] ?? '';
-    if (dec.length >= 1) return;
-    next = cur + key;
-  } else {
-    if (cur.length >= 3) return;
-    next = `${cur}${key}`.replace(/^0+(?=\d)/, '');
-  }
-
-  if (!/^\d{0,3}(\.\d?)?$/.test(next)) return;
-
-  const num = Number(next);
-  if (Number.isFinite(num) && num > 100) {
-    st.setBuffer({ no, text: '100' });
-    st.showToast('分数不能超过 100，已截断', 'warn');
-    return;
-  }
-
-  st.setBuffer({ no, text: next });
-}
-
-/** 全局命令键（挂在 document，也可从 Grid 冒泡进入，幂等） */
-function handleGlobal(
-  e: AnyKeyEvent,
-  st: AppState,
-  key: string,
-  ctrl: boolean,
-  inEditor: boolean,
-): boolean {
-  const lower = key.toLowerCase();
-
-  if (ctrl && lower === 'z') {
-    if (st.editing) return false; // 内联编辑中交给浏览器处理文本撤销
-    e.preventDefault();
-    if (e.shiftKey) st.redo();
-    else st.undo();
-    return true;
-  }
-
-  if (ctrl && lower === 'y') {
-    e.preventDefault();
-    st.redo();
-    return true;
-  }
-
-  if (ctrl && lower === 's') {
-    e.preventDefault();
-    st.commitToHistory();
-    return true;
-  }
-
-  if (ctrl && lower === 'm') {
-    e.preventDefault();
-    document.dispatchEvent(new CustomEvent(VOICE_TOGGLE_EVENT));
-    return true;
-  }
-
-  if (ctrl && key === 'Enter') {
-    e.preventDefault();
-    st.setModal('report');
-    return true;
-  }
-
-  if (!inEditor && !ctrl && key === '/') {
-    e.preventDefault();
-    st.setSearchOpen(true);
-    return true;
-  }
-
-  if (key === 'Escape') {
-    e.preventDefault();
-    if (st.confirmRequest) st.closeConfirm();
-    else if (st.modal) st.setModal(null);
-    else if (st.editing) st.setEditing(null);
-    else if (st.buffer) st.setBuffer(null);
-    else if (st.selection.size > 0) st.exitSelection();
-    else if (st.searchOpen) st.setSearchOpen(false);
-    return true;
-  }
-
-  return false;
-}
-
-function handleGrid(e: AnyKeyEvent, st: AppState, key: string, ctrl: boolean) {
-  const rec = st.drafts[st.activeKey];
-  if (!rec) return;
-
-  const cols = gridColumns(typeof window === 'undefined' ? 1280 : window.innerWidth);
-  const no = st.focusedNo;
-
-  // 多选态（PRD §4.6.5 状态矩阵）
-  if (st.selection.size > 0) {
-    if (key === ' ') {
-      e.preventDefault();
-      e.stopPropagation();
-      const n = st.selection.size;
-      st.batchStamp([...st.selection]);
-      st.showToast(`已对 ${n} 个单元格盖章`, 'ok');
-      return;
-    }
-    if (key === 'Delete' || key === 'Backspace') {
-      e.preventDefault();
-      e.stopPropagation();
-      const n = st.selection.size;
-      st.batchClear([...st.selection]);
-      st.showToast(`已清空 ${n} 个单元格`, 'ok');
-    }
-    return;
-  }
-
-  if (no === null) return;
-
-  if (key === ' ') {
-    e.preventDefault();
-    e.stopPropagation();
-    const entry = rec.entries[String(no)];
-    st.toggleStamp(no);
-    if (!entry?.value) st.showToast('该学号尚无录入值，仍会出现在未提交名单中', 'warn');
-    return;
-  }
-
-  if (key === 'Delete' || key === 'Backspace') {
-    e.preventDefault();
-    e.stopPropagation();
-    commitBuffer(st, false);
-    st.clearCell(no);
-    return;
-  }
-
-  if (key === 'Tab') {
-    e.preventDefault();
-    e.stopPropagation();
-    commitBuffer(st, false);
-    st.moveFocus(e.shiftKey ? -1 : 1);
-    return;
-  }
-
-  if (key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown') {
-    e.preventDefault();
-    e.stopPropagation();
-    commitBuffer(st, false);
-    const delta =
-      key === 'ArrowLeft' ? -1 : key === 'ArrowRight' ? 1 : key === 'ArrowUp' ? -cols : cols;
-    st.moveFocus(delta);
-    return;
-  }
-
-  if (key === 'Enter') {
-    e.preventDefault();
-    e.stopPropagation();
-    const committed = commitBuffer(st, false);
-    if (st.settings.secondsJump) st.moveFocus(1);
-    else if (committed) st.setPulsingNo(no);
-    return;
-  }
-
-  if (rec.mode === 'homework') {
-    const grade = GRADE_KEY_MAP[key];
-    if (!grade) return;
-    e.preventDefault();
-    e.stopPropagation();
-    st.setValue(no, { kind: 'grade', grade });
-    afterCommit(st, no);
-    return;
-  }
-
-  if (rec.mode === 'quiz') {
-    if (/^[0-9]$/.test(key) || key === '.') {
-      e.preventDefault();
-      e.stopPropagation();
-      appendBuffer(st, key);
-    }
-    return;
-  }
-
-  if (!ctrl && !e.altKey && isPrintableKey(key)) {
-    e.preventDefault();
-    e.stopPropagation();
-    st.setEditing({ no, draft: key });
-  }
-}
-
-/**
- * 键盘引擎（设计 §6.1）
- * 导航键挂 Grid（冒泡），命令键挂 document；共用同一处理函数。
- */
 export function useInputEngine() {
-  const handleKey = useCallback((e: AnyKeyEvent) => {
-    const native = 'nativeEvent' in e ? (e.nativeEvent as KeyboardEvent) : (e as KeyboardEvent);
-    if (native.isComposing || native.keyCode === 229) return;
-    if (e.defaultPrevented) return;
-
-    const key = e.key;
-    const ctrl = e.ctrlKey || e.metaKey;
-    const inEditor = isEditableElement(e.target);
-
-    // 编辑器内只放行 Esc / Ctrl+Z / Ctrl+S / Ctrl+Enter
-    if (inEditor) {
-      const allowed =
-        key === 'Escape' ||
-        (ctrl && (key.toLowerCase() === 'z' || key.toLowerCase() === 's' || key === 'Enter'));
-      if (!allowed) return;
-    }
-
-    const st = useStore.getState();
-
-    if (handleGlobal(e, st, key, ctrl, inEditor)) {
-      if (e.defaultPrevented) e.stopPropagation();
-      return;
-    }
-
-    if (inEditor) return;
-    if (st.modal || st.confirmRequest) return;
-
-    const target = e.target as HTMLElement | null;
-    if (st.searchOpen && target?.getAttribute('data-search') !== '1') return;
-
-    handleGrid(e, st, key, ctrl);
-  }, []);
+  const pendingRef = useRef<{ no: number; base: string } | null>(null);
+  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => handleKey(e);
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [handleKey]);
+    const store = () => useStore.getState();
 
-  return { handleKey };
+    const clearPending = () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      pendingRef.current = null;
+    };
+
+    const maybeAdvance = (from: number) => {
+      const s = store();
+      if (!s.settings.secondsJump) return;
+      const list = selectVisibleNos(s);
+      const idx = list.indexOf(from);
+      const next = list[idx + 1];
+      if (next) s.setFocusedNo(next);
+    };
+
+    const commitPending = () => {
+      const p = pendingRef.current;
+      clearPending();
+      if (!p) return;
+      const s = store();
+      const g = p.base as GradeLetter;
+      if (gradeAllowed(g, s.draft.scheme)) {
+        s.commitValue(p.no, { kind: 'grade', grade: g });
+        maybeAdvance(p.no);
+      }
+    };
+
+    const commitBuffer = (advance: boolean) => {
+      const s = store();
+      const buf = s.buffer;
+      if (!buf) return;
+      const scheme = s.draft.scheme;
+      const raw = Number(buf.text);
+      if (!Number.isFinite(raw)) {
+        s.setBuffer(null);
+        return;
+      }
+      const max = scheme.maxScore ?? 100;
+      s.commitValue(buf.no, { kind: 'score', score: normalizeScore(raw, max, scheme.decimals) });
+      s.setBuffer(null);
+      if (advance) maybeAdvance(buf.no);
+    };
+
+    const appendBuffer = (ch: string) => {
+      const s = store();
+      const no = s.focusedNo;
+      if (no === null) return;
+      const scheme = s.draft.scheme;
+      const current = s.buffer && s.buffer.no === no ? s.buffer.text : '';
+      let next = current + ch;
+
+      if (ch === '.') {
+        if (current.includes('.') || scheme.decimals === 0) return;
+        if (!current) next = '0.';
+      }
+      if (next.includes('.')) {
+        const dec = next.split('.')[1] ?? '';
+        if (dec.length > 1) return;
+      } else {
+        const max = scheme.maxScore ?? 100;
+        const intPart = next.replace(/^0+(?=\d)/, '');
+        if (Number(intPart) > max) {
+          if (!current) {
+            s.showToast(`本表满分 ${max} 分`, 'warn');
+            return;
+          }
+          next = String(max);
+        } else {
+          next = intPart;
+        }
+      }
+      s.setBuffer({ no, text: next });
+    };
+
+    /** 未处理 = 无值、无状态、无过关 */
+    const nextUntreated = (dir: 1 | -1) => {
+      const s = store();
+      const list = selectVisibleNos(s);
+      const from = s.focusedNo ?? 1;
+      const start = Math.max(0, list.indexOf(from));
+      for (let i = 1; i <= list.length; i++) {
+        const no = list[(start + i * dir + list.length * 2) % list.length];
+        const e = s.draft.entries[String(no)];
+        if (!e || (e.value === null && e.status === 'normal' && !e.pass)) {
+          s.setFocusedNo(no);
+          return;
+        }
+      }
+      s.showToast('全部已处理 ✓', 'ok');
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isEditableElement(e.target)) return;
+      if (e.isComposing || e.keyCode === 229) return;
+
+      const s = store();
+      const mod = e.ctrlKey || e.metaKey;
+      const key = e.key;
+      const lower = key.toLowerCase();
+
+      /* ---------- 命令键 ---------- */
+      if (mod) {
+        if (lower === 'z' && !e.shiftKey) { e.preventDefault(); clearPending(); s.setBuffer(null); s.undo(); return; }
+        if ((lower === 'z' && e.shiftKey) || lower === 'y') { e.preventDefault(); clearPending(); s.redo(); return; }
+        if (lower === 's') { e.preventDefault(); clearPending(); s.commitToHistory(); return; }
+        if (lower === 'm') { e.preventDefault(); window.dispatchEvent(new CustomEvent('xq:toggle-voice')); return; }
+        if (lower === 'j') { e.preventDefault(); window.dispatchEvent(new CustomEvent('xq:poster')); return; }
+        if (key === 'Enter') { e.preventDefault(); window.dispatchEvent(new CustomEvent('xq:report')); return; }
+        return;
+      }
+
+      /* ---------- Esc 级联 ---------- */
+      if (key === 'Escape') {
+        if (s.modal) { s.setModal(null); return; }
+        if (s.editing) { s.setEditing(null); return; }
+        if (pendingRef.current) { clearPending(); return; }
+        if (s.selection.size) { s.exitSelection(); return; }
+        if (s.searchOpen) { s.setSearchOpen(false); return; }
+        if (s.buffer) { s.setBuffer(null); return; }
+        return;
+      }
+
+      /* ---------- 搜索 ---------- */
+      if (key === '/') {
+        e.preventDefault();
+        s.setSearchOpen(true);
+        return;
+      }
+      if (s.searchOpen) return;
+
+      /* ---------- 待定等级的 +/- 修饰 ---------- */
+      if (pendingRef.current && MODIFIERS.has(key)) {
+        e.preventDefault();
+        const p = pendingRef.current;
+        const g = (p.base + (key === '+' || key === '=' ? '+' : '-')) as GradeLetter;
+        clearPending();
+        if (gradeAllowed(g, s.draft.scheme)) {
+          s.commitValue(p.no, { kind: 'grade', grade: g });
+          maybeAdvance(p.no);
+        } else {
+          s.showToast(`本表没有等级 ${g}`, 'warn');
+        }
+        return;
+      }
+
+      /* ---------- 改当前格等级 ---------- */
+      if (MODIFIERS.has(key)) {
+        const no = s.focusedNo;
+        const v = no !== null ? s.draft.entries[String(no)]?.value : null;
+        if (no !== null && v?.kind === 'grade') {
+          e.preventDefault();
+          const g = (v.grade[0] + (key === '+' || key === '=' ? '+' : '-')) as GradeLetter;
+          if (gradeAllowed(g, s.draft.scheme)) s.commitValue(no, { kind: 'grade', grade: g });
+          else s.showToast(`本表没有等级 ${g}`, 'warn');
+        }
+        return;
+      }
+
+      /* ---------- 字母等级（A/B/C/D + 700ms 内可加修饰） ---------- */
+      if (LETTERS.has(lower)) {
+        if (!schemeAllowsGrade(s.draft.scheme)) {
+          s.showToast('本表只接受分数', 'warn');
+          return;
+        }
+        e.preventDefault();
+        if (pendingRef.current) commitPending();
+        const no = s.focusedNo;
+        if (no === null) return;
+        pendingRef.current = { no, base: lower.toUpperCase() };
+        timerRef.current = window.setTimeout(() => {
+          const p = pendingRef.current;
+          if (!p) return;
+          pendingRef.current = null;
+          const st = store();
+          const g = p.base as GradeLetter;
+          if (gradeAllowed(g, st.draft.scheme)) {
+            st.commitValue(p.no, { kind: 'grade', grade: g });
+            maybeAdvance(p.no);
+          }
+        }, 700);
+        return;
+      }
+
+      /* ---------- 状态键 / 补交 / 文字 ---------- */
+      if (lower === 'x' || lower === 'l' || lower === 'g' || lower === 'm' || key === 'F2') {
+        const no = s.focusedNo;
+        if (no === null) return;
+        e.preventDefault();
+        if (pendingRef.current) commitPending();
+        if (lower === 'x') { s.setStatus(no, 'missing'); maybeAdvance(no); return; }
+        if (lower === 'l') { s.setStatus(no, 'leave'); maybeAdvance(no); return; }
+        if (lower === 'g') { s.togglePass(no); maybeAdvance(no); return; }
+        if (lower === 'm') { s.setModal('makeup'); return; }
+        const cur = s.draft.entries[String(no)]?.value;
+        s.setEditing({ no, draft: cur?.kind === 'text' ? cur.text : '' });
+        return;
+      }
+
+      /* ---------- 空格盖章 ---------- */
+      if (key === ' ') {
+        e.preventDefault();
+        const no = s.focusedNo;
+        if (no === null) return;
+        if (pendingRef.current) commitPending();
+        if (s.selection.size > 0) s.batchStamp([...s.selection]);
+        else s.toggleStamp(no);
+        return;
+      }
+
+      /* ---------- 删除 ---------- */
+      if (key === 'Delete' || key === 'Backspace') {
+        e.preventDefault();
+        if (pendingRef.current) { clearPending(); return; }
+        if (s.buffer) { s.setBuffer(null); return; }
+        const no = s.focusedNo;
+        if (no === null) return;
+        if (s.selection.size > 0) s.batchClear([...s.selection]);
+        else s.clearCell(no);
+        return;
+      }
+
+      /* ---------- 数字 / 小数点 ---------- */
+      if (/^[0-9]$/.test(key) || key === '.') {
+        const scheme = s.draft.scheme;
+        if (pendingRef.current) commitPending();
+
+        if (schemeAllowsScore(scheme)) {
+          e.preventDefault();
+          appendBuffer(key);
+          return;
+        }
+        if (schemeAllowsGrade(scheme) && GRADE_DIGITS[key]) {
+          e.preventDefault();
+          const no = s.focusedNo;
+          if (no === null) return;
+          const g = GRADE_DIGITS[key];
+          if (gradeAllowed(g, scheme)) {
+            s.commitValue(no, { kind: 'grade', grade: g });
+            maybeAdvance(no);
+          }
+          return;
+        }
+        if (scheme.kind === 'check' && /^[0-9]$/.test(key)) {
+          e.preventDefault();
+          const no = s.focusedNo;
+          if (no === null) return;
+          const n = Number(key);
+          s.commitText(no, n === 0 ? '全对' : `错${n}`);
+          maybeAdvance(no);
+          return;
+        }
+        s.showToast('本表不接受分数', 'warn');
+        return;
+      }
+
+      /* ---------- Enter ---------- */
+      if (key === 'Enter') {
+        e.preventDefault();
+        if (pendingRef.current) { commitPending(); return; }
+        if (s.buffer) { commitBuffer(true); return; }
+        const scheme = s.draft.scheme;
+        const no = s.focusedNo;
+        if (no === null) return;
+        if (scheme.kind === 'check' || scheme.allowCheck) s.togglePass(no);
+        maybeAdvance(no);
+        return;
+      }
+
+      /* ---------- Tab ---------- */
+      if (key === 'Tab') {
+        e.preventDefault();
+        if (pendingRef.current) commitPending();
+        if (s.buffer) commitBuffer(false);
+        nextUntreated(e.shiftKey ? -1 : 1);
+        return;
+      }
+
+      /* ---------- 方向键（按当前列数） ---------- */
+      const cols = gridColumns(typeof window === 'undefined' ? 1366 : window.innerWidth);
+      const list = selectVisibleNos(s);
+      const from = s.focusedNo ?? 1;
+      const idx = Math.max(0, list.indexOf(from));
+      let to: number | null = null;
+      if (key === 'ArrowRight') to = list[idx + 1] ?? null;
+      if (key === 'ArrowLeft') to = list[idx - 1] ?? null;
+      if (key === 'ArrowDown') to = list[idx + cols] ?? null;
+      if (key === 'ArrowUp') to = list[idx - cols] ?? null;
+      if (to !== null) {
+        e.preventDefault();
+        if (pendingRef.current) commitPending();
+        if (s.buffer) commitBuffer(false);
+        s.setFocusedNo(to);
+        return;
+      }
+
+      /* ---------- 其他字符 → 自定义文字 ---------- */
+      if (key.length === 1 && /[\u4e00-\u9fa5a-zA-Z]/.test(key)) {
+        const no = s.focusedNo;
+        if (no !== null && (s.draft.scheme.allowText || s.draft.scheme.kind === 'text')) {
+          e.preventDefault();
+          s.setEditing({ no, draft: key });
+        }
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      clearPending();
+    };
+  }, []);
 }

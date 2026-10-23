@@ -1,44 +1,26 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { useStore } from '../store';
-import { matchStudents } from '../domain/search';
-import { useInputEngine } from '../hooks/useInputEngine';
+import { useEffect, useRef } from 'react';
+import { useStore, currentClass } from '../store';
+import { selectVisibleNos } from '../store/selectors';
 import { Cell } from './Cell';
 
-export interface GridProps {
-  mode: import('../domain/types').Mode;
-}
-
-export function Grid({ mode }: GridProps) {
-  const count = useStore((s) => s.settings.count);
+export function Grid() {
+  const nos = useStore(selectVisibleNos);
   const focusedNo = useStore((s) => s.focusedNo);
-  const searchQuery = useStore((s) => s.searchQuery);
-  const modal = useStore((s) => s.modal);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const { handleKey } = useInputEngine();
+  const showName = useStore((s) => s.settings.showName);
+  const students = currentClass()?.students;
+  const ref = useRef<HTMLDivElement>(null);
 
-  const matched = useMemo(() => new Set(matchStudents(searchQuery, count)), [searchQuery, count]);
-
-  // roving tabindex + 最小滚动（设计 §6.1.1）
   useEffect(() => {
     if (focusedNo === null) return;
-    const el = gridRef.current?.querySelector<HTMLElement>(`[data-no="${focusedNo}"]`);
-    if (!el) return;
-    el.focus({ preventScroll: true });
-    el.scrollIntoView?.({ block: 'nearest' });
-  }, [focusedNo, count, modal]);
+    const el = ref.current?.querySelector<HTMLElement>(`[data-no="${focusedNo}"]`);
+    el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [focusedNo, nos.length]);
 
   return (
-    <div className="grid-wrap">
-      <div
-        ref={gridRef}
-        className="grid"
-        role="grid"
-        aria-label="学号网格"
-        aria-rowcount={Math.ceil(count / 10)}
-        onKeyDown={handleKey}
-      >
-        {Array.from({ length: count }, (_, i) => i + 1).map((no) => (
-          <Cell key={no} no={no} mode={mode} matched={matched.has(no)} />
+    <div className="grid-wrap" ref={ref}>
+      <div className="grid" role="grid" aria-label="学生登记网格">
+        {nos.map((no) => (
+          <Cell key={no} no={no} name={students?.find((s) => s.no === no)?.name} showName={showName} />
         ))}
       </div>
     </div>

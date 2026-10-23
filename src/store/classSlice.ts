@@ -1,88 +1,134 @@
+import type { ClassDoc, RecordDoc, Settings, Student } from '../domain/types';
+import { DEFAULT_SHEET_ID, MAX_STUDENTS, MIN_STUDENTS } from '../domain/constants';
 import type { AppState, StoreGet, StoreSet } from './store-types';
-import { MAX_STUDENTS, MIN_STUDENTS } from '../domain/constants';
-import { clampThresholds } from '../domain/thresholds';
-import { createStudents } from './initial';
+import { createClass, createRecord, createStudents } from './initial';
+import { todayISO } from '../domain/date';
 
-type ClassSlice = Pick<AppState, 'importRoster'>;
+type ClassSlice = Pick<
+  AppState,
+  | 'addClass' | 'renameClass' | 'deleteClass' | 'switchClass'
+  | 'setCount' | 'updateClassInfo' | 'importRoster' | 'updateSettings'
+>;
+
+/** 切班后的落点：该班最近更新的记录；没有就建一条今天的常规作业 */
+function pickDraft(s: AppState, classId: string): RecordDoc {
+  const candidates = Object.values(s.records)
+    .filter((r) => r.classId === classId)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  if (candidates[0]) return candidates[0];
+  return createRecord({
+    classId,
+    date: s.draft.date || todayISO(),
+    templateId: 'homework',
+    sheetId: DEFAULT_SHEET_ID.homework,
+  });
+}
 
 export function createClassSlice(set: StoreSet, get: StoreGet): ClassSlice {
   return {
-    importRoster(students) {
+    addClass(name) {
       const s = get();
-      if (students.length === 0) return;
-      const count = Math.min(MAX_STUDENTS, Math.max(MIN_STUDENTS, students.length));
+      const base = s.classes.find((c) => c.id === s.activeClassId);
+      const cls = createClass({
+        name: name.trim().slice(0, 20) || `新班级 ${s.classes.length + 1}`,
+        school: base?.school ?? '',
+        teacher: base?.teacher ?? '',
+        subject: base?.subject ?? '语文',
+        createdAt: Date.now(),
+      });
+      const rec = createRecord({ classId: cls.id, date: s.draft.date, templateId: 'homework' });
+      set({ classes: [...s.classes, cls], records: { ...s.records, [rec.key]: rec } });
+      s.showToast(`已新建班级「${cls.name}」`, 'ok');
+    },
 
-      get().pushUndo('人数');
+    renameClass(id, name) {
+      const s = get();
+      const next = name.trim().slice(0, 20);
+      if (!next) return;
+      set({ classes: s.classes.map((c) => (c.id === id ? { ...c, name: next } : c)) });
+    },
+
+    deleteClass(id) {
+      const s = get();
+      if (s.classes.length <= 1) {
+        s.showToast('至少要保留一个班级', 'warn');
+        return;
+      }
+      const classes = s.classes.filter((c) => c.id !== id);
+      const activeClassId = s.activeClassId === id ? classes[0].id : s.activeClassId;
+      const draft = s.activeClassId === id ? pickDraft(s, activeClassId) : s.draft;
+      // L-2：记录与积分不物理删除，只是不再展示
       set({
-        classInfo: { ...s.classInfo, students: createStudents(count, students) },
-        settings: { ...s.settings, count },
+        classes,
+        activeClassId,
+        activeKey: draft.key,
+        draft,
+        focusedNo: 1,
+        selection: new Set<number>(),
+      });
+      s.showToast('已删除班级（历史记录与积分仍可通过导出取回）', 'ok');
+    },
+
+    switchClass(id) {
+      const s = get();
+      if (id === s.activeClassId) return;
+      if (!s.classes.some((c) => c.id === id)) return;
+      const draft = pickDraft(s, id);
+      set({
+        activeClassId: id,
+        activeKey: draft.key,
+        draft,
         focusedNo: 1,
         selection: new Set<number>(),
         selectionAnchor: null,
+        editing: null,
+        buffer: null,
+        compareId: null,
+        filterNotPassed: false,
       });
-      get().showToast(`已导入 ${count} 名学生`, 'ok');
     },
-  };
-}
 
-type SettingsSlice = Pick<AppState, 'updateSettings' | 'updateClassInfo'>;
-
-export function createSettingsSlice(set: StoreSet, get: StoreGet): SettingsSlice {
-  return {
-    updateSettings(patch) {
+    setCount(n) {
       const s = get();
-      const merged = { ...s.settings, ...patch };
-
-      const count =
-        patch.count === undefined
-          ? merged.count
-          : Math.min(MAX_STUDENTS, Math.max(MIN_STUDENTS, Math.round(patch.count)));
-
-      const t = clampThresholds(merged.passLine, merged.excellentLine);
-      const next = {
-        ...merged,
-        count,
-        passLine: t.passLine,
-        excellentLine: t.excellentLine,
-      };
-
+      const count = Math.min(MAX_STUDENTS, Math.max(MIN_STUDENTS, Math.round(n)));
+      if (!Number.isFinite(count)) return;
+      // INV-8：只改展示人数，绝不删 entries
       set({
-        settings: next,
-        classInfo:
-          count === s.settings.count
-            ? s.classInfo
-            : { ...s.classInfo, students: createStudents(count, s.classInfo.students) },
+        classes: s.classes.map((c) =>
+          c.id === s.activeClassId ? { ...c, count, students: createStudents(count, c.students) } : c,
+        ),
         focusedNo: s.focusedNo !== null && s.focusedNo > count ? 1 : s.focusedNo,
-        ...(count !== s.settings.count
-          ? { selection: new Set<number>(), selectionAnchor: null }
-          : {}),
+        selection: new Set<number>(),
       });
-
-      if (t.adjusted) get().showToast('已调整为最近合法值', 'warn');
     },
 
     updateClassInfo(patch) {
       const s = get();
-      set({ classInfo: { ...s.classInfo, ...patch } });
+      set({ classes: s.classes.map((c) => (c.id === s.activeClassId ? { ...c, ...patch } : c)) });
+    },
+
+    importRoster(students: Student[]) {
+      const s = get();
+      const list = students.slice(0, MAX_STUDENTS).map((st, i) => ({ no: i + 1, name: st.name }));
+      if (list.length < MIN_STUDENTS) return;
+      set({
+        classes: s.classes.map((c) => (c.id === s.activeClassId ? { ...c, students: list, count: list.length } : c)),
+        focusedNo: 1,
+        selection: new Set<number>(),
+      });
+      s.showToast(`已导入 ${list.length} 人名单`, 'ok');
+    },
+
+    updateSettings(patch: Partial<Settings>) {
+      const s = get();
+      const merged: Settings = { ...s.settings, ...patch };
+      merged.voiceAutoConfirmMs = Math.min(5000, Math.max(500, Math.round(merged.voiceAutoConfirmMs)));
+      set({ settings: merged });
     },
   };
 }
 
-type HistorySlice = Pick<AppState, 'deleteHistory' | 'clearHistory'>;
-
-export function createHistorySlice(set: StoreSet, get: StoreGet): HistorySlice {
-  return {
-    deleteHistory(id) {
-      const s = get();
-      set({
-        history: s.history.filter((h) => h.id !== id),
-        compareId: s.compareId === id ? null : s.compareId,
-      });
-    },
-
-    clearHistory() {
-      set({ history: [], compareId: null });
-      get().showToast('已清空历史记录', 'ok');
-    },
-  };
+/** 当前班级 */
+export function activeClass(s: AppState): ClassDoc | undefined {
+  return s.classes.find((c) => c.id === s.activeClassId);
 }

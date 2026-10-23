@@ -1,46 +1,50 @@
-import type { CellTone, EntryValue, Mode, Settings } from './types';
-import { GRADE_TONE, classifyDictation } from './grades';
-import { toTenthInt } from './round';
+import type { CellTone, Entry, ScoringScheme } from './types';
+import { percentOf, tierOfPercent, tierTone } from './scoring';
+import { formatScore, formatValue } from './grading';
 
 /**
- * 单元格色调（设计 §9.3，【必须】纯函数，settings 显式传入）
- * quiz 阈值必须来自 settings，不得写死 90/60。
+ * 单元格显示（设计 04 §9.1）—— 纯函数。
+ * 优先级（必须按此实现）：请假 > 缺交 > 值 > 空；stamp / makeup 是角标，与主值不互斥。
  */
-export function cellTone(mode: Mode, value: EntryValue | null, s: Settings): CellTone {
-  // mode 保留在签名中（设计 §9.3 契约）；着色只依赖 value.kind
-  void mode;
-  if (!value) return 'empty';
 
-  if (value.kind === 'grade') {
-    return GRADE_TONE[value.grade];
-  }
-
-  if (value.kind === 'score') {
-    const t = toTenthInt(value.score);
-    const ex = toTenthInt(s.excellentLine);
-    const ps = toTenthInt(s.passLine);
-    if (t >= ex) return 'green';
-    if (t >= 800) return 'blue';
-    if (t >= ps) return 'amber';
-    return 'red';
-  }
-
-  const k = classifyDictation(value.text);
-  if (k.kind === 'perfect') return 'green';
-  if (k.kind === 'missing') return 'gray';
-  if (k.kind === 'error') return k.errors >= 4 ? 'red' : 'amber';
-  return 'blue';
+export interface CellDisplay {
+  text: string;
+  tone: CellTone;
+  /** 主值展示（用于 title / 工具栏） */
+  full: string;
 }
 
-/** 单元格展示文本（null 时返回空串：PRD §4.5.2 不渲染任何字符） */
-export function cellText(value: EntryValue | null): string {
-  if (!value) return '';
-  if (value.kind === 'grade') {
-    return { 'A+': 'A+', A: 'A', 'A-': 'A-', CHECK: '√', CROSS: '×' }[value.grade];
+export function cellDisplay(entry: Entry | undefined, s: ScoringScheme): CellDisplay {
+  if (!entry) return { text: '', tone: 'empty', full: '' };
+  if (entry.status === 'leave') return { text: '假', tone: 'gray', full: '请假' };
+  if (entry.status === 'missing') return { text: '×', tone: 'gray', full: '缺交' };
+
+  if (entry.pass || entry.value?.kind === 'pass') {
+    return { text: '√', tone: 'green', full: '已过关' };
   }
-  if (value.kind === 'score') {
-    const r = Math.round(value.score * 10) / 10;
-    return Number.isInteger(r) ? String(r) : r.toFixed(1);
-  }
-  return value.text;
+
+  const v = entry.value;
+  if (!v) return { text: '', tone: 'empty', full: '' };
+
+  const p = percentOf(entry, s);
+  const tone = p === null ? 'gray' : tierTone(tierOfPercent(p, s));
+
+  if (v.kind === 'score') return { text: formatScore(v.score), tone, full: formatScore(v.score) };
+  if (v.kind === 'grade') return { text: v.grade, tone, full: v.grade };
+  return { text: v.text, tone, full: v.text };
+}
+
+/** 仅文本（海报/导出用） */
+export function cellText(entry: Entry | undefined, s: ScoringScheme): string {
+  return cellDisplay(entry, s).text;
+}
+
+/** 单元格色调（兼容旧调用） */
+export function cellTone(entry: Entry | undefined, s: ScoringScheme): CellTone {
+  return cellDisplay(entry, s).tone;
+}
+
+/** 值的紧凑文本（不含状态位） */
+export function valueText(entry: Entry | undefined, s: ScoringScheme): string {
+  return formatValue(entry?.value ?? null, s);
 }

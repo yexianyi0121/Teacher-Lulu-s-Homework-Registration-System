@@ -1,140 +1,136 @@
 import { create } from 'zustand';
-import type { AppState, StoreGet, StoreSet } from './store-types';
-import { createInitialData } from './initial';
+import type { PersistedStateV2, RecordDoc } from '../domain/types';
+import { DEFAULT_SETTINGS } from '../domain/constants';
+import type { AppState } from './store-types';
+import { createEmptyState, createRecord, hasEntries } from './initial';
 import { createUndoSlice } from './undoSlice';
-import { createRecordSlice } from './recordSlice';
-import { createClassSlice, createHistorySlice, createSettingsSlice } from './classSlice';
+import { createEntrySlice } from './entrySlice';
+import { createSheetSlice } from './sheetSlice';
+import { createClassSlice } from './classSlice';
+import { createPointSlice } from './pointSlice';
 import { createUiSlice } from './uiSlice';
-import { MAX_DRAFTS, PRUNE_DRAFTS_TO } from '../domain/constants';
-import type { PersistedState } from '../infra/persistence';
-import type { RecordDoc } from '../domain/types';
 
-export const useStore = create<AppState>()((set, get) => {
-  const s = set as unknown as StoreSet;
-  const g = get as StoreGet;
-  const init = createInitialData();
+const initial = createEmptyState();
+
+/** 持久化根 → 运行时状态（含「当前记录」落点） */
+export function fromPersisted(state: PersistedStateV2): Partial<AppState> {
+  const classes = state.classes.length ? state.classes : createEmptyState().classes;
+  const activeClassId = classes.some((c) => c.id === state.activeClassId)
+    ? state.activeClassId
+    : classes[0].id;
+
+  const records: Record<string, RecordDoc> = {};
+  for (const r of state.records) records[r.key] = r;
+
+  const candidates = Object.values(records)
+    .filter((r) => r.classId === activeClassId)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  const draft = candidates[0] ?? createRecord({ classId: activeClassId, templateId: 'homework' });
+  records[draft.key] = draft;
 
   return {
-    classInfo: init.classInfo,
-    drafts: init.drafts,
-    activeKey: init.activeKey,
-    history: [],
-    settings: init.settings,
-
-    focusedNo: 1,
-    selection: new Set<number>(),
-    currentStamp: 'corrected',
-    editing: null,
-    buffer: null,
-    searchOpen: false,
-    searchQuery: '',
-    modal: null,
-    confirmRequest: null,
-    toast: null,
-    posterUrl: null,
-    posterLoading: false,
-    posterBlob: null,
-    storageDegraded: false,
-    lastSavedAt: null,
-    pulsingNo: null,
-    flashNo: null,
-    chartsOpen: true,
-    compareId: null,
-    voiceListening: false,
-    voiceInterim: '',
-    selectionAnchor: null,
-
-    undoStack: [],
-    redoStack: [],
-
-    ...createUndoSlice(s, g),
-    ...createRecordSlice(s, g),
-    ...createClassSlice(s, g),
-    ...createSettingsSlice(s, g),
-    ...createHistorySlice(s, g),
-    ...createUiSlice(s, g),
-
-    exportState(): PersistedState {
-      const state = get();
-      let drafts = state.drafts;
-      const ids = Object.keys(drafts);
-      if (ids.length > MAX_DRAFTS) {
-        const keep = ids
-          .map((id) => drafts[id])
-          .sort((a, b) => b.updatedAt - a.updatedAt)
-          .slice(0, PRUNE_DRAFTS_TO)
-          .map((d) => d.id);
-        const keepSet = new Set(keep);
-        keepSet.add(state.activeKey);
-        const next: Record<string, RecordDoc> = {};
-        for (const id of keepSet) if (drafts[id]) next[id] = drafts[id];
-        drafts = next;
-      }
-      return {
-        version: 1,
-        classInfo: state.classInfo,
-        drafts,
-        activeKey: state.activeKey,
-        history: state.history,
-        settings: state.settings,
-        savedAt: Date.now(),
-      };
-    },
-
-    replaceState(next) {
-      set({
-        classInfo: next.classInfo,
-        drafts: next.drafts,
-        activeKey: next.activeKey,
-        history: next.history,
-        settings: next.settings,
-        focusedNo: 1,
-        selection: new Set<number>(),
-        selectionAnchor: null,
-        editing: null,
-        buffer: null,
-        modal: null,
-        confirmRequest: null,
-        compareId: null,
-        undoStack: [],
-        redoStack: [],
-        lastSavedAt: next.savedAt,
-      });
-    },
-
-    resetAll() {
-      const fresh = createInitialData();
-      set({
-        classInfo: fresh.classInfo,
-        drafts: fresh.drafts,
-        activeKey: fresh.activeKey,
-        history: [],
-        settings: fresh.settings,
-        focusedNo: 1,
-        currentStamp: 'corrected',
-        selection: new Set<number>(),
-        selectionAnchor: null,
-        editing: null,
-        buffer: null,
-        modal: null,
-        confirmRequest: null,
-        compareId: null,
-        chartsOpen: true,
-        posterUrl: null,
-        posterBlob: null,
-        posterLoading: false,
-        storageDegraded: false,
-        lastSavedAt: null,
-        pulsingNo: null,
-        flashNo: null,
-        searchOpen: false,
-        searchQuery: '',
-        voiceListening: false,
-        voiceInterim: '',
-        toast: null,
-        undoStack: [],
-        redoStack: [],
-      });
-    },
+    classes,
+    activeClassId,
+    records,
+    history: state.history,
+    pointRules: state.pointRules,
+    pointLedger: state.pointLedger,
+    settings: state.settings ?? DEFAULT_SETTINGS,
+    activeKey: draft.key,
+    draft,
   };
-});
+}
+
+export const useStore = create<AppState>()((set, get) => ({
+  classes: initial.classes,
+  activeClassId: initial.activeClassId,
+  records: Object.fromEntries(initial.records.map((r) => [r.key, r])),
+  history: initial.history,
+  pointRules: initial.pointRules,
+  pointLedger: initial.pointLedger,
+  settings: initial.settings,
+
+  activeKey: initial.records[0].key,
+  draft: initial.records[0],
+
+  focusedNo: 1,
+  selection: new Set<number>(),
+  selectionAnchor: null,
+  currentStamp: 'corrected',
+  editing: null,
+  buffer: null,
+  searchOpen: false,
+  searchQuery: '',
+  modal: null,
+  confirmRequest: null,
+  toast: null,
+  posterUrl: null,
+  posterBlob: null,
+  posterLoading: false,
+  posterMode: 'daily',
+  storageDegraded: false,
+  readOnly: false,
+  lastSavedAt: null,
+  pulsingNo: null,
+  flashNo: null,
+  chartsOpen: false,
+  compareId: null,
+  filterNotPassed: false,
+  voiceListening: false,
+  voiceInterim: '',
+  voiceBanners: [],
+  undoStack: [],
+  redoStack: [],
+
+  ...createUndoSlice(set, get),
+  ...createEntrySlice(set, get),
+  ...createSheetSlice(set, get),
+  ...createClassSlice(set, get),
+  ...createPointSlice(set, get),
+  ...createUiSlice(set, get),
+
+  exportState() {
+    const s = get();
+    return {
+      version: 2,
+      activeClassId: s.activeClassId,
+      classes: s.classes,
+      records: Object.values(s.records).filter((r) => hasEntries(r.entries)),
+      history: s.history,
+      pointRules: s.pointRules,
+      pointLedger: s.pointLedger,
+      settings: s.settings,
+      lastSavedAt: Date.now(),
+    };
+  },
+
+  replaceState(next) {
+    set({
+      ...fromPersisted(next),
+      history: next.history,
+      pointRules: next.pointRules,
+      pointLedger: next.pointLedger,
+      settings: next.settings,
+      focusedNo: 1,
+      selection: new Set<number>(),
+      selectionAnchor: null,
+      editing: null,
+      buffer: null,
+      undoStack: [],
+      redoStack: [],
+      filterNotPassed: false,
+      modal: null,
+      confirmRequest: null,
+    });
+  },
+
+  resetAll() {
+    get().replaceState(createEmptyState(Date.now()));
+    get().showToast('已清空全部数据', 'ok');
+  },
+}));
+
+/** 当前班级（唯一人数来源） */
+export function currentClass(s: AppState = useStore.getState()) {
+  return s.classes.find((c) => c.id === s.activeClassId);
+}

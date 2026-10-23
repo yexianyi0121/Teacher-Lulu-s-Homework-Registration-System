@@ -1,145 +1,132 @@
 import { describe, expect, it } from 'vitest';
-import { computeStats } from '../../src/domain/stats';
-import { makeSettings, sampleAEntries, sampleBEntries } from '../fixtures';
+import { computeStats, emptyStats } from '../../src/domain/stats';
+import { makeScheme, sampleAEntries, sampleBEntries, sampleCEntries, SAMPLE_C_SCHEME, EXPECTED_C, e, score, g, text } from '../fixtures';
 
-describe('computeStats（PRD §7.1 样例 A）', () => {
-  const settings = makeSettings({ count: 50 });
+describe('stats：样例 A（V1 回归）', () => {
+  const s = makeScheme('score');
+  const m = computeStats(sampleAEntries(), s, 50, false);
 
-  it('20 / 87.7 / 13 / 3 / 3 / 1，未提交 30', () => {
-    const m = computeStats('quiz', sampleAEntries(), settings);
+  it('20 / 87.7 / 13-3-3-1 / 未提交 30', () => {
     expect(m.entered).toBe(20);
-    expect(m.avg).toBe(87.7);
+    expect(m.avgPercent).toBe(87.7);
+    expect(m.avgScore).toBe(87.7);
     expect(m.excellent).toBe(13);
     expect(m.good).toBe(3);
     expect(m.pass).toBe(3);
     expect(m.fail).toBe(1);
     expect(m.notSubmitted).toBe(30);
-    expect(m.max).toBe(98);
-    expect(m.min).toBe(43);
-    expect(m.corrected).toBe(0);
   });
 
-  it('四档之和恒等于录入人数', () => {
-    const m = computeStats('quiz', sampleAEntries(), settings);
+  it('四档之和 = entered（INV-3）', () => {
     expect(m.excellent + m.good + m.pass + m.fail).toBe(m.entered);
   });
 
-  it('空数据：avg 为 null，未提交 = N', () => {
-    const m = computeStats('quiz', {}, settings);
+  it('entered + leave + notSubmitted = N', () => {
+    expect(m.entered + m.leave + m.notSubmitted).toBe(m.n);
+  });
+});
+
+describe('stats：样例 C（PRD-V2 §8.1，逐位相等）', () => {
+  const m = computeStats(sampleCEntries(), SAMPLE_C_SCHEME, 50, false);
+
+  it('四档 + 三状态 + 两个均值 9 个数', () => {
+    expect(m.n).toBe(EXPECTED_C.n);
+    expect(m.entered).toBe(EXPECTED_C.entered);
+    expect(m.excellent).toBe(EXPECTED_C.excellent);
+    expect(m.good).toBe(EXPECTED_C.good);
+    expect(m.pass).toBe(EXPECTED_C.pass);
+    expect(m.fail).toBe(EXPECTED_C.fail);
+    expect(m.missing).toBe(EXPECTED_C.missing);
+    expect(m.madeUp).toBe(EXPECTED_C.madeUp);
+    expect(m.leave).toBe(EXPECTED_C.leave);
+    expect(m.notSubmitted).toBe(EXPECTED_C.notSubmitted);
+    expect(m.avgPercent).toBe(EXPECTED_C.avgPercent);
+    expect(m.avgScore).toBe(EXPECTED_C.avgScore);
+    expect(m.excellentRate).toBe(EXPECTED_C.excellentRate);
+    expect(m.qualifiedRate).toBe(EXPECTED_C.qualifiedRate);
+  });
+
+  it('三恒等式：可加、补齐、缺交 ≤ 未提交', () => {
+    expect(m.excellent + m.good + m.pass + m.fail).toBe(m.entered);
+    expect(m.entered + m.leave + m.notSubmitted).toBe(m.n);
+    expect(m.missing).toBeLessThanOrEqual(m.notSubmitted);
+  });
+});
+
+describe('stats：边界', () => {
+  it('entered=0 时均值全为 null（不显示 0 / NaN）', () => {
+    const m = computeStats({}, makeScheme('score'), 50, false);
     expect(m.entered).toBe(0);
-    expect(m.avg).toBeNull();
+    expect(m.avgPercent).toBeNull();
+    expect(m.avgScore).toBeNull();
     expect(m.excellentRate).toBeNull();
-    expect(m.max).toBeNull();
-    expect(m.min).toBeNull();
+    expect(m.qualifiedRate).toBeNull();
     expect(m.notSubmitted).toBe(50);
   });
 
-  it('优秀线改 85 后区间自动重排', () => {
-    const m = computeStats('quiz', sampleAEntries(), makeSettings({ count: 50, excellentLine: 85 }));
-    expect(m.excellent).toBe(16);
-    expect(m.good).toBe(0);
-    expect(m.pass).toBe(3);
+  it('请假不计入分母、不进未提交（AC-22.1）', () => {
+    const entries = { '1': e(null, { status: 'leave' }) };
+    const m = computeStats(entries, makeScheme('score'), 50, false);
+    expect(m.leave).toBe(1);
+    expect(m.entered).toBe(0);
+    expect(m.notSubmitted).toBe(49);
+    expect(m.avgPercent).toBeNull();
+  });
+
+  it('缺交计入未提交但不进四档（BR-53）', () => {
+    const entries = { '1': e(null, { status: 'missing' }) };
+    const m = computeStats(entries, makeScheme('score'), 10, false);
+    expect(m.missing).toBe(1);
+    expect(m.notSubmitted).toBe(10);
+    expect(m.entered).toBe(0);
+  });
+
+  it('过关（pass）计入 passCount，但不进四档（设计 §16-18）', () => {
+    const entries = { '1': e(null, { pass: true }), '2': e(text('全对')) };
+    const m = computeStats(entries, makeScheme('check'), 10, false);
+    expect(m.passCount).toBe(1);
+    expect(m.entered).toBe(0);
+    expect(m.excellent + m.good + m.pass + m.fail).toBe(0);
+  });
+
+  it('听写「错2」不产生百分（只算文字标记）', () => {
+    const m = computeStats({ '1': e(text('错2')) }, makeScheme('check'), 5, false);
+    expect(m.entered).toBe(0);
+    expect(m.avgPercent).toBeNull();
+  });
+
+  it('等级制的四档按百分算：A- = 90% 计入优秀', () => {
+    const entries = { '1': e(g('A-')), '2': e(g('A+')), '3': e(g('D')) };
+    const m = computeStats(entries, makeScheme('grade'), 10, false);
+    expect(m.excellent).toBe(2);
     expect(m.fail).toBe(1);
-    expect(m.entered).toBe(20);
-  });
-
-  it('及格线改 55 后 43 分仍不及格、73 分成及格', () => {
-    const m = computeStats('quiz', sampleAEntries(), makeSettings({ count: 50, passLine: 55 }));
-    expect(m.fail).toBe(1);
-    expect(m.pass).toBe(3);
-  });
-});
-
-describe('computeStats（常规作业样例 B）', () => {
-  it('录入 49 / A+ 21 / A 4 / A- 24 / 未提交 1', () => {
-    const m = computeStats('homework', sampleBEntries(), makeSettings({ count: 50 }));
-    expect(m.entered).toBe(49);
-    expect(m.excellent).toBe(21);
-    expect(m.good).toBe(4);
-    expect(m.fail).toBe(24);
-    expect(m.pass).toBe(0);
-    expect(m.notSubmitted).toBe(1);
-    expect(m.avg).toBeNull();
-  });
-
-  it('光荣榜含 A 时 excellent = 25、good = 0', () => {
-    const m = computeStats('homework', sampleBEntries(), makeSettings({ count: 50, honorIncludesA: true }));
-    expect(m.excellent).toBe(25);
-    expect(m.good).toBe(0);
-    expect(m.entered).toBe(49);
-  });
-
-  it('已更正计数独立于录入人数', () => {
-    const entries = sampleBEntries();
-    entries['3'] = { ...entries['3'], stamp: 'corrected' };
-    const m = computeStats('homework', entries, makeSettings({ count: 50 }));
-    expect(m.corrected).toBe(1);
-    expect(m.entered).toBe(49);
-  });
-
-  it('√ 单独成档：四档之和仍等于录入人数（PRD §6.6「n = A+ + A + A- + √」）', () => {
-    const entries = sampleBEntries();
-    entries['17'] = { value: { kind: 'grade', grade: 'CHECK' }, stamp: 'none', updatedAt: 0 };
-    const m = computeStats('homework', entries, makeSettings({ count: 50 }));
-    expect(m.pass).toBe(1);
-    expect(m.entered).toBe(50);
-    expect(m.excellent + m.good + m.pass + m.fail).toBe(m.entered);
-  });
-
-  it('常规作业无平均分、无优秀率（PRD §6.1.2）', () => {
-    const m = computeStats('homework', sampleBEntries(), makeSettings({ count: 50 }));
-    expect(m.avg).toBeNull();
-    expect(m.excellentRate).toBeNull();
-    expect(m.max).toBeNull();
-    expect(m.min).toBeNull();
-  });
-});
-
-describe('computeStats（听写默写）', () => {
-  it('缺交不计入录入人数，其他文本计入', () => {
-    const entries = {
-      '1': { value: { kind: 'text' as const, text: '全对' }, stamp: 'none' as const, updatedAt: 0 },
-      '2': { value: { kind: 'text' as const, text: '错2' }, stamp: 'none' as const, updatedAt: 0 },
-      '3': { value: { kind: 'text' as const, text: '缺交' }, stamp: 'none' as const, updatedAt: 0 },
-      '4': { value: { kind: 'text' as const, text: '字迹工整' }, stamp: 'none' as const, updatedAt: 0 },
-    };
-    const m = computeStats('dictation', entries, makeSettings({ count: 5 }));
     expect(m.entered).toBe(3);
-    expect(m.excellent).toBe(1);
-    expect(m.good).toBe(1);
-    expect(m.pass).toBe(1); // 「字迹工整」= 其他
-    expect(m.notSubmitted).toBe(2);
-    expect(m.excellent + m.good + m.pass + m.fail).toBe(m.entered);
   });
 
-  it('错≥4 只进「有错」一档，不得同一人双计（PRD §6.6）', () => {
-    const entries = {
-      '1': { value: { kind: 'text' as const, text: '错5' }, stamp: 'none' as const, updatedAt: 0 },
-    };
-    const m = computeStats('dictation', entries, makeSettings({ count: 3 }));
-    expect(m.good).toBe(1);
-    expect(m.fail).toBe(0);
+  it('BR-40：只统计 1..count，隐藏键不参与', () => {
+    const entries = { '1': e(score(90)), '45': e(score(100)) };
+    const m = computeStats(entries, makeScheme('score'), 40, false);
     expect(m.entered).toBe(1);
-    expect(m.excellent + m.good + m.pass + m.fail).toBe(m.entered);
+    expect(m.avgPercent).toBe(90);
   });
 
-  it('听写无平均分、无优秀率', () => {
-    const entries = {
-      '1': { value: { kind: 'text' as const, text: '全对' }, stamp: 'none' as const, updatedAt: 0 },
-    };
-    const m = computeStats('dictation', entries, makeSettings({ count: 3 }));
-    expect(m.avg).toBeNull();
-    expect(m.excellentRate).toBeNull();
+  it('emptyStats 字段齐全且未提交 = N', () => {
+    const m = emptyStats(30);
+    expect(Object.keys(m).length).toBeGreaterThan(15);
+    expect(m.notSubmitted).toBe(30);
   });
 });
 
-describe('BR-40：人数调小后不参与计算', () => {
-  it('count=40 时 41–50 号的值被忽略', () => {
-    const entries = sampleBEntries();
-    entries['45'] = { value: { kind: 'grade', grade: 'A+' }, stamp: 'none', updatedAt: 0 };
-    const m = computeStats('homework', entries, makeSettings({ count: 40 }));
-    expect(m.entered).toBe(39);
+describe('stats：样例 B（等级制回归）', () => {
+  it('录入 49、四档按百分：A+/A/A- 都是优秀（24+4+21）、未提交 1', () => {
+    const m = computeStats(sampleBEntries(), makeScheme('grade'), 50, false);
+    expect(m.entered).toBe(49);
+    // A+=100、A=95、A-=90 都 ≥ 优秀线 90% → 全部计入优秀（PRD-V2 §2.3.1 的口径差异）
+    expect(m.excellent).toBe(49);
+    expect(m.good).toBe(0);
+    expect(m.fail).toBe(0);
+    expect(m.leave).toBe(0);
     expect(m.notSubmitted).toBe(1);
-    expect(m.excellent).toBe(17);
+    expect(m.avgPercent).not.toBeNull();
   });
 });

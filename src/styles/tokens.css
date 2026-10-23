@@ -41,3 +41,17 @@
   /* 字体 */
   --font-sans: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Hiragino Sans GB", system-ui, sans-serif;
 }
+
+/* V2 新增令牌（设计 04 §10）：色值与 V1 视觉一致，不重新设计 */
+:root {
+  --tier-excellent: #3E8E5A;
+  --tier-good: #4A7BC8;
+  --tier-pass: #D98E2B;
+  --tier-fail: #D0453F;
+  --leave-bg: #EFEAF6;
+  --leave-fg: #8B7FA8;
+  --missing-bg: #F2F0F5;
+  --mini-cell-w: 32px;
+  --mini-cell-h: 24px;
+  --mini-gap: 6px;
+}

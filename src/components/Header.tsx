@@ -1,31 +1,35 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { useStore } from '../store';
+import { useStore, currentClass } from '../store';
 import { matchStudents } from '../domain/search';
 import { IconButton } from './ui/controls';
 
 export interface HeaderProps {
   onImport: () => void;
   onSettings: () => void;
+  onManual: () => void;
 }
 
 function fmtTime(ts: number | null): string {
   if (!ts) return '';
   const d = new Date(ts);
-  const h = String(d.getHours()).padStart(2, '0');
-  const m = String(d.getMinutes()).padStart(2, '0');
-  return `已自动保存 ${h}:${m}`;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `已自动保存 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function Header({ onImport, onSettings }: HeaderProps) {
+export function Header({ onImport, onSettings, onManual }: HeaderProps) {
+  const classes = useStore((s) => s.classes);
+  const activeClassId = useStore((s) => s.activeClassId);
+  const switchClass = useStore((s) => s.switchClass);
   const secondsJump = useStore((s) => s.settings.secondsJump);
   const updateSettings = useStore((s) => s.updateSettings);
   const searchOpen = useStore((s) => s.searchOpen);
   const searchQuery = useStore((s) => s.searchQuery);
-  const count = useStore((s) => s.settings.count);
   const setSearchQuery = useStore((s) => s.setSearchQuery);
   const setSearchOpen = useStore((s) => s.setSearchOpen);
   const setFocusedNo = useStore((s) => s.setFocusedNo);
   const lastSavedAt = useStore((s) => s.lastSavedAt);
+  const cls = currentClass();
+  const count = cls?.count ?? 0;
 
   const inputRef = useRef<HTMLInputElement>(null);
   const candidateRef = useRef(0);
@@ -57,6 +61,24 @@ export function Header({ onImport, onSettings }: HeaderProps) {
       </div>
 
       <div className="header-right">
+        <select
+          className="pill pill--select class-select"
+          aria-label="切换班级"
+          value={activeClassId}
+          onChange={(e) => {
+            if (e.target.value === '__new__') {
+              onSettings();
+              return;
+            }
+            switchClass(e.target.value);
+          }}
+        >
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>{`${c.name} · ${c.count}人`}</option>
+          ))}
+          <option value="__new__">＋ 新建 / 管理班级…</option>
+        </select>
+
         <span className="save-indicator" aria-live="polite">{fmtTime(lastSavedAt)}</span>
 
         <button
@@ -83,10 +105,7 @@ export function Header({ onImport, onSettings }: HeaderProps) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value.replace(/[^0-9]/g, ''))}
               onFocus={() => setSearchOpen(true)}
-              onBlur={() => {
-                // 允许点击候选后再关闭
-                window.setTimeout(() => setSearchOpen(false), 120);
-              }}
+              onBlur={() => window.setTimeout(() => setSearchOpen(false), 120)}
               onKeyDown={(e) => {
                 e.stopPropagation();
                 if (e.key === 'Enter') {
@@ -95,9 +114,7 @@ export function Header({ onImport, onSettings }: HeaderProps) {
                   if (no) jumpTo(no);
                 } else if (e.key === 'Tab') {
                   e.preventDefault();
-                  if (matches.length > 0) {
-                    candidateRef.current = (candidateRef.current + 1) % matches.length;
-                  }
+                  if (matches.length > 0) candidateRef.current = (candidateRef.current + 1) % matches.length;
                 } else if (e.key === 'Escape') {
                   e.preventDefault();
                   setSearchOpen(false);
@@ -132,6 +149,7 @@ export function Header({ onImport, onSettings }: HeaderProps) {
           ) : null}
         </div>
 
+        <IconButton icon="📖" title="使用手册" onClick={onManual} />
         <IconButton icon="📁" title="导入花名册" onClick={onImport} />
         <IconButton icon="⚙️" title="设置" onClick={onSettings} />
       </div>

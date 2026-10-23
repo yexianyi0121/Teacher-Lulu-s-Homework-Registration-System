@@ -1,125 +1,125 @@
-import { memo, useRef, useState } from 'react';
-import type { Entry, Mode } from '../domain/types';
-import { cellTone } from '../domain/tone';
+import { memo, useEffect, useRef } from 'react';
+import type { MouseEvent } from 'react';
 import { useStore } from '../store';
+import { cellDisplay } from '../domain/tone';
+import type { Entry } from '../domain/types';
+import { TEXT_DISPLAY, TEXT_MAX } from '../domain/constants';
 import { CellView } from './CellView';
 
 export interface CellProps {
   no: number;
-  entry?: Entry | undefined;
-  mode: Mode;
-  width?: number;
-  matched?: boolean;
+  name?: string;
+  showName: boolean;
 }
 
-function toneForBuffer(text: string, settings: { excellentLine: number; passLine: number }) {
-  const num = Number(text);
-  if (!Number.isFinite(num) || text === '' || text === '.') return 'empty' as const;
-  return cellTone('quiz', { kind: 'score', score: Math.min(100, num) }, {
-    ...settings,
-    count: 0,
-    secondsJump: false,
-    showName: false,
-    honorIncludesA: false,
-  });
-}
+function InlineEditor({ no, draft }: { no: number; draft: string }) {
+  const setEditing = useStore((s) => s.setEditing);
+  const commitText = useStore((s) => s.commitText);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const submittedRef = useRef(false);
 
-interface InlineEditorProps {
-  no: number;
-  initial: string;
-}
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
 
-function InlineEditor({ no, initial }: InlineEditorProps) {
-  const [text, setText] = useState(initial);
-  const doneRef = useRef(false);
-
-  const finish = (advance: number, value?: string) => {
-    if (doneRef.current) return;
-    doneRef.current = true;
-    const st = useStore.getState();
-    const next = (value ?? text).trim().slice(0, 20);
-    st.setEditing(null);
-    if (next) st.setValue(no, { kind: 'text', text: next });
-    else st.clearCell(no);
-    if (advance && st.settings.secondsJump) st.moveFocus(advance);
+  const submit = (value: string) => {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
+    commitText(no, value);
+    setEditing(null);
   };
 
   return (
     <input
+      ref={inputRef}
       className="cell-editor"
-      autoFocus
-      value={text}
-      maxLength={20}
-      aria-label={`${no}号听写内容`}
-      onChange={(e) => setText(e.target.value.slice(0, 20))}
+      defaultValue={draft}
+      maxLength={TEXT_MAX}
+      aria-label={`${no}号 自定义文字`}
+      onBlur={(e) => submit(e.target.value)}
       onKeyDown={(e) => {
-        if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
         e.stopPropagation();
+        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
         if (e.key === 'Enter') {
           e.preventDefault();
-          finish(1);
+          submit((e.target as HTMLInputElement).value);
         } else if (e.key === 'Escape') {
           e.preventDefault();
-          doneRef.current = true;
-          useStore.getState().setEditing(null);
+          submittedRef.current = true;
+          setEditing(null);
         } else if (e.key === 'Tab') {
           e.preventDefault();
-          finish(1);
+          submit((e.target as HTMLInputElement).value);
         }
       }}
-      onBlur={() => finish(0)}
     />
   );
 }
 
-/**
- * 单元格（编辑态）：每格只订阅自己那条 entry（设计 §5.4 / §9.3 性能要求）
- */
-export const Cell = memo(function Cell({ no, mode, matched }: CellProps) {
-  const entry = useStore((s) => s.drafts[s.activeKey]?.entries[String(no)]);
-  const settings = useStore((s) => s.settings);
-  const focusedNo = useStore((s) => s.focusedNo);
+export const Cell = memo(function Cell({ no, name, showName }: CellProps) {
+  const entry = useStore((s) => s.draft.entries[String(no)] as Entry | undefined);
+  const scheme = useStore((s) => s.draft.scheme);
+  const focused = useStore((s) => s.focusedNo === no);
   const selected = useStore((s) => s.selection.has(no));
-  const hasSelection = useStore((s) => s.selection.size > 0);
-  const pulsing = useStore((s) => s.pulsingNo === no);
+  const buffer = useStore((s) => (s.buffer?.no === no ? s.buffer.text : null));
+  const editing = useStore((s) => (s.editing?.no === no ? s.editing.draft : null));
   const flash = useStore((s) => s.flashNo === no);
-  const bufferText = useStore((s) => (s.buffer && s.buffer.no === no ? s.buffer.text : null));
-  const editingDraft = useStore((s) => (s.editing && s.editing.no === no ? s.editing.draft : null));
+  const filterNotPassed = useStore((s) => s.filterNotPassed);
 
-  const value = entry?.value ?? null;
-  const tone = bufferText !== null ? toneForBuffer(bufferText, settings) : cellTone(mode, value, settings);
-  const focused = focusedNo === no;
-  const student = useStore((s) => s.classInfo.students[no - 1]);
+  const setFocusedNo = useStore((s) => s.setFocusedNo);
+  const setSelection = useStore((s) => s.setSelection);
+  const setEditing = useStore((s) => s.setEditing);
+
+  const d = cellDisplay(entry, scheme);
+  const text = buffer !== null ? buffer : d.text;
+  const tone = buffer !== null ? 'blue' : d.tone;
+
+  const handleClick = (e: MouseEvent) => {
+    const s = useStore.getState();
+    if (e.shiftKey && s.focusedNo !== null) {
+      const from = Math.min(s.focusedNo, no);
+      const to = Math.max(s.focusedNo, no);
+      const next = new Set(s.selection);
+      for (let i = from; i <= to; i++) next.add(i);
+      setSelection(next);
+      return;
+    }
+    setFocusedNo(no);
+  };
 
   return (
-    <CellView
-      variant="edit"
-      no={no}
-      value={value}
-      stamp={entry?.stamp ?? 'none'}
-      mode={mode}
-      tone={tone}
-      focused={focused && !hasSelection}
-      selected={selected}
-      matched={matched}
-      pulsing={pulsing}
-      flash={flash}
-      displayText={bufferText ?? undefined}
-      showName={settings.showName}
-      name={student?.name}
-      tabIndex={focused ? 0 : -1}
-      onClick={() => {
-        const st = useStore.getState();
-        if (st.selection.size > 0) st.exitSelection();
-        st.setFocusedNo(no);
-      }}
-      onAnimationEnd={() => {
-        const st = useStore.getState();
-        if (st.pulsingNo === no) st.setPulsingNo(null);
-        if (st.flashNo === no) st.setFlashNo(null);
-      }}
+    <div
+      className="cell-slot"
+      onDoubleClick={() => setEditing({ no, draft: d.text === '假' || d.text === '×' ? '' : d.full })}
+      onClick={handleClick}
     >
-      {editingDraft !== null ? <InlineEditor no={no} initial={editingDraft} /> : null}
-    </CellView>
+      <CellView
+        no={no}
+        text={text}
+        tone={tone}
+        stamp={entry?.stamp ?? 'none'}
+        status={entry?.status ?? 'normal'}
+        pass={!!entry?.pass}
+        makeup={!!entry?.makeup}
+        focused={focused}
+        selected={selected}
+        title={
+          [
+            `${no}号${name ? ` ${name}` : ''}`,
+            d.full ? `值：${d.full}` : '空',
+            entry?.pass ? '已过关' : '',
+            entry?.makeup ? `已补交：${entry.makeup.note || '无说明'}` : '',
+            filterNotPassed ? '' : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        }
+      />
+      {showName && name ? <span className="cell-name">{name}</span> : null}
+      {editing !== null ? <InlineEditor no={no} draft={editing} /> : null}
+      {flash ? <span className="sr-only" role="status">已写入 {no} 号</span> : null}
+      {text.length > TEXT_DISPLAY ? null : null}
+    </div>
   );
 });

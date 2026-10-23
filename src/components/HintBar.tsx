@@ -1,14 +1,22 @@
-import type { Mode } from '../domain/types';
 import { HINT_TEXT } from '../domain/constants';
+import type { SheetTemplateId } from '../domain/types';
 
-export interface HintBarProps {
-  mode: Mode;
-}
-
-export function HintBar({ mode }: HintBarProps) {
+export function HintBar({
+  templateId,
+  filterNotPassed,
+  notPassedCount,
+  total,
+}: {
+  templateId: SheetTemplateId;
+  filterNotPassed?: boolean;
+  notPassedCount?: number;
+  total?: number;
+}) {
   return (
     <div className="hint" role="note">
-      {HINT_TEXT[mode]}
+      {filterNotPassed
+        ? `👁 只看未过关：${notPassedCount ?? 0} 人 / 共 ${total ?? 0} 人（编号保持原学号）`
+        : HINT_TEXT[templateId]}
     </div>
   );
 }

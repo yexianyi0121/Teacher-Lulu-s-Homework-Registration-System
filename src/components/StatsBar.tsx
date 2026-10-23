@@ -1,39 +1,40 @@
 import type { SessionMetrics } from '../domain/types';
-import type { Mode } from '../domain/types';
-import { formatScore } from '../domain/grades';
+import { formatPercent } from '../domain/round';
 
-export interface StatsBarProps {
-  mode: Mode;
-  metrics: SessionMetrics;
-  excellentLine: number;
-  passLine: number;
-}
-
-/**
- * 统计条（PRD FR-06 / 设计 §16 #1：只在单元测试模式渲染）
- */
-export function StatsBar({ mode, metrics, excellentLine, passLine }: StatsBarProps) {
-  if (mode !== 'quiz') return null;
+/** 统计条（设计 04 §6.2 / PRD-V2 §2.4）：仅 quality 模板渲染 */
+export function StatsBar({ metrics, schemeLabel }: { metrics: SessionMetrics; schemeLabel: string }) {
+  const avgText =
+    metrics.avgScore !== null
+      ? String(metrics.avgScore)
+      : metrics.avgPercent !== null
+        ? `${formatPercent(metrics.avgPercent)}%`
+        : '—';
 
   const items: Array<{ label: string; value: string; tone?: string }> = [
-    { label: '录入人数', value: String(metrics.entered) },
-    { label: '平均分', value: metrics.avg === null ? '—' : formatScore(metrics.avg) },
-    { label: `优秀(${excellentLine}+)`, value: String(metrics.excellent), tone: 'green' },
-    { label: '良好(80+)', value: String(metrics.good), tone: 'blue' },
-    { label: `及格(${passLine}+)`, value: String(metrics.pass), tone: 'amber' },
+    { label: '有值', value: String(metrics.entered) },
+    { label: '优秀', value: String(metrics.excellent), tone: 'green' },
+    { label: '良好', value: String(metrics.good), tone: 'blue' },
+    { label: '及格', value: String(metrics.pass), tone: 'amber' },
     { label: '不及格', value: String(metrics.fail), tone: 'red' },
+    { label: '缺交', value: String(metrics.missing) },
+    { label: '请假', value: String(metrics.leave) },
+    { label: '未提交', value: String(metrics.notSubmitted) },
+    { label: '平均', value: avgText },
+    {
+      label: '达标率',
+      value: metrics.qualifiedRate === null ? '—' : `${formatPercent(metrics.qualifiedRate * 100)}%`,
+    },
+    { label: '方案', value: schemeLabel },
   ];
 
   return (
-    <section className="stats" aria-label="本次统计">
+    <div className="stats" role="status" aria-label="本次统计">
       {items.map((it) => (
-        <div className="stat" key={it.label}>
+        <div className="stat" key={it.label} data-tone={it.tone}>
           <span className="stat-label">{it.label}</span>
-          <span className="stat-value" data-tone={it.tone ?? (it.value === '—' ? 'muted' : undefined)}>
-            {it.value}
-          </span>
+          <span className="stat-value">{it.value}</span>
         </div>
       ))}
-    </section>
+    </div>
   );
 }

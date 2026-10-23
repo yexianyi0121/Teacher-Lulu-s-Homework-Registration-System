@@ -1,98 +1,126 @@
 import { describe, expect, it } from 'vitest';
 import { classifyRoster } from '../../src/domain/roster';
-import { makeSettings, sampleAEntries, sampleBEntries } from '../fixtures';
-import type { Entries } from '../../src/domain/types';
+import { makeScheme, sampleBEntries, e, score, g, text } from '../fixtures';
 
-const entry = (value: Entries[string]['value'], stamp: Entries[string]['stamp'] = 'none'): Entries[string] => ({
-  value,
-  stamp,
-  updatedAt: 0,
-});
+describe('roster：样例 B（等级制，PRD-V2 §2.3.1）', () => {
+  const s = makeScheme('grade');
+  const groups = classifyRoster(sampleBEntries(), s, 50, { honorIncludesA: false });
 
-describe('classifyRoster（PRD §7.2 样例 B）', () => {
-  const groups = classifyRoster('homework', sampleBEntries(), makeSettings({ count: 50 }));
-
-  it('光荣榜 21 / 未提交 1 / 需更正 24 / 已更正 0', () => {
-    expect(groups.honor).toHaveLength(21);
-    expect(groups.notSubmitted).toEqual([17]);
+  it('光荣榜 25（A+ 21 + A 4）、需更正 24（A- 组）、暂未提交 [17]', () => {
+    expect(groups.honor).toHaveLength(25);
     expect(groups.needsFix).toHaveLength(24);
-    expect(groups.fixed).toEqual([]);
+    expect(groups.notSubmitted).toEqual([17]);
+    expect(groups.honor).toContain(1);
+    expect(groups.needsFix).toContain(3);
   });
 
-  it('名单互斥且按学号升序', () => {
-    const all = [...groups.honor, ...groups.notSubmitted, ...groups.needsFix, ...groups.fixed];
-    expect(new Set(all).size).toBe(all.length);
-    for (const list of [groups.honor, groups.notSubmitted, groups.needsFix]) {
-      expect([...list].sort((a, b) => a - b)).toEqual(list);
+  it('A 档 4 人进光荣榜（PRD-V2 §2.3.1：秩 ≥ A），但不进需更正', () => {
+    for (const no of [7, 23, 26, 39]) {
+      expect(groups.honor).toContain(no);
+      expect(groups.needsFix).not.toContain(no);
     }
-    expect(groups.honor).toEqual([1, 2, 5, 6, 9, 10, 12, 14, 22, 24, 28, 32, 33, 34, 36, 37, 40, 41, 44, 49, 50]);
-    expect(groups.needsFix).toEqual([3, 4, 8, 11, 13, 15, 16, 18, 19, 20, 21, 25, 27, 29, 30, 31, 35, 38, 42, 43, 45, 46, 47, 48]);
   });
 
-  it('光荣榜含 A 时含 7/23/26/39', () => {
-    const g = classifyRoster('homework', sampleBEntries(), makeSettings({ count: 50, honorIncludesA: true }));
-    expect(g.honor).toContain(7);
-    expect(g.honor).toHaveLength(25);
-  });
-});
-
-describe('盖章改变名单归类（PRD §6.6）', () => {
-  it('给 A- 学号盖「已更正」后从需更正移入已更正，且二者互斥穷尽', () => {
-    const entries = sampleBEntries();
-    entries['3'] = { ...entries['3'], stamp: 'corrected' };
-    const g = classifyRoster('homework', entries, makeSettings({ count: 50 }));
-    expect(g.needsFix).toHaveLength(23);
-    expect(g.needsFix).not.toContain(3);
-    expect(g.fixed).toEqual([3]);
-    expect(g.needsFix.length + g.fixed.length).toBe(24);
-  });
-
-  it('单元测试：给不及格学号盖章后 needsFix 清空、fixed=[17]', () => {
-    const entries = sampleAEntries();
-    entries['17'] = { ...entries['17'], stamp: 'corrected' };
-    const g = classifyRoster('quiz', entries, makeSettings({ count: 50 }));
-    expect(g.needsFix).toEqual([]);
-    expect(g.fixed).toEqual([17]);
-    expect(g.notSubmitted).toHaveLength(30);
+  it('honorIncludesA 打开后 A- 进光荣榜，需更正清零（AC：含 A- 而非 B+）', () => {
+    const on = classifyRoster(sampleBEntries(), s, 50, { honorIncludesA: true });
+    expect(on.honor).toContain(3);
+    expect(on.needsFix).not.toContain(3);
+    expect(on.needsFix).toHaveLength(0);
+    expect(on.honor).toHaveLength(49);
   });
 });
 
-describe('样例 A 单元测试名单', () => {
-  it('光荣榜 13 / 未提交 30 / 需更正 [17]', () => {
-    const g = classifyRoster('quiz', sampleAEntries(), makeSettings({ count: 50 }));
-    expect(g.honor).toEqual([1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16]);
-    expect(g.notSubmitted).toHaveLength(30);
-    expect(g.needsFix).toEqual([17]);
-    expect(g.fixed).toEqual([]);
+describe('roster：口径分离（名单 ≠ 四档）', () => {
+  const s = makeScheme('score', { maxScore: 100 });
+
+  it('A- 在四档里算优秀，但名单进需更正（关键差异）', () => {
+    const groups = classifyRoster({ '1': e(g('A-')) }, makeScheme('grade'), 1, { honorIncludesA: false });
+    expect(groups.needsFix).toContain(1);
+    expect(groups.honor).not.toContain(1);
   });
 
-  it('良好/及格档不入任何名单', () => {
-    const g = classifyRoster('quiz', sampleAEntries(), makeSettings({ count: 50 }));
-    const all = new Set([...g.honor, ...g.notSubmitted, ...g.needsFix, ...g.fixed]);
-    for (const no of [4, 14, 15, 18, 19, 20]) expect(all.has(no)).toBe(false);
+  it('72 分（及格档）三组皆无', () => {
+    const groups = classifyRoster({ '1': e(score(72)) }, s, 1, { honorIncludesA: false });
+    expect(groups.honor).toHaveLength(0);
+    expect(groups.needsFix).toHaveLength(0);
+    expect(groups.notSubmitted).toHaveLength(0);
+  });
+
+  it('43 分进需更正', () => {
+    const groups = classifyRoster({ '1': e(score(43)) }, s, 1, { honorIncludesA: false });
+    expect(groups.needsFix).toContain(1);
+  });
+
+  it('90 分进光荣榜', () => {
+    const groups = classifyRoster({ '1': e(score(90)) }, s, 1, { honorIncludesA: false });
+    expect(groups.honor).toContain(1);
   });
 });
 
-describe('听写默写分拣', () => {
-  it('全对/有错/缺交/其他', () => {
-    const entries: Entries = {
-      '1': entry({ kind: 'text', text: '全对' }),
-      '2': entry({ kind: 'text', text: '错2' }),
-      '3': entry({ kind: 'text', text: '缺交' }),
-      '4': entry({ kind: 'text', text: '字迹工整' }),
-      '5': entry({ kind: 'text', text: '错0' }),
-    };
-    const g = classifyRoster('dictation', entries, makeSettings({ count: 6 }));
-    expect(g.honor).toEqual([1, 5]);
-    expect(g.needsFix).toEqual([2]);
-    expect(g.notSubmitted).toEqual([3, 6]);
-    expect(g.fixed).toEqual([]);
+describe('roster：状态位与过关', () => {
+  const s = makeScheme('check');
+
+  it('请假只进 leave，不进未提交（AC-22.2）', () => {
+    const groups = classifyRoster({ '1': e(null, { status: 'leave' }) }, s, 3, { honorIncludesA: false });
+    expect(groups.leave).toEqual([1]);
+    expect(groups.notSubmitted).not.toContain(1);
   });
 
-  it('空单元格盖章但无值仍计入暂未提交', () => {
-    const entries: Entries = { '1': entry(null, 'corrected') };
-    const g = classifyRoster('homework', entries, makeSettings({ count: 2 }));
-    expect(g.notSubmitted).toEqual([1, 2]);
-    expect(g.fixed).toEqual([]);
+  it('缺交且无补交 → 未提交；有补交 → madeUp', () => {
+    const noMakeup = classifyRoster({ '1': e(null, { status: 'missing' }) }, s, 2, { honorIncludesA: false });
+    expect(noMakeup.notSubmitted).toContain(1);
+
+    const withMakeup = classifyRoster(
+      { '1': e(null, { status: 'missing', makeup: { at: 1, note: '补' } }) },
+      s,
+      2,
+      { honorIncludesA: false },
+    );
+    expect(withMakeup.madeUp).toEqual([1]);
+    expect(withMakeup.notSubmitted).not.toContain(1);
+  });
+
+  it('过关 → passed；错3 → needsFix', () => {
+    const groups = classifyRoster(
+      { '1': e(null, { pass: true }), '2': e(text('错3')) },
+      s,
+      3,
+      { honorIncludesA: false },
+    );
+    expect(groups.passed).toEqual([1]);
+    expect(groups.needsFix).toEqual([2]);
+  });
+
+  it('已更正章是需更正的子集，不移出需更正（§16-16）', () => {
+    const groups = classifyRoster(
+      { '1': e(score(43), { stamp: 'corrected' }) },
+      makeScheme('score'),
+      2,
+      { honorIncludesA: false },
+    );
+    expect(groups.needsFix).toContain(1);
+    expect(groups.corrected).toEqual([1]);
+  });
+
+  it('A+ 且已盖章仍在光荣榜（盖章不剥夺荣誉）', () => {
+    const groups = classifyRoster(
+      { '1': e(g('A+'), { stamp: 'corrected' }) },
+      makeScheme('grade'),
+      2,
+      { honorIncludesA: false },
+    );
+    expect(groups.honor).toEqual([1]);
+  });
+
+  it('补交但已达标 → madeUp 有、需更正没有（AC-23.2）', () => {
+    const groups = classifyRoster(
+      { '1': e(score(95), { makeup: { at: 1, note: '补交' } }) },
+      makeScheme('score'),
+      2,
+      { honorIncludesA: false },
+    );
+    expect(groups.madeUp).toEqual([1]);
+    expect(groups.needsFix).toHaveLength(0);
+    expect(groups.honor).toEqual([1]);
   });
 });

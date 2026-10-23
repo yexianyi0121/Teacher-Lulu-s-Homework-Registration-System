@@ -1,55 +1,58 @@
-import type { Mode } from '../domain/types';
-import { MODE_EMOJI, MODE_LABEL, MODE_LIST } from '../domain/constants';
 import { useStore } from '../store';
+import { SHEET_TEMPLATES, TEMPLATE_LIST } from '../domain/constants';
+import type { SheetTemplateId } from '../domain/types';
+import { Pill } from './ui/controls';
 
 export function ParamsBar() {
-  const rec = useStore((s) => s.drafts[s.activeKey]);
-  const switchMode = useStore((s) => s.switchMode);
+  const draft = useStore((s) => s.draft);
+  const switchTemplate = useStore((s) => s.switchTemplate);
   const setDate = useStore((s) => s.setDate);
   const setContent = useStore((s) => s.setContent);
-
-  const mode = rec?.mode ?? 'homework';
+  const setModal = useStore((s) => s.setModal);
 
   return (
-    <section className="params" aria-label="登记参数">
-      <label className="pill pill--select pill-lg" title="录入模式">
-        <span aria-hidden="true">{MODE_EMOJI[mode]}</span>
+    <div className="params">
+      <label className="params-field">
+        <span className="field-label">登记类型</span>
         <select
-          aria-label="录入模式"
-          value={mode}
-          onChange={(e) => switchMode(e.target.value as Mode)}
+          className="pill pill--select"
+          aria-label="登记类型"
+          value={draft.templateId}
+          onChange={(e) => switchTemplate(e.target.value as SheetTemplateId)}
         >
-          {MODE_LIST.map((m) => (
-            <option key={m} value={m}>
-              {MODE_LABEL[m]}
+          {TEMPLATE_LIST.map((id) => (
+            <option key={id} value={id}>
+              {`${SHEET_TEMPLATES[id].icon} ${SHEET_TEMPLATES[id].name}`}
             </option>
           ))}
         </select>
       </label>
 
-      <label className="pill-input" title="日期">
-        <span aria-hidden="true">📅</span>
+      <label className="params-field">
+        <span className="field-label">日期</span>
         <input
           type="date"
           aria-label="日期"
-          value={rec?.date ?? ''}
-          onChange={(e) => setDate(e.target.value)}
-          style={{ width: 140 }}
+          value={draft.date}
+          onChange={(e) => e.target.value && setDate(e.target.value)}
         />
       </label>
 
-      <label className="pill-input" style={{ flex: '1 1 auto', minWidth: 200 }} title="作业内容">
-        <span aria-hidden="true">📖</span>
+      <label className="params-field params-grow">
+        <span className="field-label">作业内容</span>
         <input
           type="text"
           aria-label="作业内容"
-          placeholder="作业内容，如：语文本"
           maxLength={20}
-          value={rec?.content ?? ''}
+          placeholder="如：第3单元字词"
+          value={draft.content}
           onChange={(e) => setContent(e.target.value)}
-          style={{ flex: 1 }}
         />
       </label>
-    </section>
+
+      <Pill variant="ghost" onClick={() => setModal('scheme')} title="本表评分方案">
+        ⚙️ 本表设置
+      </Pill>
+    </div>
   );
 }

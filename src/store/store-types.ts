@@ -1,21 +1,29 @@
 import type {
-  ClassInfo,
+  ClassDoc,
   Entries,
+  Entry,
+  EntryStatus,
   HistoryEntry,
-  Mode,
+  PointLedgerEntry,
+  PointRule,
   RecordDoc,
+  ScoringScheme,
   Settings,
+  SheetTemplateId,
   Stamp,
   Student,
 } from '../domain/types';
-import type { VoiceEdit } from '../domain/voice-parse';
+import type { PersistedStateV2 } from '../domain/types';
+import type { VoiceCommand, VoiceIssue } from '../domain/voice/parse';
 
 export interface UndoPatch {
-  key: string;              // recordKey
-  entries: Entries;         // 变更前的完整快照（浅拷贝 + 被改 Entry 深拷贝）
-  count: number;            // 变更前人数
-  focus: number | null;
-  label: string;            // '录入' | '盖章' | '清空' | '批量盖章' | '语音' | '人数'
+  label: string;
+  recordKey: string;
+  before: Entries;
+  after: Entries;
+  /** 动到积分时带上账本长度，撤销时截断回快照（§5.2） */
+  pointsBefore?: number;
+  focusBefore?: number | null;
 }
 
 export interface ConfirmRequest {
@@ -28,19 +36,35 @@ export interface ConfirmRequest {
 }
 
 export type ToastTone = 'ok' | 'warn' | 'error';
-export type ModalKind = 'settings' | 'report' | 'poster' | 'import';
+export type ModalKind =
+  | 'settings' | 'report' | 'poster' | 'import' | 'scheme' | 'makeup'
+  | 'points' | 'export' | 'manual' | 'summary';
+
+export interface VoiceBanner {
+  id: string;
+  text: string;
+  tone: 'ok' | 'warn';
+  command?: VoiceCommand;
+}
 
 export interface AppState {
-  // 数据
-  classInfo: ClassInfo;
-  drafts: Record<string, RecordDoc>;
-  activeKey: string;
+  // ---- 数据（持久化） ----
+  classes: ClassDoc[];
+  activeClassId: string;
+  records: Record<string, RecordDoc>;
   history: HistoryEntry[];
+  pointRules: PointRule[];
+  pointLedger: PointLedgerEntry[];
   settings: Settings;
 
-  // UI（不持久化）
+  // ---- 当前编辑位置 ----
+  activeKey: string;
+  draft: RecordDoc;
+
+  // ---- UI（不持久化） ----
   focusedNo: number | null;
   selection: Set<number>;
+  selectionAnchor: number | null;
   currentStamp: Exclude<Stamp, 'none'>;
   editing: { no: number; draft: string } | null;
   buffer: { no: number; text: string } | null;
@@ -50,19 +74,21 @@ export interface AppState {
   confirmRequest: ConfirmRequest | null;
   toast: { id: number; text: string; tone: ToastTone } | null;
   posterUrl: string | null;
-  posterLoading: boolean;
   posterBlob: Blob | null;
+  posterLoading: boolean;
+  posterMode: 'single' | 'daily';
   storageDegraded: boolean;
+  readOnly: boolean;
   lastSavedAt: number | null;
   pulsingNo: number | null;
   flashNo: number | null;
   chartsOpen: boolean;
   compareId: string | null;
+  filterNotPassed: boolean;
   voiceListening: boolean;
   voiceInterim: string;
-  selectionAnchor: number | null;
+  voiceBanners: VoiceBanner[];
 
-  // 撤销
   undoStack: UndoPatch[];
   redoStack: UndoPatch[];
 
@@ -84,43 +110,74 @@ export interface AppState {
   clearToast: () => void;
   setPoster: (url: string | null, blob?: Blob | null) => void;
   setPosterLoading: (loading: boolean) => void;
+  setPosterMode: (mode: 'single' | 'daily') => void;
   setStorageDegraded: (v: boolean) => void;
+  setReadOnly: (v: boolean) => void;
   markSaved: (at: number) => void;
   setPulsingNo: (no: number | null) => void;
   setFlashNo: (no: number | null) => void;
   setChartsOpen: (open: boolean) => void;
   setCompareId: (id: string | null) => void;
+  setFilterNotPassed: (v: boolean) => void;
   setVoiceListening: (v: boolean) => void;
   setVoiceInterim: (v: string) => void;
+  pushVoiceBanner: (b: VoiceBanner) => void;
+  removeVoiceBanner: (id: string) => void;
+  clearVoiceBanners: () => void;
 
-  setValue: (no: number, value: import('../domain/types').CellValue | null) => void;
+  // 录入
+  commitValue: (no: number, value: Entry['value']) => void;
+  commitText: (no: number, text: string) => void;
   clearCell: (no: number) => void;
   toggleStamp: (no: number) => void;
   batchStamp: (nos: number[]) => void;
   batchClear: (nos: number[]) => void;
-  switchMode: (mode: Mode) => void;
+  togglePass: (no: number) => void;
+  setStatus: (no: number, status: EntryStatus) => void;
+  setMakeup: (nos: number[], note: string) => void;
+  clearMakeup: (nos: number[]) => void;
+
+  // 登记表 / 记录
+  switchTemplate: (templateId: SheetTemplateId) => void;
+  switchSheet: (sheetId: string, templateId: SheetTemplateId) => void;
   setDate: (v: string) => void;
   setContent: (v: string) => void;
-  switchRecord: (patch: { date?: string; content?: string; mode?: Mode }) => void;
-  setStudentCount: (n: number) => void;
+  switchRecord: (patch: { date?: string; content?: string; sheetId?: string; templateId?: SheetTemplateId }) => void;
+  setScheme: (patch: Partial<ScoringScheme>) => void;
+  resetScheme: () => void;
   commitToHistory: () => void;
   clearCurrentRecord: () => void;
-  applyVoiceEdits: (edits: VoiceEdit[]) => void;
+  applyVoiceCommands: (commands: VoiceCommand[]) => void;
 
-  pushUndo: (label: string) => void;
+  // 撤销
+  pushUndo: (label: string, before: Entries, after: Entries, pointsBefore?: number) => void;
   undo: () => void;
   redo: () => void;
 
-  updateSettings: (patch: Partial<Settings>) => void;
-  updateClassInfo: (patch: Partial<Pick<ClassInfo, 'name' | 'school' | 'teacher' | 'subject'>>) => void;
+  // 班级 / 设置
+  addClass: (name: string) => void;
+  renameClass: (id: string, name: string) => void;
+  deleteClass: (id: string) => void;
+  switchClass: (id: string) => void;
+  setCount: (n: number) => void;
+  updateClassInfo: (patch: Partial<Pick<ClassDoc, 'name' | 'school' | 'teacher' | 'subject'>>) => void;
   importRoster: (students: Student[]) => void;
+  updateSettings: (patch: Partial<Settings>) => void;
 
-  exportState: () => import('../infra/persistence').PersistedState;
-  replaceState: (next: import('../infra/persistence').PersistedState) => void;
-  resetAll: () => void;
-  deleteHistory: (id: string) => void;
+  // 积分
+  manualAward: (nos: number[], delta: number, reason: string, ruleId?: string | null) => void;
+  revokePoint: (id: string) => void;
+  setRules: (rules: PointRule[]) => void;
+
+  // 历史 / 存档
+  deleteHistory: (key: string) => void;
   clearHistory: () => void;
+  exportState: () => PersistedStateV2;
+  replaceState: (next: PersistedStateV2) => void;
+  resetAll: () => void;
 }
 
 export type StoreSet = (partial: Partial<AppState> | ((s: AppState) => Partial<AppState>)) => void;
 export type StoreGet = () => AppState;
+
+export type { VoiceIssue };
