@@ -8,6 +8,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // 不自动注入 registerSW 脚本：app 用 file:// 双击打开时无法注册 SW，
+      // 由 main.tsx 只在 http(s) 下按需注册，避免控制台报错。
+      injectRegister: null,
       includeAssets: ['icon-192.png', 'icon-512.png'],
       manifest: {
         name: '学情登记分析系统',

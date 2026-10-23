@@ -17,6 +17,11 @@ async function bootstrap() {
   }
 
   root.render(<App />);
+
+  // PWA：只在 http(s) 下注册；双击 dist/index.html（file://）时浏览器不允许 SW，静默跳过
+  if (import.meta.env.PROD && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    void navigator.serviceWorker.register('./sw.js').catch(() => undefined);
+  }
 }
 
 void bootstrap();

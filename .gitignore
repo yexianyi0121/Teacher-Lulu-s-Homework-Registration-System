@@ -1,3 +1,4 @@
+# 设计 §17.4：只忽略依赖、缓存、日志与测试临时产物；dist/ 必须提交
 node_modules/
 .vite/
 *.log
@@ -5,5 +6,3 @@ node_modules/
 coverage/
 test-results/
 playwright-report/
-.tmp/
-screenshots/
