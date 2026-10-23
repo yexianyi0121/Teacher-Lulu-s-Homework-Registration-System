@@ -1,28 +1,36 @@
 import { useEffect } from 'react';
 import { useStore } from '../store';
-import { saveState, takeSnapshot } from '../infra/storage';
+import { isBooted, saveState, takeSnapshot } from '../infra/storage';
 import { SNAPSHOT_INTERVAL } from '../domain/constants';
 
-/** 自动保存（设计 04 §4.6 / V1 §6.7）：300ms 防抖 + 30s 快照 + 离开页面前 flush */
+/** 自动保存（V3 §3.8）：300ms 防抖 + 30s 快照 + 离开页面前 flush + 覆盖保护 */
 export function useAutoSave() {
   useEffect(() => {
     let timer: number | null = null;
     let lastSnapshot = Date.now();
 
     const flush = () => {
+      // 启动闸门：replaceState 之前一律不写盘，避免「空态覆盖」（FR-44 的首要嫌疑）
+      if (!isBooted()) return;
       const s = useStore.getState();
       if (s.readOnly) return;
-      const ok = saveState(s.exportState());
-      if (ok) {
+
+      const result = saveState(s.exportState());
+      if (result.ok) {
         useStore.getState().markSaved(Date.now());
         if (useStore.getState().storageDegraded) useStore.getState().setStorageDegraded(false);
-      } else {
-        useStore.getState().setStorageDegraded(true);
+        return;
       }
+      if (result.blocked) {
+        useStore.getState().setBlockedOverwrite(true);
+        useStore.getState().setReadOnly(true);
+        useStore.getState().showToast('检测到数据为空，已阻止覆盖', 'error');
+        return;
+      }
+      useStore.getState().setStorageDegraded(true);
     };
 
     const unsubscribe = useStore.subscribe((s, prev) => {
-      // 只关心数据变化，不因 toast / 焦点等 UI 变化触发写盘
       const dataChanged =
         s.draft !== prev.draft ||
         s.records !== prev.records ||

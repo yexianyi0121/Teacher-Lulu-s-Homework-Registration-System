@@ -1,8 +1,8 @@
 import type { PointRule } from '../domain/types';
-import { manualAward as buildAward, revokePoint as revoke } from '../domain/points';
+import { manualAward as buildAward, revertRuleLedger, revokePoint as revoke } from '../domain/points';
 import type { AppState, StoreGet, StoreSet } from './store-types';
 
-type PointSlice = Pick<AppState, 'manualAward' | 'revokePoint' | 'setRules'>;
+type PointSlice = Pick<AppState, 'manualAward' | 'revokePoint' | 'setRules' | 'removeRule'>;
 
 export function createPointSlice(set: StoreSet, get: StoreGet): PointSlice {
   return {
@@ -33,6 +33,21 @@ export function createPointSlice(set: StoreSet, get: StoreGet): PointSlice {
 
     setRules(rules: PointRule[]) {
       set({ pointRules: rules });
+    },
+
+    removeRule(id) {
+      const s = get();
+      const rule = s.pointRules.find((r) => r.id === id);
+      if (!rule) return;
+      if (rule.builtin) {
+        s.showToast('内置规则不能删除，可停用', 'warn');
+        return;
+      }
+      set({
+        pointRules: s.pointRules.filter((r) => r.id !== id),
+        pointLedger: revertRuleLedger(s.pointLedger, id, Date.now()),
+      });
+      s.showToast(`已删除「${rule.name}」，已写入冲正记录`, 'ok');
     },
   };
 }

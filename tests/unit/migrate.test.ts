@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { migrate, isV1State, isV2State, UnknownStateError, V1_CLASS_ID } from '../../src/domain/migrate';
+import { migrate, isV1State, isV3State, UnknownStateError, V1_CLASS_ID } from '../../src/domain/migrate';
 import { percentOf } from '../../src/domain/scoring';
 import { classifyRoster } from '../../src/domain/roster';
 import { computeStats } from '../../src/domain/stats';
-import type { PersistedStateV1, PersistedStateV2 } from '../../src/domain/types';
+import type { PersistedStateV1, PersistedStateV3 } from '../../src/domain/types';
 
 /** 构造一份最小的 V1 存档 */
 function v1State(): PersistedStateV1 {
@@ -54,7 +54,7 @@ describe('migrate：v1 → v2（设计 §4.6.4 M-1 ~ M-8）', () => {
   it('识别 v1 并返回 migrated=true', () => {
     expect(isV1State(raw)).toBe(true);
     expect(migrated).toBe(true);
-    expect(isV2State(state)).toBe(true);
+    expect(isV3State(state)).toBe(true);
   });
 
   it('M-1：A+ 原样保留，percentOf = 100', () => {
@@ -146,7 +146,7 @@ describe('migrate：v1 → v2（设计 §4.6.4 M-1 ~ M-8）', () => {
     expect(state.pointLedger).toEqual([]);
     expect(state.settings.secondsJump).toBe(true);
     expect(state.settings.voiceEnabled).toBe(true);
-    expect(state.version).toBe(2);
+    expect(state.version).toBe(3);
   });
 
   it('M-7：对 v2 输入重复调用返回同一对象、migrated=false', () => {
@@ -166,7 +166,7 @@ describe('migrate：v1 → v2（设计 §4.6.4 M-1 ~ M-8）', () => {
   });
 
   it('迁移结果可直接持久化（无 undefined / NaN）', () => {
-    const json = JSON.stringify(state as PersistedStateV2);
+    const json = JSON.stringify(state as PersistedStateV3);
     expect(json).not.toContain('undefined');
     expect(json).not.toContain('NaN');
   });

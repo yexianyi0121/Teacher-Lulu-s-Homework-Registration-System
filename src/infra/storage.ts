@@ -1,21 +1,28 @@
-import type { PersistedStateV2, RecordDoc, Entry, ScoringScheme } from '../domain/types';
-import { BACKUP_V1_KEY, HISTORY_LIMIT, STORAGE_KEY } from '../domain/constants';
-
-/** V1 的存储键：老用户的数据在这里，读取时必须回落 */
-const STORAGE_KEY_V1 = 'xq.state.v1';
-import { migrate, isV1State, isV2State, UnknownStateError } from '../domain/migrate';
+import type { PersistedStateV3, RecordDoc, Entry, ScoringScheme } from '../domain/types';
+import {
+  BACKUP_V1_KEY,
+  BACKUP_V2_KEY,
+  HISTORY_LIMIT,
+  STORAGE_KEY,
+  STORAGE_KEY_V1,
+  STORAGE_KEY_V2,
+} from '../domain/constants';
+import { isV1State, isV2State, isV3State, migrate, UnknownStateError } from '../domain/migrate';
 import { refreshHistoryMetrics } from '../domain/history';
+import { shouldBlockOverwrite } from './storageHealth';
 import { getSnapshots, putSnapshot } from './idb';
 
 /**
- * V2 持久化（设计 04 §4.6 / §11）—— 只在这里碰 localStorage。
+ * V3 持久化（设计 06 §2 / §3.8）—— 只在这里碰 localStorage。
  * 规则：
- *   - 读到 v1 → 先备份原始 JSON 到 xq.backup.v1（只写一次），再纯函数迁移；
- *   - 迁移失败 → 不覆盖、不写回，返回 error 由 UI 进入只读并提示下载原始备份；
- *   - version > 2 → 拒绝写入（提示升级）。
+ *   - 读：v3 → v2（迁移）→ v1（迁移）→ IDB 快照；
+ *   - 迁移前把原文写入 xq.backup.v2 / xq.backup.v1（只写一次，不覆盖已有备份）；
+ *   - 迁移失败 → 不写回、不覆盖，返回 error 由 UI 进入只读并提供下载；
+ *   - 写：saveState() 必须先过 shouldBlockOverwrite（INV-24）；
+ *   - 主存损坏 → 原文另存 xq.corrupt.{ts}（不删），再回落快照。
  */
 
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 3;
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -74,7 +81,7 @@ function isRecord(v: unknown): v is RecordDoc {
   return Object.values(v.entries).every(isEntry);
 }
 
-export function validateState(data: unknown): data is PersistedStateV2 {
+export function validateState(data: unknown): data is PersistedStateV3 {
   if (!isObject(data)) return false;
   if (data.version !== CURRENT_VERSION) return false;
   if (typeof data.activeClassId !== 'string') return false;
@@ -89,8 +96,8 @@ export function validateState(data: unknown): data is PersistedStateV2 {
   return true;
 }
 
-/** 序列化：截断历史到 200（其余保持原样，V2 不做草稿淘汰——L-2 不丢数据） */
-export function serialize(state: PersistedStateV2): PersistedStateV2 {
+/** 序列化：截断历史到 200（V2 起不做草稿淘汰——L-2 不丢数据） */
+export function serialize(state: PersistedStateV3): PersistedStateV3 {
   return {
     ...state,
     version: CURRENT_VERSION,
@@ -99,120 +106,181 @@ export function serialize(state: PersistedStateV2): PersistedStateV2 {
   };
 }
 
-export function saveState(state: PersistedStateV2): boolean {
+export interface SaveResult {
+  ok: boolean;
+  /** 被覆盖保护拦截（调用方应进入只读 + 提示） */
+  blocked?: boolean;
+}
+
+/**
+ * 写盘（INV-24）：所有调用方只能走这里，不得直接 localStorage.setItem(STORAGE_KEY)。
+ * 覆盖保护：内存空 + 磁盘非空 → 拒绝。
+ */
+export function saveState(state: PersistedStateV3): SaveResult {
+  let prevRaw: string | null = null;
+  try {
+    prevRaw = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    prevRaw = null;
+  }
+
+  if (shouldBlockOverwrite(state, prevRaw)) {
+    quarantine('blocked', JSON.stringify(state));
+    return { ok: false, blocked: true };
+  }
+
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(serialize(state)));
-    return true;
+    return { ok: true };
   } catch {
-    return false;
+    return { ok: false };
   }
 }
 
 export interface LoadResult {
-  state: PersistedStateV2 | null;
-  /** 从 IDB 快照恢复 */
+  state: PersistedStateV3 | null;
   recovered: boolean;
-  /** 由 v1 迁移而来 */
   migrated: boolean;
-  /** 迁移/解析失败（此时 state 为 null，UI 应进入只读并提示下载备份） */
   error?: 'MIGRATE_FAILED' | 'UNKNOWN_STATE' | 'NEWER_VERSION';
-  /** 迁移失败时用于「下载原始备份」的原始字符串 */
   rawBackup?: string;
+  notes: string[];
 }
 
-function readRaw(): string | null {
+function readKey(key: string): string | null {
   try {
-    return localStorage.getItem(STORAGE_KEY);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
 }
 
-function readV1Raw(): string | null {
+function backupOnce(key: string, raw: string): void {
   try {
-    return localStorage.getItem(STORAGE_KEY_V1);
+    if (!localStorage.getItem(key)) localStorage.setItem(key, raw);
   } catch {
-    return null;
+    // 备份失败不阻断：原文还在 error.rawBackup 里
   }
 }
 
-function backupV1(raw: string): void {
+/** 损坏原文另存（不覆盖、不删除，供人工导出） */
+function quarantine(kind: 'corrupt' | 'blocked', raw: string): void {
   try {
-    if (!localStorage.getItem(BACKUP_V1_KEY)) localStorage.setItem(BACKUP_V1_KEY, raw);
+    localStorage.setItem(`xq.${kind}.${Date.now()}`, raw);
   } catch {
-    // 备份失败不阻断：迁移本身是纯函数，raw 仍在 error.rawBackup 里
+    // 存不下就放弃存证，不能因此阻断启动
   }
 }
 
 /** 解析 + 迁移 + 校验（不落盘） */
-export function parseState(rawText: string): LoadResult {
+export function parseState(rawText: string, sourceKey = STORAGE_KEY): LoadResult {
+  void sourceKey;
+  const notes: string[] = [];
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawText);
   } catch {
-    return { state: null, recovered: false, migrated: false, error: 'UNKNOWN_STATE', rawBackup: rawText };
+    quarantine('corrupt', rawText);
+    return { state: null, recovered: false, migrated: false, error: 'UNKNOWN_STATE', rawBackup: rawText, notes };
   }
 
   if (isObject(parsed) && typeof parsed.version === 'number' && parsed.version > CURRENT_VERSION) {
-    return { state: null, recovered: false, migrated: false, error: 'NEWER_VERSION', rawBackup: rawText };
+    return { state: null, recovered: false, migrated: false, error: 'NEWER_VERSION', rawBackup: rawText, notes };
+  }
+
+  if (isV3State(parsed)) {
+    if (!validateState(parsed)) {
+      quarantine('corrupt', rawText);
+      return { state: null, recovered: false, migrated: false, error: 'UNKNOWN_STATE', rawBackup: rawText, notes };
+    }
+    const state = refreshHistoryMetrics(parsed);
+    return { state, recovered: false, migrated: false, notes };
   }
 
   if (isV2State(parsed)) {
-    if (!validateState(parsed)) {
-      return { state: null, recovered: false, migrated: false, error: 'UNKNOWN_STATE', rawBackup: rawText };
-    }
-    // 历史 metrics 自愈：v2.0.0 的听写历史把 entered 存成了 0（F1），
-    // 记录里带着 entries + scheme，可无损重算；v1 迁移历史（metricsVersion=1）不碰。
-    return { state: refreshHistoryMetrics(parsed), recovered: false, migrated: false };
-  }
-
-  if (isV1State(parsed)) {
-    backupV1(rawText);
+    backupOnce(BACKUP_V2_KEY, rawText);
     try {
       const { state } = migrate(parsed);
-      return { state, recovered: false, migrated: true };
+      const fixed = countSchemesWithoutMax(parsed);
+      if (fixed) notes.push(`已为 ${fixed} 张混合表补齐满分 100`);
+      return { state: refreshHistoryMetrics(state), recovered: false, migrated: true, notes };
     } catch (e) {
       return {
-        state: null,
-        recovered: false,
-        migrated: false,
+        state: null, recovered: false, migrated: false,
         error: e instanceof UnknownStateError ? 'UNKNOWN_STATE' : 'MIGRATE_FAILED',
-        rawBackup: rawText,
+        rawBackup: rawText, notes,
       };
     }
   }
 
-  return { state: null, recovered: false, migrated: false, error: 'UNKNOWN_STATE', rawBackup: rawText };
+  if (isV1State(parsed)) {
+    backupOnce(BACKUP_V1_KEY, rawText);
+    try {
+      const { state } = migrate(parsed);
+      notes.push('已把 V1 数据升级到 V3（原始数据已备份）');
+      return { state: refreshHistoryMetrics(state), recovered: false, migrated: true, notes };
+    } catch (e) {
+      return {
+        state: null, recovered: false, migrated: false,
+        error: e instanceof UnknownStateError ? 'UNKNOWN_STATE' : 'MIGRATE_FAILED',
+        rawBackup: rawText, notes,
+      };
+    }
+  }
+
+  quarantine('corrupt', rawText);
+  return { state: null, recovered: false, migrated: false, error: 'UNKNOWN_STATE', rawBackup: rawText, notes };
 }
 
+function countSchemesWithoutMax(state: { records?: RecordDoc[]; history?: RecordDoc[] }): number {
+  const all = [...(state.records ?? []), ...(state.history ?? [])];
+  return all.filter((r) => (r.scheme.kind === 'mixed' || r.scheme.kind === 'score') && !r.scheme.maxScore).length;
+}
+
+/** 启动读取：v3 → v2 → v1 → IDB 快照 */
 export async function loadState(): Promise<LoadResult> {
-  const raw = readRaw() ?? readV1Raw();
-  if (raw) {
-    const result = parseState(raw);
+  const candidates: Array<[string, string | null]> = [
+    [STORAGE_KEY, readKey(STORAGE_KEY)],
+    [STORAGE_KEY_V2, readKey(STORAGE_KEY_V2)],
+    [STORAGE_KEY_V1, readKey(STORAGE_KEY_V1)],
+  ];
+
+  for (const [key, raw] of candidates) {
+    if (!raw) continue;
+    const result = parseState(raw, key);
     if (result.state || result.error === 'NEWER_VERSION') return result;
-    // 主存损坏/迁移失败 → 尝试快照（快照也是 v2 序列化格式）
   }
 
   const snapshots = await getSnapshots();
   for (const snap of snapshots) {
     const result = parseState(snap.payload);
-    if (result.state) return { ...result, recovered: true };
+    if (result.state) return { ...result, recovered: true, notes: ['已从自动备份恢复'] };
   }
 
-  if (raw) return parseState(raw);
-  return { state: null, recovered: false, migrated: false };
+  for (const [key, raw] of candidates) {
+    if (raw) return parseState(raw, key);
+  }
+  return { state: null, recovered: false, migrated: false, notes: [] };
 }
 
-export async function takeSnapshot(state: PersistedStateV2): Promise<void> {
+export async function takeSnapshot(state: PersistedStateV3): Promise<void> {
   const at = Date.now();
   await putSnapshot({ id: String(at), at, payload: JSON.stringify(serialize(state)) });
 }
 
 /** 读取 v1 备份（设置里【下载原始备份】用） */
 export function readV1Backup(): string | null {
-  try {
-    return localStorage.getItem(BACKUP_V1_KEY);
-  } catch {
-    return null;
-  }
+  return readKey(BACKUP_V1_KEY);
+}
+
+/* ---------------- 启动闸门（防「空覆盖」） ---------------- */
+
+let booted = false;
+
+/** replaceState 之后调用：此前的 flush 一律跳过 */
+export function markBooted(): void {
+  booted = true;
+}
+
+export function isBooted(): boolean {
+  return booted;
 }

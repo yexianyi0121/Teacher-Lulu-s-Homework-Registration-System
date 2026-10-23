@@ -5,13 +5,15 @@ type UiSlice = Pick<
   | 'setFocusedNo' | 'moveFocus' | 'setSelection' | 'exitSelection' | 'toggleSelectAll'
   | 'setCurrentStamp' | 'setEditing' | 'setBuffer' | 'setSearchOpen' | 'setSearchQuery'
   | 'setModal' | 'openConfirm' | 'closeConfirm' | 'showToast' | 'clearToast'
-  | 'setPoster' | 'setPosterLoading' | 'setPosterMode' | 'setStorageDegraded' | 'setReadOnly'
+  | 'setPoster' | 'setPosterPages' | 'setPosterLoading' | 'setPosterTarget' | 'setStorageDegraded' | 'setReadOnly'
+  | 'setCellError' | 'setEnvMismatch' | 'setBlockedOverwrite' | 'setWeekParts'
   | 'markSaved' | 'setPulsingNo' | 'setFlashNo' | 'setChartsOpen' | 'setCompareId'
   | 'setFilterNotPassed' | 'setVoiceListening' | 'setVoiceInterim'
   | 'pushVoiceBanner' | 'removeVoiceBanner' | 'clearVoiceBanners'
 >;
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
+let cellTimer: ReturnType<typeof setTimeout> | null = null;
 let toastSeq = 0;
 let bannerSeq = 0;
 
@@ -123,8 +125,30 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
       set({ posterLoading: loading });
     },
 
-    setPosterMode(mode) {
-      set({ posterMode: mode });
+    setPosterPages(pages) {
+      set({ posterPages: pages });
+    },
+
+    setPosterTarget(target) {
+      set({ posterTarget: target });
+    },
+
+    setCellError(no) {
+      set({ cellError: no });
+      if (cellTimer) clearTimeout(cellTimer);
+      if (no !== null) cellTimer = setTimeout(() => set({ cellError: null }), 1500);
+    },
+
+    setEnvMismatch(v) {
+      set({ envMismatch: v });
+    },
+
+    setBlockedOverwrite(v) {
+      set({ blockedOverwrite: v });
+    },
+
+    setWeekParts(parts) {
+      set({ weekParts: parts });
     },
 
     setStorageDegraded(v) {

@@ -9,7 +9,7 @@ import { recordKey } from '../utils/id';
 type SheetSlice = Pick<
   AppState,
   | 'switchTemplate' | 'switchSheet' | 'setDate' | 'setContent' | 'switchRecord'
-  | 'setScheme' | 'resetScheme' | 'commitToHistory' | 'clearCurrentRecord'
+  | 'setScheme' | 'resetScheme' | 'setComment' | 'commitToHistory' | 'clearCurrentRecord'
   | 'deleteHistory' | 'clearHistory'
 >;
 
@@ -45,6 +45,12 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
 
     setContent(v) {
       get().switchRecord({ content: v.slice(0, 20) });
+    },
+
+    setComment(v) {
+      const s = get();
+      const rec = { ...s.draft, comment: v.slice(0, 60), updatedAt: Date.now() };
+      set({ draft: rec, records: { ...s.records, [rec.key]: s.records[rec.key] ? rec : rec } });
     },
 
     switchRecord(patch) {

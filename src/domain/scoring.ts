@@ -12,7 +12,8 @@ export function percentOfValue(v: CellValue | null, s: ScoringScheme): number | 
   if (!v) return null;
   switch (v.kind) {
     case 'score':
-      return s.maxScore && s.maxScore > 0 ? (v.score / s.maxScore) * 100 : null;
+      // INV-21：maxScore 为空时兜底 100，绝不让分数「无百分」而变灰
+      return (v.score / (s.maxScore && s.maxScore > 0 ? s.maxScore : 100)) * 100;
     case 'grade':
       return GRADE_PERCENT[v.grade];
     case 'pass':

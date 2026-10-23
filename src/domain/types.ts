@@ -52,6 +52,24 @@ export interface ScoringScheme {
 
 export type Tier = 'excellent' | 'good' | 'pass' | 'fail';
 
+// ---------- 过关规则（V3 设计 06 §2.1 / §3.1） ----------
+export type PassRuleKind = 'percent' | 'grade' | 'mixed';
+
+export interface PassRule {
+  kind: PassRuleKind;
+  /** 仅 grade / mixed 生效；默认 ['A+','A'] */
+  gradePass: GradeLetter[];
+  /** 默认 true：听写「全对/错0」自动算过关 */
+  dictationAutoPass: boolean;
+}
+
+/** 汇总目标（取代 V2 的 posterMode，V3 设计 06 §3.6） */
+export type PosterTarget =
+  | { mode: 'single'; sheetId: string }
+  | { mode: 'daily' }
+  | { mode: 'week'; weekStart: string };
+
+
 // ---------- 模板 ----------
 export type SheetTemplateId = 'homework' | 'dictation' | 'quality' | 'custom';
 
@@ -89,6 +107,8 @@ export interface RecordDoc {
   templateId: SheetTemplateId;
   scheme: ScoringScheme;         // ★ 方案快照：改方案不影响历史
   entries: Entries;
+  /** 本表评价语（≤ 60 字，V3 FR-35；空串表示沿用默认） */
+  comment?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -163,11 +183,31 @@ export interface Settings {
   voiceEnabled: boolean;
   voiceAutoConfirmMs: number;     // 回显自动确认延时，默认 1500
   theme: 'auto' | 'light';
+  // ---- V3 新增 ----
+  passRule: PassRule;
+  gradeEmoji: Record<GradeLetter, string>;
+  showEmoji: boolean;
+  defaultComment: string;         // 默认评价语，≤ 60 字
+  showSchoolInPoster: boolean;    // 默认 false（替代原 Designed by）
+  autoBackupDays: number;         // 0 = 关闭；默认 7（仅提醒）
 }
 
 // ---------- 持久化根 ----------
 export interface PersistedStateV2 {
   version: 2;
+  activeClassId: string;
+  classes: ClassDoc[];
+  records: RecordDoc[];
+  history: HistoryEntry[];
+  pointRules: PointRule[];
+  pointLedger: PointLedgerEntry[];
+  settings: Settings;
+  lastSavedAt: number;
+}
+
+/** V3 持久化根（设计 06 §2.1；history 保留 HistoryEntry 以保住指标快照） */
+export interface PersistedStateV3 {
+  version: 3;
   activeClassId: string;
   classes: ClassDoc[];
   records: RecordDoc[];

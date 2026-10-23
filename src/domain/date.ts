@@ -47,3 +47,30 @@ export function stampForFile(now: Date = new Date()): string {
     `-${pad(now.getHours())}${pad(now.getMinutes())}`
   );
 }
+
+/** 'YYYY-MM-DD' + n 天（本地时区安全） */
+export function addDaysISO(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return date;
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** 该日期所在 ISO 周的周一（周一为一周第一天，V3 BR-71） */
+export function weekStartOf(date: string): string {
+  const d = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return date;
+  const day = d.getDay();                 // 0=周日
+  const diff = day === 0 ? -6 : 1 - day;  // 回到周一
+  return addDaysISO(date, diff);
+}
+
+/** '10月20日 周一'（周汇总日期头） */
+export function dayHeading(date: string): string {
+  return `${formatDateCN(date)} ${weekdayCN(date).replace('星期', '周')}`;
+}
+
+/** '2026-10-20 ~ 2026-10-26' */
+export function weekRange(weekStart: string): string {
+  return `${weekStart} ~ ${addDaysISO(weekStart, 6)}`;
+}

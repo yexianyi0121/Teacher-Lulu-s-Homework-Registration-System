@@ -1,3 +1,4 @@
+import { DEFAULT_PASS_RULE } from './passRule';
 import type {
   GradeLetter,
   PointRule,
@@ -229,9 +230,32 @@ export const MAKEUP_NOTE_MAX = 30;
 export const WRAP_WIDTH = 70;
 export const SCORE_MIN = 0;
 export const SCORE_MAX_LIMIT = 1000;
-export const STORAGE_KEY = 'xq.state.v2';
+export const STORAGE_KEY = 'xq.state.v3';
+/** V2 存储键：v3 不存在时读取并迁移（不得直接删） */
+export const STORAGE_KEY_V2 = 'xq.state.v2';
+/** V1 存储键：最老的一代，读取时最后回落 */
+export const STORAGE_KEY_V1 = 'xq.state.v1';
 export const BACKUP_V1_KEY = 'xq.backup.v1';
+export const BACKUP_V2_KEY = 'xq.backup.v2';
+export const ENV_MARK_KEY = 'xq.env';
 export const SNAPSHOT_INTERVAL = 30_000;
+
+/** 评价语上限（V3 FR-35） */
+export const COMMENT_MAX = 60;
+
+/** 七档默认表情（V3 D-8） */
+export const DEFAULT_GRADE_EMOJI: Record<GradeLetter, string> = {
+  'A+': '😄',
+  'A': '🙂',
+  'A-': '🙂',
+  'B+': '😐',
+  'B': '😐',
+  'C': '🙁',
+  'D': '😟',
+};
+
+/** 设置里可选的表情（闭集，12 个） */
+export const EMOJI_CHOICES = ['😄', '🙂', '😐', '🙁', '😟', '😢', '😮', '😎', '🏆', '🌟', '👍', '💪'];
 
 export const DEFAULT_SETTINGS: Settings = {
   secondsJump: true,
@@ -240,14 +264,12 @@ export const DEFAULT_SETTINGS: Settings = {
   voiceEnabled: true,
   voiceAutoConfirmMs: 1500,
   theme: 'auto',
-};
-
-/** 提示条文案（按模板，逐字对齐 V1 习惯 + V2 新键） */
-export const HINT_TEXT: Record<SheetTemplateId, string> = {
-  homework: '💡 1 A+　2 A　3 A-　4 B　5 C　6 D　G 过关　X 缺交　L 请假　空格 盖章',
-  dictation: '💡 直接输入「错2」「全对」/ G 过关 / X 缺交 / L 请假 / 空格 盖章',
-  quality: '💡 输入分数后按【Enter】跳下一格 / F2 自定义文字 / X 缺交 / L 请假',
-  custom: '💡 可录等级或分数（按本表方案）/ F2 自定义文字 / X 缺交 / L 请假',
+  passRule: DEFAULT_PASS_RULE,
+  gradeEmoji: DEFAULT_GRADE_EMOJI,
+  showEmoji: true,
+  defaultComment: '',
+  showSchoolInPoster: false,
+  autoBackupDays: 7,
 };
 
 /** 报表分隔线（恰好 25 个半角连字符） */

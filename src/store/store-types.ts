@@ -7,13 +7,15 @@ import type {
   PointLedgerEntry,
   PointRule,
   RecordDoc,
+  PosterTarget,
   ScoringScheme,
   Settings,
   SheetTemplateId,
   Stamp,
   Student,
 } from '../domain/types';
-import type { PersistedStateV2 } from '../domain/types';
+import type { PersistedStateV3 } from '../domain/types';
+import type { WeekPart } from '../domain/posterWeek';
 import type { VoiceCommand, VoiceIssue } from '../domain/voice/parse';
 
 export interface UndoPatch {
@@ -39,6 +41,11 @@ export type ToastTone = 'ok' | 'warn' | 'error';
 export type ModalKind =
   | 'settings' | 'report' | 'poster' | 'import' | 'scheme' | 'makeup'
   | 'points' | 'export' | 'manual' | 'summary';
+
+export interface PosterPage {
+  url: string;
+  blob: Blob;
+}
 
 export interface VoiceBanner {
   id: string;
@@ -75,8 +82,14 @@ export interface AppState {
   toast: { id: number; text: string; tone: ToastTone } | null;
   posterUrl: string | null;
   posterBlob: Blob | null;
+  /** 本周汇总分卷：单卷时长度 1 */
+  posterPages: PosterPage[];
   posterLoading: boolean;
-  posterMode: 'single' | 'daily';
+  posterTarget: PosterTarget;
+  cellError: number | null;
+  envMismatch: boolean;
+  blockedOverwrite: boolean;
+  weekParts: WeekPart[] | null;
   storageDegraded: boolean;
   readOnly: boolean;
   lastSavedAt: number | null;
@@ -109,8 +122,13 @@ export interface AppState {
   showToast: (text: string, tone?: ToastTone) => void;
   clearToast: () => void;
   setPoster: (url: string | null, blob?: Blob | null) => void;
+  setPosterPages: (pages: PosterPage[]) => void;
   setPosterLoading: (loading: boolean) => void;
-  setPosterMode: (mode: 'single' | 'daily') => void;
+  setPosterTarget: (target: PosterTarget) => void;
+  setCellError: (no: number | null) => void;
+  setEnvMismatch: (v: boolean) => void;
+  setBlockedOverwrite: (v: boolean) => void;
+  setWeekParts: (parts: WeekPart[] | null) => void;
   setStorageDegraded: (v: boolean) => void;
   setReadOnly: (v: boolean) => void;
   markSaved: (at: number) => void;
@@ -144,6 +162,7 @@ export interface AppState {
   setContent: (v: string) => void;
   switchRecord: (patch: { date?: string; content?: string; sheetId?: string; templateId?: SheetTemplateId }) => void;
   setScheme: (patch: Partial<ScoringScheme>) => void;
+  setComment: (v: string) => void;
   resetScheme: () => void;
   commitToHistory: () => void;
   clearCurrentRecord: () => void;
@@ -168,12 +187,13 @@ export interface AppState {
   manualAward: (nos: number[], delta: number, reason: string, ruleId?: string | null) => void;
   revokePoint: (id: string) => void;
   setRules: (rules: PointRule[]) => void;
+  removeRule: (id: string) => void;
 
   // 历史 / 存档
   deleteHistory: (key: string) => void;
   clearHistory: () => void;
-  exportState: () => PersistedStateV2;
-  replaceState: (next: PersistedStateV2) => void;
+  exportState: () => PersistedStateV3;
+  replaceState: (next: PersistedStateV3) => void;
   resetAll: () => void;
 }
 

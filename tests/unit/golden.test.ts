@@ -4,13 +4,16 @@ import { classifyRoster } from '../../src/domain/roster';
 import { buildReport } from '../../src/domain/report';
 import { buildSummaryModel, sectionStatLine, summaryOverflowNote, SUMMARY_LIMIT } from '../../src/domain/poster';
 import { snapshotDay, type DaySheetSnapshot } from '../../src/domain/summary';
-import type { Entries, PersistedStateV2, RecordDoc, ScoringScheme, SheetTemplateId } from '../../src/domain/types';
-import { DEFAULT_SETTINGS } from '../../src/domain/constants';
+import type { Entries, PersistedStateV3, RecordDoc, ScoringScheme, SheetTemplateId } from '../../src/domain/types';
+import { DEFAULT_SETTINGS, DEFAULT_GRADE_EMOJI } from '../../src/domain/constants';
+import { DEFAULT_PASS_RULE } from '../../src/domain/passRule';
 import {
   makeScheme, sampleAEntries, sampleBEntries, sampleCEntries, SAMPLE_C_SCHEME, studentsOf, e, score, text,
 } from '../fixtures';
 
 /** 黄金样例（PRD-V2 §8）：任何一位偏差都说明 classify / computeStats 写错 */
+
+const DISPLAY = { passRule: DEFAULT_PASS_RULE, showEmoji: false, gradeEmoji: DEFAULT_GRADE_EMOJI };
 
 describe('样例 C：混合登记 + 满分 120 + 请假 + 补交', () => {
   const m = computeStats(sampleCEntries(), SAMPLE_C_SCHEME, 50, false);
@@ -150,30 +153,31 @@ describe('样例 E：当日汇总海报', () => {
 
   it('标题/副标题带班级与日期', () => {
     const model = buildSummaryModel({
-      className: '三年二班', date: '2026-10-23', teacher: '刘露', school: '某某中学',
+      className: '三年二班', date: '2026-10-23', display: DISPLAY, comment: '', school: '某某中学',
       sheets: [dictation, homework, quality], n: 50,
     });
     expect(model.title).toBe('🌸 三年二班 · 10月23日 登记汇总 🌸');
     expect(model.subtitle).toContain('2026年10月23日');
-    expect(model.footer).toBe('© Designed by 刘露 | 某某中学');
+    expect(model.comment).toBe('');
+    expect(model.schoolLine).toBe('');
   });
 
   it('sections 按录入时间升序，统计行不串类型', () => {
     const model = buildSummaryModel({
-      className: '三年二班', date: '2026-10-23', teacher: '刘露', school: '某某中学',
+      className: '三年二班', date: '2026-10-23', display: DISPLAY, comment: '', school: '某某中学',
       sheets: [dictation, homework, quality], n: 50,
     });
     expect(model.sections.map((s) => s.icon)).toEqual(['📖', '📝', '📊']);
-    expect(sectionStatLine(dictation, 50)).toBe('过关 45 · 未过关 5');
-    expect(sectionStatLine(homework, 50)).toContain('A+ 1');
-    expect(sectionStatLine(homework, 50)).toContain('未交 1');
-    expect(sectionStatLine(quality, 50)).toBe('平均 96.1 · 优秀 7 · 未交 31');
+    expect(sectionStatLine(dictation, 50, DEFAULT_PASS_RULE)).toBe('过关 45 · 未过关 5');
+    expect(sectionStatLine(homework, 50, DEFAULT_PASS_RULE)).toContain('A+ 1');
+    expect(sectionStatLine(homework, 50, DEFAULT_PASS_RULE)).toContain('未交 1');
+    expect(sectionStatLine(quality, 50, DEFAULT_PASS_RULE)).toBe('平均 96.1 · 优秀 7 · 未交 31');
   });
 
   it('超过 6 条取**最近** 6 条，并在标题下给出提示（PRD FR-24-2）', () => {
     const sheets = Array.from({ length: 9 }, (_, i) => snap({ key: `k${i}`, createdAt: i }));
     const model = buildSummaryModel({
-      className: '三年二班', date: '2026-10-23', teacher: '刘', school: '某',
+      className: '三年二班', date: '2026-10-23', display: DISPLAY,
       sheets, n: 50,
     });
     expect(model.sections).toHaveLength(SUMMARY_LIMIT);
@@ -188,7 +192,7 @@ describe('样例 E：当日汇总海报', () => {
   it('未超过 6 条时 total 正确且无提示', () => {
     const sheets = Array.from({ length: 3 }, (_, i) => snap({ key: `k${i}`, createdAt: i }));
     const model = buildSummaryModel({
-      className: '三年二班', date: '2026-10-23', teacher: '刘', school: '某',
+      className: '三年二班', date: '2026-10-23', display: DISPLAY,
       sheets, n: 50,
     });
     expect(model.total).toBe(3);
@@ -198,7 +202,7 @@ describe('样例 E：当日汇总海报', () => {
 
   it('当日无登记 → empty=true（AC-24.3）', () => {
     const model = buildSummaryModel({
-      className: '三年二班', date: '2026-10-23', teacher: '刘', school: '某', sheets: [], n: 50,
+      className: '三年二班', date: '2026-10-23', display: DISPLAY, sheets: [], n: 50,
     });
     expect(model.empty).toBe(true);
     expect(model.sections).toHaveLength(0);
@@ -206,7 +210,7 @@ describe('样例 E：当日汇总海报', () => {
 
   it('mini 网格保留原学号与状态', () => {
     const model = buildSummaryModel({
-      className: '三年二班', date: '2026-10-23', teacher: '刘', school: '某', sheets: [quality], n: 50,
+      className: '三年二班', date: '2026-10-23', display: DISPLAY, sheets: [quality], n: 50,
     });
     expect(model.sections[0].cells).toHaveLength(50);
     expect(model.sections[0].cells[0].no).toBe(1);
@@ -214,7 +218,7 @@ describe('样例 E：当日汇总海报', () => {
 
   it('请假格显示「假」、缺交显示「×」（AC-24.2）', () => {
     const model = buildSummaryModel({
-      className: '三年二班', date: '2026-10-23', teacher: '刘', school: '某',
+      className: '三年二班', date: '2026-10-23', display: DISPLAY,
       sheets: [snap({
         entries: {
           '1': e(null, { status: 'leave' }),
@@ -229,7 +233,7 @@ describe('样例 E：当日汇总海报', () => {
 
   it('分数格显示原值（120 分制不折算）', () => {
     const model = buildSummaryModel({
-      className: '三年二班', date: '2026-10-23', teacher: '刘', school: '某',
+      className: '三年二班', date: '2026-10-23', display: DISPLAY,
       sheets: [snap({ scheme: SAMPLE_C_SCHEME, entries: { '1': e(score(118)) } })],
       n: 2,
     });
@@ -249,7 +253,7 @@ describe('F1 回归：当日汇总必须走真实链路（snapshotDay → comput
       createdAt: number;
     }>,
     n = 50,
-  ): PersistedStateV2 {
+  ): PersistedStateV3 {
     const records: RecordDoc[] = sheets.map((s) => ({
       key: s.key,
       classId: 'cls_test',
@@ -263,7 +267,7 @@ describe('F1 回归：当日汇总必须走真实链路（snapshotDay → comput
       updatedAt: s.createdAt,
     }));
     return {
-      version: 2,
+      version: 3,
       activeClassId: 'cls_test',
       classes: [{
         id: 'cls_test', name: '三年二班', school: '某某中学', teacher: '刘露', subject: '语文',
@@ -292,7 +296,7 @@ describe('F1 回归：当日汇总必须走真实链路（snapshotDay → comput
     expect(snap0.metrics.entered).toBe(49);
     expect(snap0.metrics.leave).toBe(1);
     expect(snap0.metrics.notSubmitted).toBe(0);          // v2.0.0 此处置为 50
-    expect(sectionStatLine(snap0, 50)).toBe('过关 44 · 未过关 5');   // v2.0.0 此处未过关为 0
+    expect(sectionStatLine(snap0, 50, DEFAULT_PASS_RULE)).toBe('过关 44 · 未过关 5');   // v2.0.0 此处未过关为 0
   });
 
   it('质量监测 20 人有值：统计条「有值 20 / 未提交 30」', () => {
@@ -303,7 +307,7 @@ describe('F1 回归：当日汇总必须走真实链路（snapshotDay → comput
     const [snap0] = snapshotDay(state, 'cls_test', '2026-10-23');
     expect(snap0.metrics.entered).toBe(20);
     expect(snap0.metrics.notSubmitted).toBe(30);
-    expect(sectionStatLine(snap0, 50)).toBe('平均 87.7 · 优秀 13 · 未交 30');
+    expect(sectionStatLine(snap0, 50, DEFAULT_PASS_RULE)).toBe('平均 87.7 · 优秀 13 · 未交 30');
   });
 
   it('同一天多张表：sections 按录入时间升序且统计不串类型', () => {
@@ -319,7 +323,7 @@ describe('F1 回归：当日汇总必须走真实链路（snapshotDay → comput
     ]);
     const snaps = snapshotDay(state, 'cls_test', '2026-10-23');
     const model = buildSummaryModel({
-      className: '三年二班', date: '2026-10-23', teacher: '刘露', school: '某某中学',
+      className: '三年二班', date: '2026-10-23', display: DISPLAY, comment: '', school: '某某中学',
       sheets: snaps, n: 50,
     });
 

@@ -3,7 +3,7 @@ import type {
   Entries,
   Entry,
   HistoryEntry,
-  PersistedStateV2,
+  PersistedStateV3,
   RecordDoc,
   ScoringScheme,
   SessionMetrics,
@@ -77,13 +77,13 @@ export function emptyEntry(now = 0): Entry {
   return { value: null, stamp: 'none', status: 'normal', pass: false, makeup: null, updatedAt: now };
 }
 
-export function createEmptyState(now = 0): PersistedStateV2 {
+export function createEmptyState(now = 0): PersistedStateV3 {
   const cls = createClass({ id: 'cls_default', createdAt: now });
   const rec = createRecord({ classId: cls.id, templateId: 'homework' });
   rec.createdAt = now;
 
   return {
-    version: 2,
+    version: 3,
     activeClassId: cls.id,
     classes: [cls],
     records: [rec],

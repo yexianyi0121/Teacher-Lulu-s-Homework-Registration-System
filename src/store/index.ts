@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { PersistedStateV2, RecordDoc } from '../domain/types';
+import type { PersistedStateV3, RecordDoc } from '../domain/types';
 import { DEFAULT_SETTINGS } from '../domain/constants';
 import type { AppState } from './store-types';
 import { createEmptyState, createRecord, hasEntries } from './initial';
@@ -13,7 +13,7 @@ import { createUiSlice } from './uiSlice';
 const initial = createEmptyState();
 
 /** 持久化根 → 运行时状态（含「当前记录」落点） */
-export function fromPersisted(state: PersistedStateV2): Partial<AppState> {
+export function fromPersisted(state: PersistedStateV3): Partial<AppState> {
   const classes = state.classes.length ? state.classes : createEmptyState().classes;
   const activeClassId = classes.some((c) => c.id === state.activeClassId)
     ? state.activeClassId
@@ -66,8 +66,13 @@ export const useStore = create<AppState>()((set, get) => ({
   toast: null,
   posterUrl: null,
   posterBlob: null,
+  posterPages: [],
   posterLoading: false,
-  posterMode: 'daily',
+  posterTarget: { mode: 'daily' },
+  cellError: null,
+  envMismatch: false,
+  blockedOverwrite: false,
+  weekParts: null,
   storageDegraded: false,
   readOnly: false,
   lastSavedAt: null,
@@ -92,7 +97,7 @@ export const useStore = create<AppState>()((set, get) => ({
   exportState() {
     const s = get();
     return {
-      version: 2,
+      version: 3,
       activeClassId: s.activeClassId,
       classes: s.classes,
       records: Object.values(s.records).filter((r) => hasEntries(r.entries)),

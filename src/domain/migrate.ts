@@ -6,6 +6,7 @@ import type {
   HistoryEntry,
   PersistedStateV1,
   PersistedStateV2,
+  PersistedStateV3,
   RecordDoc,
   ScoringScheme,
   SheetTemplateId,
@@ -27,6 +28,12 @@ export class UnknownStateError extends Error {
     super('UNKNOWN_STATE');
     this.name = 'UnknownStateError';
   }
+}
+
+export function isV3State(raw: unknown): raw is PersistedStateV3 {
+  if (!raw || typeof raw !== 'object') return false;
+  const o = raw as Partial<PersistedStateV3>;
+  return o.version === 3 && Array.isArray(o.classes) && Array.isArray(o.records);
 }
 
 export function isV2State(raw: unknown): raw is PersistedStateV2 {
@@ -132,7 +139,7 @@ function mapMetrics(v1: PersistedStateV1['history'][number]['metrics'], n: numbe
   };
 }
 
-export function migrate(raw: unknown): { state: PersistedStateV2; migrated: boolean } {
+export function migrateV1toV2(raw: unknown): { state: PersistedStateV2; migrated: boolean } {
   if (isV2State(raw)) return { state: raw, migrated: false };
   if (!isV1State(raw)) throw new UnknownStateError();
 
@@ -214,4 +221,53 @@ export function describeMigratedValue(v: CellValue | null): string {
   if (v.kind === 'score') return String(v.score);
   if (v.kind === 'text') return v.text;
   return '√';
+}
+
+
+/* ---------------- v2 → v3（设计 06 §2.2） ---------------- */
+
+/** mixed 方案缺 maxScore → 补 100（BR-66.3）；其余方案原样 */
+function fixScheme(s: ScoringScheme): ScoringScheme {
+  if ((s.kind === 'mixed' || s.kind === 'score') && (s.maxScore === null || s.maxScore <= 0)) {
+    return { ...s, maxScore: 100 };
+  }
+  return s;
+}
+
+function fixRecord<T extends RecordDoc>(r: T): T {
+  return { ...r, scheme: fixScheme(r.scheme) };
+}
+
+/**
+ * v2 → v3：只加字段，**不动** entries / history / pointLedger 的任何值。
+ * 过关规则不猜老师偏好，一律默认；表情与评价语用默认值。
+ */
+export function migrateV2toV3(old: PersistedStateV2): PersistedStateV3 {
+  return {
+    ...old,
+    version: 3,
+    settings: {
+      ...DEFAULT_SETTINGS,
+      ...old.settings,
+      passRule: { ...DEFAULT_SETTINGS.passRule, gradePass: [...DEFAULT_SETTINGS.passRule.gradePass] },
+      gradeEmoji: { ...DEFAULT_SETTINGS.gradeEmoji },
+      showEmoji: true,
+      defaultComment: '',
+      showSchoolInPoster: false,
+      autoBackupDays: 7,
+    },
+    records: old.records.map(fixRecord),
+    history: old.history.map((h) => ({ ...fixRecord(h), metrics: { ...h.metrics } })),
+  };
+}
+
+/** 统一入口：任何版本 → v3 */
+export function migrate(raw: unknown): { state: PersistedStateV3; migrated: boolean } {
+  if (isV3State(raw)) return { state: raw, migrated: false };
+  if (isV2State(raw)) return { state: migrateV2toV3(raw), migrated: true };
+  if (isV1State(raw)) {
+    const v2 = migrateV1toV2(raw);
+    return { state: migrateV2toV3(v2.state), migrated: true };
+  }
+  throw new UnknownStateError();
 }

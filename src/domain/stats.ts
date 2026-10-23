@@ -1,5 +1,6 @@
-import type { Entries, ScoringScheme, SessionMetrics } from './types';
+import type { Entries, PassRule, ScoringScheme, SessionMetrics } from './types';
 import { percentOf, tierOfPercent } from './scoring';
+import { DEFAULT_PASS_RULE, isPassed } from './passRule';
 import { round1 } from './round';
 
 /**
@@ -21,6 +22,7 @@ export function computeStats(
   s: ScoringScheme,
   n: number,
   honorIncludesA: boolean,
+  passRule: PassRule = DEFAULT_PASS_RULE,
 ): SessionMetrics {
   void honorIncludesA; // 签名照抄设计；荣誉口径只影响名单，不影响四档
 
@@ -34,6 +36,7 @@ export function computeStats(
   let leave = 0;
   let madeUp = 0;
   let passCount = 0;
+  let qualified = 0;
   let sum = 0;
   let max: number | null = null;
   let min: number | null = null;
@@ -56,6 +59,8 @@ export function computeStats(
 
     graded++;
     sum += p;
+    // 达标率走唯一入口 isPassed（老师改过关规则后统计条立即重算）
+    if (isPassed(e, s, passRule)) qualified++;
     const t = tierOfPercent(p, s);
     if (t === 'excellent') excellent++;
     else if (t === 'good') good++;
@@ -83,7 +88,7 @@ export function computeStats(
     avgPercent,
     avgScore,
     excellentRate: graded ? round1((excellent / graded) * 100) / 100 : null,
-    qualifiedRate: graded ? round1(((excellent + good + pass_) / graded) * 100) / 100 : null,
+    qualifiedRate: graded ? round1((qualified / graded) * 100) / 100 : null,
     passCount,
     max: max === null ? null : round1(max),
     min: min === null ? null : round1(min),

@@ -8,6 +8,7 @@ import type {
   ScoringScheme,
 } from '../domain/types';
 import { TEXT_MAX } from '../domain/constants';
+import { canMakeup } from '../domain/makeup';
 import { evaluatePoints } from '../domain/points';
 import type { VoiceCommand } from '../domain/voice/parse';
 import type { AppState, StoreGet, StoreSet } from './store-types';
@@ -76,6 +77,7 @@ export function createEntrySlice(set: StoreSet, get: StoreGet): EntrySlice {
         if (!entry) continue;
         const rows = evaluatePoints({
           entry,
+          passRule: s.settings.passRule,
           studentNo: no,
           record: rec,
           prevRecords,
@@ -193,10 +195,19 @@ export function createEntrySlice(set: StoreSet, get: StoreGet): EntrySlice {
       const s = get();
       const now = Date.now();
       const text = note.trim().slice(0, 30);
+      // 门禁（INV-18）：只有缺交/请假可以补交
+      const allowed = nos.filter((no) => canMakeup(s.draft.entries[String(no)]));
+      if (!allowed.length) {
+        s.showToast('只有缺交或请假可以补交', 'warn');
+        return;
+      }
+      if (allowed.length < nos.length) {
+        s.showToast(`已忽略 ${nos.length - allowed.length} 名不符合条件的学生`, 'warn');
+      }
       // 保留 status='missing'：roster 的规则 3 靠「缺交 + 有补交」识别【已补交】；
       // 一旦补录了值，normalizeEntry 会把 status 收回 normal。
-      writeMany(nos, (e) => ({ ...e, makeup: { at: now, note: text } }), `补交 ${nos.length} 人`);
-      s.showToast(`已标记 ${nos.length} 人补交`, 'ok');
+      writeMany(allowed, (e) => ({ ...e, makeup: { at: now, note: text } }), `补交 ${allowed.length} 人`);
+      s.showToast(`已标记 ${allowed.length} 人补交`, 'ok');
     },
 
     clearMakeup(nos) {
@@ -240,6 +251,7 @@ export function createEntrySlice(set: StoreSet, get: StoreGet): EntrySlice {
       for (const no of changed) {
         ledger = [...ledger, ...evaluatePoints({
           entry: entries[String(no)],
+          passRule: s.settings.passRule,
           studentNo: no,
           record: updated,
           prevRecords,

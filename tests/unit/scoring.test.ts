@@ -26,8 +26,8 @@ describe('scoring：percentOf（设计 §6.1）', () => {
     expect(percentOf(e(null), s)).toBeNull();
   });
 
-  it('maxScore 缺失时分数不可折算', () => {
-    expect(percentOf(e(score(90)), makeScheme('score', { maxScore: null }))).toBeNull();
+  it('maxScore 缺失时按 100 兜底（INV-21，绝不全灰）', () => {
+    expect(percentOf(e(score(90)), makeScheme('score', { maxScore: null }))).toBe(90);
   });
 });
 
