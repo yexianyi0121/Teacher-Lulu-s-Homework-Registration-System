@@ -1,33 +1,55 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useStore } from '../store';
-import { selectPosterModel, selectSummary } from '../store/selectors';
+import { selectPosterBySheet, selectSummary, selectWeek } from '../store/selectors';
+import type { PosterTarget } from '../domain/types';
 import { Poster } from './Poster';
 import { DailySummaryPoster } from './DailySummaryPoster';
+import { WeekSummaryPoster } from './WeekSummaryPoster';
 
 /**
- * 屏幕外海报容器（设计 04 §6.6）：position:fixed; left:-20000px; width:1080px
- * 不参与布局、不影响编辑态；高度自适应（汇总图很长）。
+ * 屏幕外海报容器（设计 04 §6.6 / V3 §3.6）：position:fixed; left:-20000px; width:1080px
+ * target 变化 → 重新栅格化；本周汇总可能有多页（分卷），一次性交给父组件。
  */
-export function PosterRaster({ onReady }: { onReady: (node: HTMLElement) => void }) {
-  const ref = useRef<HTMLDivElement>(null);
+export function PosterRaster({
+  target,
+  onReady,
+}: {
+  target: PosterTarget;
+  onReady: (nodes: HTMLElement[]) => void;
+}) {
+  const refs = useRef<Array<HTMLDivElement | null>>([]);
   const readyRef = useRef(onReady);
   readyRef.current = onReady;
 
-  const mode = useStore((s) => s.posterMode);
-  const poster = useStore(selectPosterModel);
+  const poster = useStore((s) => selectPosterBySheet(s, target.mode === 'single' ? target.sheetId : s.draft.sheetId));
   const summary = useStore(selectSummary);
+  const week = useStore((s) => selectWeek(s, target.mode === 'week' ? target.weekStart : undefined));
 
-  const ready = useMemo(() => (mode === 'daily' ? summary : poster), [mode, poster, summary]);
+  const pageCount = target.mode === 'week' ? week.pages.length : 1;
+
+  const signature = useMemo(
+    () => `${target.mode}|${target.mode === 'single' ? target.sheetId : ''}|${pageCount}|${week.subtitle}`,
+    [target, pageCount, week.subtitle],
+  );
 
   useEffect(() => {
-    if (ref.current) readyRef.current(ref.current);
-  }, [ready]);
+    const nodes = refs.current.slice(0, pageCount).filter((n): n is HTMLDivElement => !!n);
+    if (nodes.length) readyRef.current(nodes);
+  }, [signature, pageCount]);
 
   return (
     <div className="poster-stage" aria-hidden="true">
-      <div ref={ref}>
-        {mode === 'daily' ? <DailySummaryPoster model={summary} /> : <Poster model={poster} />}
-      </div>
+      {target.mode === 'week' ? (
+        week.pages.map((_, i) => (
+          <div key={i} ref={(el) => { refs.current[i] = el; }}>
+            <WeekSummaryPoster model={week} page={i} />
+          </div>
+        ))
+      ) : (
+        <div ref={(el) => { refs.current[0] = el; }}>
+          {target.mode === 'single' ? <Poster model={poster} /> : <DailySummaryPoster model={summary} />}
+        </div>
+      )}
     </div>
   );
 }

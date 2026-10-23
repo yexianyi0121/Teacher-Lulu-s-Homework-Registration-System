@@ -1,5 +1,5 @@
 import type { SummaryModel } from '../domain/poster';
-import { CellView } from './CellView';
+import { SummarySectionBlock } from './SummarySectionBlock';
 
 /**
  * 当日汇总长图（设计 04 §6.6.2 / ADR-18）
@@ -18,36 +18,15 @@ export function DailySummaryPoster({ model }: { model: SummaryModel }) {
         {model.empty ? (
           <div className="summary-empty">今日暂无登记</div>
         ) : (
-          model.sections.map((sec) => (
-            <section className="summary-section" key={sec.key}>
-              <div className="summary-head">
-                <div className="summary-title">
-                  <span aria-hidden="true">{sec.icon}</span>
-                  <strong>{sec.sheetName}</strong>
-                  {sec.content ? <span className="summary-content">· {sec.content}</span> : null}
-                </div>
-                <div className="summary-stat">{sec.statLine}</div>
-              </div>
-              <div className="summary-grid">
-                {sec.cells.map((c) => (
-                  <CellView
-                    key={c.no}
-                    variant="mini"
-                    no={c.no}
-                    text={c.text}
-                    tone={c.tone}
-                    stamp={c.stamp}
-                    status={c.status}
-                    pass={c.pass}
-                    makeup={c.makeup}
-                  />
-                ))}
-              </div>
-            </section>
-          ))
+          model.sections.map((sec) => <SummarySectionBlock key={sec.key} section={sec} />)
         )}
 
-        <div className="poster-footer">{model.footer}</div>
+        {model.comment || model.schoolLine ? (
+          <div className="poster-footer">
+            {model.comment ? <div className="poster-comment">{model.comment}</div> : null}
+            {model.schoolLine ? <div className="poster-school">{model.schoolLine}</div> : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

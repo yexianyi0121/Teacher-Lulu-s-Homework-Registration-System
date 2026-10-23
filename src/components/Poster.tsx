@@ -2,8 +2,8 @@ import type { PosterModel } from '../domain/poster';
 import { CellView } from './CellView';
 
 /**
- * 单条海报（设计 04 §6.5）：与编辑态共用 CellView 的视觉实现。
- * 海报态不挂任何事件、不显示姓名与统计（PRD BR-24 / AC-09.1）。
+ * 单条海报（设计 04 §6.5 / V3 FR-35）：与编辑态共用 CellView 的视觉实现。
+ * 海报态不挂任何事件、不显示姓名与统计；页脚只有评价语与可选学校，不再有 Designed by。
  */
 export function Poster({ model }: { model: PosterModel }) {
   return (
@@ -26,8 +26,16 @@ export function Poster({ model }: { model: PosterModel }) {
               key={cell.no}
               variant="poster"
               no={cell.no}
-              text={cell.text}
-              tone={cell.tone}
+              display={{
+                text: cell.text,
+                kind: cell.kind,
+                tone: cell.tone,
+                grade: cell.grade,
+                emoji: cell.emoji,
+                badge: cell.badge,
+                subText: cell.subText,
+                full: cell.text,
+              }}
               stamp={cell.stamp}
               status={cell.status}
               pass={cell.pass}
@@ -36,7 +44,12 @@ export function Poster({ model }: { model: PosterModel }) {
           ))}
         </div>
 
-        <div className="poster-footer">{model.footer}</div>
+        {model.comment || model.schoolLine ? (
+          <div className="poster-footer">
+            {model.comment ? <div className="poster-comment">{model.comment}</div> : null}
+            {model.schoolLine ? <div className="poster-school">{model.schoolLine}</div> : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

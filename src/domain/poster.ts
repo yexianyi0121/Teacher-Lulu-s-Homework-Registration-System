@@ -1,27 +1,41 @@
 import type {
   CellTone,
   Entries,
+  EntryStatus,
+  GradeLetter,
+  PassRule,
+  ScoringScheme,
   SheetTemplateId,
   Stamp,
-  EntryStatus,
-  ScoringScheme,
 } from './types';
 import { SHEET_TEMPLATES } from './constants';
 import { formatDateCN, formatDateFullCN, weekdayCN } from './date';
-import { cellDisplay } from './tone';
+import { cellDisplay, type CellBadge, type CellKind } from './tone';
 import { tierOf } from './scoring';
+import { isPassed } from './passRule';
 import { round1 } from './round';
 import type { DaySheetSnapshot } from './summary';
 
 /**
- * 海报数据模型（设计 04 §6.5 / §6.6）—— 纯函数。
- * 单条海报沿用 V1 版式；当日汇总为多 section 长图。
+ * 海报数据模型（设计 04 §6.5 / V3 06 §3.6）—— 纯函数。
+ * V3 变化：页脚改为「评价语 + 可选学校」，不再有 Designed by；统计行走 isPassed。
  */
+
+export interface PosterDisplayOptions {
+  passRule: PassRule;
+  showEmoji: boolean;
+  gradeEmoji: Record<GradeLetter, string>;
+}
 
 export interface PosterCell {
   no: number;
   text: string;
+  kind: CellKind;
   tone: CellTone;
+  grade?: GradeLetter;
+  emoji?: string;
+  badge?: CellBadge;
+  subText?: string;
   stamp: Stamp;
   status: EntryStatus;
   pass: boolean;
@@ -32,7 +46,10 @@ export interface PosterModel {
   title: string;
   badges: { mode: string; className: string; date: string; content: string | null };
   cells: PosterCell[];
-  footer: string;
+  /** 评价语（可空）；V3 不再输出 © Designed by */
+  comment: string;
+  /** 学校署名行（开关打开时才有） */
+  schoolLine: string;
   columns: number;
   rows: number;
 }
@@ -47,19 +64,35 @@ export interface PosterArgs {
   scheme: ScoringScheme;
   entries: Entries;
   n: number;
-  teacher: string;
-  school: string;
+  comment?: string;
+  school?: string;
+  showSchoolInPoster?: boolean;
+  display: PosterDisplayOptions;
 }
 
-function cellsOf(entries: Entries, scheme: ScoringScheme, n: number): PosterCell[] {
+export function cellsOf(
+  entries: Entries,
+  scheme: ScoringScheme,
+  n: number,
+  opts: PosterDisplayOptions,
+): PosterCell[] {
   const out: PosterCell[] = [];
   for (let no = 1; no <= n; no++) {
     const e = entries[String(no)];
-    const d = cellDisplay(e, scheme);
+    const d = cellDisplay(e, scheme, {
+      passRule: opts.passRule,
+      showEmoji: opts.showEmoji,
+      gradeEmoji: opts.gradeEmoji,
+    });
     out.push({
       no,
       text: d.text,
+      kind: d.kind,
       tone: d.tone,
+      grade: d.grade,
+      emoji: d.emoji,
+      badge: d.badge,
+      subText: d.subText,
       stamp: e?.stamp ?? 'none',
       status: e?.status ?? 'normal',
       pass: e?.pass ?? false,
@@ -70,7 +103,10 @@ function cellsOf(entries: Entries, scheme: ScoringScheme, n: number): PosterCell
 }
 
 export function buildPosterModel(args: PosterArgs): PosterModel {
-  const { className, subject, date, content, templateId, customName, scheme, entries, n, teacher, school } = args;
+  const {
+    className, subject, date, content, templateId, customName, scheme, entries, n,
+    comment, school, showSchoolInPoster, display,
+  } = args;
   const tpl = SHEET_TEMPLATES[templateId];
   const name = templateId === 'custom' && customName?.trim() ? customName.trim() : tpl.name;
 
@@ -82,21 +118,20 @@ export function buildPosterModel(args: PosterArgs): PosterModel {
       date: `📅 ${formatDateCN(date)}`,
       content: content.trim() ? `📖 ${content}` : null,
     },
-    cells: cellsOf(entries, scheme, n),
-    footer: posterFooter(teacher, school),
+    cells: cellsOf(entries, scheme, n, display),
+    comment: (comment ?? '').trim(),
+    schoolLine: showSchoolInPoster ? (school ?? '').trim() : '',
     columns: 10,
     rows: Math.ceil(n / 10),
   };
 }
 
-/** 页脚署名（PRD BR-21 沿用） */
-export function posterFooter(teacher: string, school: string): string {
-  const t = teacher.trim();
-  const s = school.trim();
-  if (t && s) return `© Designed by ${t} | ${s}`;
-  if (t) return `© Designed by ${t}`;
-  if (s) return `© ${s}`;
-  return '© Designed by 一位老师';
+/** 页脚（V3 FR-35）：评价语优先，学校署名可选；不再出现 Designed by */
+export function posterFooter(comment: string, school: string, showSchool: boolean): { comment: string; schoolLine: string } {
+  return {
+    comment: comment.trim(),
+    schoolLine: showSchool ? school.trim() : '',
+  };
 }
 
 /* ---------------- 当日汇总（§6.6.2） ---------------- */
@@ -115,25 +150,32 @@ export interface SummaryModel {
   title: string;
   subtitle: string;
   sections: SummarySection[];
-  footer: string;
+  comment: string;
+  schoolLine: string;
   columns: number;
   empty: boolean;
-  /** 当日登记总数（可能 > sections.length） */
   total: number;
-  /** 超过 6 项时的灰字提示（PRD FR-24-2），未超出为空串 */
   overflowNote: string;
 }
 
-/** section 右侧统计：按类型取最相关的 2–3 项，不出现该表不适用的字段（PRD FR-24-4） */
-export function sectionStatLine(s: DaySheetSnapshot, n: number): string {
+/** section 右侧统计：按类型取最相关的 2–3 项（PRD FR-24-4 / FR-33.5） */
+export function sectionStatLine(s: DaySheetSnapshot, n: number, rule: PassRule): string {
   void n;
   const m = s.metrics;
+  const makeupSuffix = m.madeUp > 0 ? ` · 补交 ${m.madeUp}` : '';
+
   if (s.templateId === 'dictation') {
-    const passed = m.passCount;
-    // entered 是「有登记的人」（含过关者），减去过关数才是未过关；
-    // 不能再用 n - passCount，否则缺交/请假者会被误算成未过关。
-    const notPassed = Math.max(0, m.entered - passed);
-    return `过关 ${passed} · 未过关 ${notPassed}`;
+    let passed = 0;
+    let notPassed = 0;
+    for (const e of Object.values(s.entries)) {
+      if (!e) continue;
+      if (e.status === 'leave') continue;
+      if (e.status === 'missing') continue;
+      const ok = isPassed(e, s.scheme, rule);
+      if (ok) passed++;
+      else if (e.value !== null || e.pass) notPassed++;
+    }
+    return `过关 ${passed} · 未过关 ${notPassed}${makeupSuffix}`;
   }
   if (s.templateId === 'homework' || s.scheme.kind === 'grade') {
     const counts = new Map<string, number>();
@@ -142,22 +184,23 @@ export function sectionStatLine(s: DaySheetSnapshot, n: number): string {
     }
     const order = ['A+', 'A', 'A-', 'B+', 'B', 'C', 'D'];
     const parts = order.filter((g) => counts.get(g)).map((g) => `${g} ${counts.get(g)}`);
-    const notSubmitted = m.notSubmitted;
-    return [...parts.slice(0, 4), `未交 ${notSubmitted}`].join(' · ');
+    return [...parts.slice(0, 4), `未交 ${m.notSubmitted}`].join(' · ') + makeupSuffix;
   }
   const avg = m.avgScore ?? m.avgPercent;
-  return `平均 ${avg === null ? '—' : round1(avg)} · 优秀 ${m.excellent} · 未交 ${m.notSubmitted}`;
+  return `平均 ${avg === null ? '—' : round1(avg)} · 优秀 ${m.excellent} · 未交 ${m.notSubmitted}${makeupSuffix}`;
 }
 
 export function buildSummaryModel(args: {
   className: string;
   date: string;
-  teacher: string;
-  school: string;
   sheets: DaySheetSnapshot[];
   n: number;
+  comment?: string;
+  school?: string;
+  showSchoolInPoster?: boolean;
+  display: PosterDisplayOptions;
 }): SummaryModel {
-  const { className, date, teacher, school, sheets, n } = args;
+  const { className, date, sheets, n, comment, school, showSchoolInPoster, display } = args;
   // PRD FR-24-2：超过 6 项只取**最近** 6 项（sheets 已按 createdAt 升序，故取尾部），
   // 展示顺序仍保持升序；数量提示必须渲染（否则老师不知道有表没进图）。
   const shown = sheets.length > SUMMARY_LIMIT ? sheets.slice(-SUMMARY_LIMIT) : sheets;
@@ -166,8 +209,8 @@ export function buildSummaryModel(args: {
     icon: s.icon,
     sheetName: s.sheetName,
     content: s.content,
-    statLine: sectionStatLine(s, n),
-    cells: cellsOf(s.entries, s.scheme, n),
+    statLine: sectionStatLine(s, n, display.passRule),
+    cells: cellsOf(s.entries, s.scheme, n, display),
     createdAt: s.createdAt,
   }));
 
@@ -175,7 +218,8 @@ export function buildSummaryModel(args: {
     title: `🌸 ${className} · ${formatDateCN(date)} 登记汇总 🌸`,
     subtitle: `${formatDateFullCN(date)} ${weekdayCN(date)}`,
     sections,
-    footer: posterFooter(teacher, school),
+    comment: (comment ?? '').trim(),
+    schoolLine: showSchoolInPoster ? (school ?? '').trim() : '',
     columns: 10,
     empty: sections.length === 0,
     total: sheets.length,
