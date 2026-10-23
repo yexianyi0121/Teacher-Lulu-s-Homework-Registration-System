@@ -76,6 +76,23 @@ describe('computeStats（常规作业样例 B）', () => {
     expect(m.corrected).toBe(1);
     expect(m.entered).toBe(49);
   });
+
+  it('√ 单独成档：四档之和仍等于录入人数（PRD §6.6「n = A+ + A + A- + √」）', () => {
+    const entries = sampleBEntries();
+    entries['17'] = { value: { kind: 'grade', grade: 'CHECK' }, stamp: 'none', updatedAt: 0 };
+    const m = computeStats('homework', entries, makeSettings({ count: 50 }));
+    expect(m.pass).toBe(1);
+    expect(m.entered).toBe(50);
+    expect(m.excellent + m.good + m.pass + m.fail).toBe(m.entered);
+  });
+
+  it('常规作业无平均分、无优秀率（PRD §6.1.2）', () => {
+    const m = computeStats('homework', sampleBEntries(), makeSettings({ count: 50 }));
+    expect(m.avg).toBeNull();
+    expect(m.excellentRate).toBeNull();
+    expect(m.max).toBeNull();
+    expect(m.min).toBeNull();
+  });
 });
 
 describe('computeStats（听写默写）', () => {
@@ -90,7 +107,29 @@ describe('computeStats（听写默写）', () => {
     expect(m.entered).toBe(3);
     expect(m.excellent).toBe(1);
     expect(m.good).toBe(1);
+    expect(m.pass).toBe(1); // 「字迹工整」= 其他
     expect(m.notSubmitted).toBe(2);
+    expect(m.excellent + m.good + m.pass + m.fail).toBe(m.entered);
+  });
+
+  it('错≥4 只进「有错」一档，不得同一人双计（PRD §6.6）', () => {
+    const entries = {
+      '1': { value: { kind: 'text' as const, text: '错5' }, stamp: 'none' as const, updatedAt: 0 },
+    };
+    const m = computeStats('dictation', entries, makeSettings({ count: 3 }));
+    expect(m.good).toBe(1);
+    expect(m.fail).toBe(0);
+    expect(m.entered).toBe(1);
+    expect(m.excellent + m.good + m.pass + m.fail).toBe(m.entered);
+  });
+
+  it('听写无平均分、无优秀率', () => {
+    const entries = {
+      '1': { value: { kind: 'text' as const, text: '全对' }, stamp: 'none' as const, updatedAt: 0 },
+    };
+    const m = computeStats('dictation', entries, makeSettings({ count: 3 }));
+    expect(m.avg).toBeNull();
+    expect(m.excellentRate).toBeNull();
   });
 });
 
