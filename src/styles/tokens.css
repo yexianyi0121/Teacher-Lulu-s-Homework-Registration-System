@@ -55,3 +55,40 @@
   --mini-cell-h: 24px;
   --mini-gap: 6px;
 }
+
+/* ============ V3 令牌（设计 06 §4.1） ============ */
+:root {
+  --icon-size: 22px;
+  --btn-h: 36px;
+  --fs-base: 14px;
+  --pill-pad-x: 14px;
+  --badge-size: 16px;
+  --badge-font: 10px;
+  --state-missing-bg: #FFE9E9;
+  --state-missing-fg: #C0392B;
+  --state-missing-line: #E57373;
+  --state-leave-bg: #F3EFFA;
+  --state-leave-fg: #7B5EA7;
+  --state-madeup-bg: #EAF7EF;
+  --state-madeup-fg: #2E7D4F;
+}
+
+@media (max-width: 1280px) {
+  :root {
+    --icon-size: 20px;
+    --btn-h: 32px;
+    --fs-base: 13px;
+    --pill-pad-x: 12px;
+    --cell-h: 68px;
+  }
+}
+
+@media (min-width: 1680px) {
+  :root {
+    --icon-size: 24px;
+    --btn-h: 40px;
+    --fs-base: 15px;
+    --pill-pad-x: 16px;
+    --cell-h: 84px;
+  }
+}

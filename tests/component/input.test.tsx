@@ -69,13 +69,14 @@ describe('录入内核（组件级）', () => {
     expect(useStore.getState().draft.entries['1']).toBeUndefined();
   });
 
-  it('超过满分会被夹到满分并提示（不产生非法值）', () => {
+  it('超过满分整条拒绝（不写入任何值，AC-39.1）', () => {
     setup('quality');
     press('1');
     press('2');
     press('0');
     press('Enter');
-    expect(useStore.getState().draft.entries['1'].value).toEqual({ kind: 'score', score: 100 });
+    expect(useStore.getState().draft.entries['1']).toBeUndefined();
+    expect(useStore.getState().cellError).toBe(1);
   });
 
   it('听写：数字 2 → 文字「错2」，Enter 过关（G 同效）', () => {

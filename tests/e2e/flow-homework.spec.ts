@@ -21,9 +21,9 @@ test('flow-homework：等级录入 + 空格盖章 + X 缺交（V1 行为回归�
   // 空格盖章：已更正 → 再按取消
   await page.locator('[data-no="1"]').click();
   await page.keyboard.press(' ');
-  await expect(page.locator('[data-no="1"] .stamp-badge')).toHaveCount(1);
+  await expect(page.locator('[data-no="1"] .cell-stamp[data-stamp="corrected"]')).toHaveCount(1);
   await page.keyboard.press(' ');
-  await expect(page.locator('[data-no="1"] .stamp-badge')).toHaveCount(0);
+  await expect(page.locator('[data-no="1"] .cell-stamp')).toHaveCount(0);
 
   // X 缺交
   await page.locator('[data-no="3"]').click();

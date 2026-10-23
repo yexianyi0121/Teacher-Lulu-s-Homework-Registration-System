@@ -58,7 +58,8 @@ test('flow-status：补交带说明后从暂未提交移入已补交（AC-23.1�
   await page.getByLabel('补交说明（≤30 字）').fill('课后补交');
   await page.getByRole('dialog').getByRole('button', { name: '确认' }).click();
 
-  await expect(page.locator('[data-no="3"] [data-stamp="makeup"]')).toHaveCount(1);
+  await expect(page.locator('[data-no="3"]')).toHaveAttribute('data-badge', 'madeup');
+  await expect(page.locator('[data-no="3"] .cell-badge')).toHaveText('补');
 
   await page.keyboard.press('Control+Enter');
   const report = page.getByTestId('report-text');
