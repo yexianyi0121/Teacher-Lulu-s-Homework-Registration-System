@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { computeStats } from '../../src/domain/stats';
 import { classifyRoster } from '../../src/domain/roster';
 import { buildReport } from '../../src/domain/report';
-import { buildSummaryModel, sectionStatLine } from '../../src/domain/poster';
-import type { DaySheetSnapshot } from '../../src/domain/summary';
+import { buildSummaryModel, sectionStatLine, summaryOverflowNote, SUMMARY_LIMIT } from '../../src/domain/poster';
+import { snapshotDay, type DaySheetSnapshot } from '../../src/domain/summary';
+import type { Entries, PersistedStateV2, RecordDoc, ScoringScheme, SheetTemplateId } from '../../src/domain/types';
+import { DEFAULT_SETTINGS } from '../../src/domain/constants';
 import {
-  makeScheme, sampleAEntries, sampleBEntries, sampleCEntries, SAMPLE_C_SCHEME, e, score,
+  makeScheme, sampleAEntries, sampleBEntries, sampleCEntries, SAMPLE_C_SCHEME, studentsOf, e, score, text,
 } from '../fixtures';
 
 /** 黄金样例（PRD-V2 §8）：任何一位偏差都说明 classify / computeStats 写错 */
@@ -106,15 +108,18 @@ describe('样例 E：当日汇总海报', () => {
     createdAt: 0, ...over,
   });
 
+  // 听写 45 人过关 + 5 人「错2」：metrics 必须由 computeStats 真实生成，
+  // 不能手写（评审 F1 指出，手写 metrics 让「未过关恒为 0」的缺陷逃过了单测）
+  const dictationScheme = makeScheme('check');
+  const dictationEntries: Entries = {};
+  for (let no = 1; no <= 45; no++) dictationEntries[String(no)] = e(null, { pass: true });
+  for (let no = 46; no <= 50; no++) dictationEntries[String(no)] = e(text('错2'));
+
   const dictation = snap({
     templateId: 'dictation', sheetName: '听写默写', icon: '📖', content: '第3单元字词', createdAt: 1,
-    scheme: makeScheme('check'),
-    metrics: {
-      n: 50, entered: 50, excellent: 0, good: 0, pass: 0, fail: 0,
-      missing: 0, leave: 0, madeUp: 0, notSubmitted: 0,
-      avgPercent: null, avgScore: null, excellentRate: null, qualifiedRate: null,
-      passCount: 45, max: null, min: null,
-    },
+    scheme: dictationScheme,
+    entries: dictationEntries,
+    metrics: computeStats(dictationEntries, dictationScheme, 50, false),
   });
 
   const homework = snap({
@@ -165,14 +170,30 @@ describe('样例 E：当日汇总海报', () => {
     expect(sectionStatLine(quality, 50)).toBe('平均 96.1 · 优秀 7 · 未交 31');
   });
 
-  it('超过 6 条只取前 6 并置 empty=false', () => {
+  it('超过 6 条取**最近** 6 条，并在标题下给出提示（PRD FR-24-2）', () => {
     const sheets = Array.from({ length: 9 }, (_, i) => snap({ key: `k${i}`, createdAt: i }));
     const model = buildSummaryModel({
       className: '三年二班', date: '2026-10-23', teacher: '刘', school: '某',
       sheets, n: 50,
     });
-    expect(model.sections).toHaveLength(6);
+    expect(model.sections).toHaveLength(SUMMARY_LIMIT);
+    // 保留尾部（最近）而不是头部（最早），且展示仍保持升序
+    expect(model.sections.map((s) => s.key)).toEqual(['k3', 'k4', 'k5', 'k6', 'k7', 'k8']);
+    expect(model.sections.map((s) => s.createdAt)).toEqual([3, 4, 5, 6, 7, 8]);
+    expect(model.total).toBe(9);
+    expect(model.overflowNote).toBe('（今日共 9 项，仅展示最近 6 项）');
     expect(model.empty).toBe(false);
+  });
+
+  it('未超过 6 条时 total 正确且无提示', () => {
+    const sheets = Array.from({ length: 3 }, (_, i) => snap({ key: `k${i}`, createdAt: i }));
+    const model = buildSummaryModel({
+      className: '三年二班', date: '2026-10-23', teacher: '刘', school: '某',
+      sheets, n: 50,
+    });
+    expect(model.total).toBe(3);
+    expect(model.overflowNote).toBe('');
+    expect(summaryOverflowNote(6)).toBe('');
   });
 
   it('当日无登记 → empty=true（AC-24.3）', () => {
@@ -213,5 +234,97 @@ describe('样例 E：当日汇总海报', () => {
       n: 2,
     });
     expect(model.sections[0].cells[0].text).toBe('118');
+  });
+});
+
+describe('F1 回归：当日汇总必须走真实链路（snapshotDay → computeStats → sectionStatLine）', () => {
+  /** 造一份最小存档：同一班、同一天、若干条登记 */
+  function makeState(
+    sheets: Array<{
+      key: string;
+      templateId: SheetTemplateId;
+      scheme: ScoringScheme;
+      entries: Entries;
+      content?: string;
+      createdAt: number;
+    }>,
+    n = 50,
+  ): PersistedStateV2 {
+    const records: RecordDoc[] = sheets.map((s) => ({
+      key: s.key,
+      classId: 'cls_test',
+      date: '2026-10-23',
+      content: s.content ?? '',
+      sheetId: `sheet_${s.key}`,
+      templateId: s.templateId,
+      scheme: s.scheme,
+      entries: s.entries,
+      createdAt: s.createdAt,
+      updatedAt: s.createdAt,
+    }));
+    return {
+      version: 2,
+      activeClassId: 'cls_test',
+      classes: [{
+        id: 'cls_test', name: '三年二班', school: '某某中学', teacher: '刘露', subject: '语文',
+        students: studentsOf(n), count: n, createdAt: 1,
+      }],
+      records,
+      history: [],
+      pointRules: [],
+      pointLedger: [],
+      settings: { ...DEFAULT_SETTINGS },
+      lastSavedAt: 1,
+    };
+  }
+
+  it('听写 44 过 + 5 错 + 1 请假：过关 44 · 未过关 5，且未提交 = 0', () => {
+    const scheme = makeScheme('check');
+    const entries: Entries = {};
+    for (let no = 1; no <= 44; no++) entries[String(no)] = e(null, { pass: true });
+    for (let no = 45; no <= 49; no++) entries[String(no)] = e(text('错2'));
+    entries['50'] = e(null, { status: 'leave' });
+
+    const state = makeState([{ key: 'k1', templateId: 'dictation', scheme, entries, createdAt: 1 }]);
+    const [snap0] = snapshotDay(state, 'cls_test', '2026-10-23');
+
+    expect(snap0.metrics.passCount).toBe(44);
+    expect(snap0.metrics.entered).toBe(49);
+    expect(snap0.metrics.leave).toBe(1);
+    expect(snap0.metrics.notSubmitted).toBe(0);          // v2.0.0 此处置为 50
+    expect(sectionStatLine(snap0, 50)).toBe('过关 44 · 未过关 5');   // v2.0.0 此处未过关为 0
+  });
+
+  it('质量监测 20 人有值：统计条「有值 20 / 未提交 30」', () => {
+    const scheme = makeScheme('score');
+    const entries = sampleAEntries();   // 20 人
+    const state = makeState([{ key: 'k2', templateId: 'quality', scheme, entries, createdAt: 1 }]);
+
+    const [snap0] = snapshotDay(state, 'cls_test', '2026-10-23');
+    expect(snap0.metrics.entered).toBe(20);
+    expect(snap0.metrics.notSubmitted).toBe(30);
+    expect(sectionStatLine(snap0, 50)).toBe('平均 87.7 · 优秀 13 · 未交 30');
+  });
+
+  it('同一天多张表：sections 按录入时间升序且统计不串类型', () => {
+    const check = makeScheme('check');
+    const scoreScheme = makeScheme('score');
+    const dictationEntries: Entries = {};
+    for (let no = 1; no <= 45; no++) dictationEntries[String(no)] = e(null, { pass: true });
+    for (let no = 46; no <= 50; no++) dictationEntries[String(no)] = e(text('错3'));
+
+    const state = makeState([
+      { key: 'k1', templateId: 'dictation', scheme: check, entries: dictationEntries, createdAt: 1 },
+      { key: 'k2', templateId: 'quality', scheme: scoreScheme, entries: sampleAEntries(), createdAt: 2 },
+    ]);
+    const snaps = snapshotDay(state, 'cls_test', '2026-10-23');
+    const model = buildSummaryModel({
+      className: '三年二班', date: '2026-10-23', teacher: '刘露', school: '某某中学',
+      sheets: snaps, n: 50,
+    });
+
+    expect(model.sections.map((s) => s.icon)).toEqual(['📖', '📊']);
+    expect(model.sections[0].statLine).toBe('过关 45 · 未过关 5');
+    expect(model.sections[1].statLine).toBe('平均 87.7 · 优秀 13 · 未交 30');
   });
 });

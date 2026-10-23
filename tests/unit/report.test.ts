@@ -20,16 +20,16 @@ describe('report：样例 A 与 V1 逐字符回归（只允许 3 处 V2 差异�
     n: 50,
   });
 
-  it('V2 文案（含班级行、质量监测、】后空格）', () => {
-    expect(report.split('\n')[0]).toBe('🌸 3月13日 【📊 质量监测】 综合反馈 🌸');
+  it('V2 文案（含班级行、质量监测；】后无空格，与 PRD AC-19.1 逐字一致）', () => {
+    expect(report.split('\n')[0]).toBe('🌸 3月13日 【📊 质量监测】综合反馈 🌸');
     expect(report.split('\n')[3]).toBe('🏫 班级：三年二班');
   });
 
-  it('去掉 3 处 V2 必需差异后，与 V1 原文逐字相等', () => {
+  it('去掉 2 处 V2 必需差异后，与 V1 原文逐字相等', () => {
     const normalized = report
       .split('\n')
       .filter((line) => !line.startsWith('🏫 班级：'))
-      .map((line) => line.replace('【📊 质量监测】 ', '【💯 单元测试】'))
+      .map((line) => line.replace('【📊 质量监测】', '【💯 单元测试】'))
       .join('\n');
     expect(normalized).toBe(V1_REPORT_A_LINES.join('\n'));
   });
@@ -83,7 +83,7 @@ describe('report：段落规则（PRD-V2 §2.3.2 / §6.4）', () => {
       n: 10,
     });
     expect(report).toContain('🏫 班级：一年一班');
-    expect(report.split('\n')[0]).toBe('🌸 10月23日 【🏷️ 作文】 综合反馈 🌸');
+    expect(report.split('\n')[0]).toBe('🌸 10月23日 【🏷️ 作文】综合反馈 🌸');
   });
 
   it('已补交段带说明，顺序在暂未提交之后、需更正之前', () => {

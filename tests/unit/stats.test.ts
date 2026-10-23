@@ -81,18 +81,35 @@ describe('stats：边界', () => {
     expect(m.entered).toBe(0);
   });
 
-  it('过关（pass）计入 passCount，但不进四档（设计 §16-18）', () => {
+  it('过关与文字都算「有登记」，但不进四档（设计 §16-18）', () => {
     const entries = { '1': e(null, { pass: true }), '2': e(text('全对')) };
     const m = computeStats(entries, makeScheme('check'), 10, false);
     expect(m.passCount).toBe(1);
-    expect(m.entered).toBe(0);
+    // F1 回归：过关会清空 value（FR-21-2），若 entered 只认 value，过关制 entered 会恒为 0
+    expect(m.entered).toBe(2);
+    expect(m.excellent + m.good + m.pass + m.fail).toBe(0);
+    expect(m.notSubmitted).toBe(8);
+  });
+
+  it('听写「错2」不产生百分，但计入已登记（只算文字标记）', () => {
+    const m = computeStats({ '1': e(text('错2')) }, makeScheme('check'), 5, false);
+    expect(m.entered).toBe(1);
+    expect(m.avgPercent).toBeNull();
     expect(m.excellent + m.good + m.pass + m.fail).toBe(0);
   });
 
-  it('听写「错2」不产生百分（只算文字标记）', () => {
-    const m = computeStats({ '1': e(text('错2')) }, makeScheme('check'), 5, false);
-    expect(m.entered).toBe(0);
-    expect(m.avgPercent).toBeNull();
+  it('check 方案：entered 只含「有值或过关」的人，缺交/请假不进分母', () => {
+    const entries = {
+      '1': e(null, { pass: true }),
+      '2': e(text('错2')),
+      '3': e(null, { status: 'missing' }),
+      '4': e(null, { status: 'leave' }),
+    };
+    const m = computeStats(entries, makeScheme('check'), 10, false);
+    expect(m.entered).toBe(2);
+    expect(m.leave).toBe(1);
+    expect(m.missing).toBe(1);
+    expect(m.notSubmitted).toBe(7);   // 10 - 2 - 1
   });
 
   it('等级制的四档按百分算：A- = 90% 计入优秀', () => {

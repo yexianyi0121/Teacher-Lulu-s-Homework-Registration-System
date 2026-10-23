@@ -118,6 +118,10 @@ export interface SummaryModel {
   footer: string;
   columns: number;
   empty: boolean;
+  /** 当日登记总数（可能 > sections.length） */
+  total: number;
+  /** 超过 6 项时的灰字提示（PRD FR-24-2），未超出为空串 */
+  overflowNote: string;
 }
 
 /** section 右侧统计：按类型取最相关的 2–3 项，不出现该表不适用的字段（PRD FR-24-4） */
@@ -126,6 +130,8 @@ export function sectionStatLine(s: DaySheetSnapshot, n: number): string {
   const m = s.metrics;
   if (s.templateId === 'dictation') {
     const passed = m.passCount;
+    // entered 是「有登记的人」（含过关者），减去过关数才是未过关；
+    // 不能再用 n - passCount，否则缺交/请假者会被误算成未过关。
     const notPassed = Math.max(0, m.entered - passed);
     return `过关 ${passed} · 未过关 ${notPassed}`;
   }
@@ -152,7 +158,10 @@ export function buildSummaryModel(args: {
   n: number;
 }): SummaryModel {
   const { className, date, teacher, school, sheets, n } = args;
-  const sections: SummarySection[] = sheets.slice(0, 6).map((s) => ({
+  // PRD FR-24-2：超过 6 项只取**最近** 6 项（sheets 已按 createdAt 升序，故取尾部），
+  // 展示顺序仍保持升序；数量提示必须渲染（否则老师不知道有表没进图）。
+  const shown = sheets.length > SUMMARY_LIMIT ? sheets.slice(-SUMMARY_LIMIT) : sheets;
+  const sections: SummarySection[] = shown.map((s) => ({
     key: s.key,
     icon: s.icon,
     sheetName: s.sheetName,
@@ -169,14 +178,18 @@ export function buildSummaryModel(args: {
     footer: posterFooter(teacher, school),
     columns: 10,
     empty: sections.length === 0,
+    total: sheets.length,
+    overflowNote: summaryOverflowNote(sheets.length),
   };
 }
 
-/** 汇总图超出 6 项时的提示（PRD FR-24-2） */
+/** 当日汇总最多展示的表数（PRD FR-24-2） */
+export const SUMMARY_LIMIT = 6;
+
+/** 汇总图超出 6 项时的提示（PRD FR-24-2 原文） */
 export function summaryOverflowNote(total: number): string {
-  if (total <= 6) return '';
-  const more = total - 6;
-  return `（今日共 ${total} 项，仅展示最近 6 项，另有 ${more} 项未展示）`;
+  if (total <= SUMMARY_LIMIT) return '';
+  return `（今日共 ${total} 项，仅展示最近 ${SUMMARY_LIMIT} 项）`;
 }
 
 /** 某 section 是否有值（空表也画，但统计显示 0；图上一眼能看出没录） */

@@ -11,6 +11,7 @@ export function DailySummaryPoster({ model }: { model: SummaryModel }) {
       <div className="poster-card summary-card">
         <h1 className="poster-title">{model.title}</h1>
         <div className="summary-subtitle">{model.subtitle}</div>
+        {model.overflowNote ? <div className="summary-note">{model.overflowNote}</div> : null}
 
         <div className="poster-divider" />
 

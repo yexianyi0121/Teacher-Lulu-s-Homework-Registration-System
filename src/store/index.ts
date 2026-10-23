@@ -73,7 +73,7 @@ export const useStore = create<AppState>()((set, get) => ({
   lastSavedAt: null,
   pulsingNo: null,
   flashNo: null,
-  chartsOpen: false,
+  chartsOpen: true,   // 恢复 V1 的默认展开：老师习惯「切到质量监测就有三张图」（评审 F7）
   compareId: null,
   filterNotPassed: false,
   voiceListening: false,

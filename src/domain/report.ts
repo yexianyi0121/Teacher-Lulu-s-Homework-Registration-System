@@ -47,7 +47,7 @@ export function buildReport(args: ReportArgs): string {
   const { honor, passed, notSubmitted, madeUp, needsFix, corrected, leave } = groups;
 
   const lines: string[] = [
-    `🌸 ${formatDateCN(date)} 【${icon} ${name}】 综合反馈 🌸`,
+    `🌸 ${formatDateCN(date)} 【${icon} ${name}】综合反馈 🌸`,
     `📖 作业内容：${shownContent}`,
     REPORT_SEP,
     `🏫 班级：${className}`,

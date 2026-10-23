@@ -4,6 +4,7 @@ import { BACKUP_V1_KEY, HISTORY_LIMIT, STORAGE_KEY } from '../domain/constants';
 /** V1 的存储键：老用户的数据在这里，读取时必须回落 */
 const STORAGE_KEY_V1 = 'xq.state.v1';
 import { migrate, isV1State, isV2State, UnknownStateError } from '../domain/migrate';
+import { refreshHistoryMetrics } from '../domain/history';
 import { getSnapshots, putSnapshot } from './idb';
 
 /**
@@ -157,7 +158,12 @@ export function parseState(rawText: string): LoadResult {
   }
 
   if (isV2State(parsed)) {
-    return { state: validateState(parsed) ? parsed : null, recovered: false, migrated: false, error: validateState(parsed) ? undefined : 'UNKNOWN_STATE', rawBackup: rawText };
+    if (!validateState(parsed)) {
+      return { state: null, recovered: false, migrated: false, error: 'UNKNOWN_STATE', rawBackup: rawText };
+    }
+    // 历史 metrics 自愈：v2.0.0 的听写历史把 entered 存成了 0（F1），
+    // 记录里带着 entries + scheme，可无损重算；v1 迁移历史（metricsVersion=1）不碰。
+    return { state: refreshHistoryMetrics(parsed), recovered: false, migrated: false };
   }
 
   if (isV1State(parsed)) {

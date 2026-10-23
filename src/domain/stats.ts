@@ -7,8 +7,14 @@ import { round1 } from './round';
  *
  * 三个恒等式（单测必须断言）：
  *   1) entered + leave + notSubmitted = N
- *   2) excellent + good + pass + fail = entered   （INV-3）
+ *   2) excellent + good + pass + fail = graded（有百分的人数）≤ entered   （INV-3）
  *   3) missing ≤ notSubmitted
+ *
+ * ⚠️ `entered` 是「有登记的人」（有值 **或** 已过关），不是「有百分的人」：
+ *    FR-21-2 规定过关时清空 value（`pass=true` / `value=null`），若 entered 只认 value，
+ *    过关制的 entered 会恒为 0，进而 notSubmitted 恒等于全班人数、未过关恒为 0
+ *    （v2.0.0 的真实缺陷 F1）。四档只统计能折算百分的值（设计 §16-18：听写「错N」不进四档），
+ *    所以新增内部量 graded 作四档与均值的分母，保证 `sum(四档) = graded ≤ entered`。
  */
 export function computeStats(
   entries: Entries,
@@ -19,6 +25,7 @@ export function computeStats(
   void honorIncludesA; // 签名照抄设计；荣誉口径只影响名单，不影响四档
 
   let entered = 0;
+  let graded = 0;
   let excellent = 0;
   let good = 0;
   let pass_ = 0;
@@ -37,12 +44,17 @@ export function computeStats(
     if (e.status === 'leave') { leave++; continue; }
     if (e.status === 'missing' && !e.makeup) missing++;   // §2.4：已补交单独计 madeUp
     if (e.makeup) madeUp++;
-    if (e.pass) passCount++;
+
+    // 过关是布尔位，值按 FR-21-2 会被清空，故单独计入 passCount 与「已登记」
+    const hasPass = e.pass || e.value?.kind === 'pass';
+    if (hasPass) passCount++;
 
     const p = percentOf(e, s);
+
+    if (e.status === 'normal' && (e.value !== null || hasPass)) entered++;
     if (p === null) continue;
 
-    entered++;
+    graded++;
     sum += p;
     const t = tierOfPercent(p, s);
     if (t === 'excellent') excellent++;
@@ -54,8 +66,8 @@ export function computeStats(
     min = min === null ? p : Math.min(min, p);
   }
 
-  const avgPercent = entered ? round1(sum / entered) : null;
-  const avgScore = entered && s.maxScore ? round1((sum / entered) / 100 * s.maxScore) : null;
+  const avgPercent = graded ? round1(sum / graded) : null;
+  const avgScore = graded && s.maxScore ? round1((sum / graded) / 100 * s.maxScore) : null;
 
   return {
     n,
@@ -70,8 +82,8 @@ export function computeStats(
     notSubmitted: Math.max(0, n - entered - leave),   // 含缺交与空白
     avgPercent,
     avgScore,
-    excellentRate: entered ? round1((excellent / entered) * 100) / 100 : null,
-    qualifiedRate: entered ? round1(((excellent + good + pass_) / entered) * 100) / 100 : null,
+    excellentRate: graded ? round1((excellent / graded) * 100) / 100 : null,
+    qualifiedRate: graded ? round1(((excellent + good + pass_) / graded) * 100) / 100 : null,
     passCount,
     max: max === null ? null : round1(max),
     min: min === null ? null : round1(min),

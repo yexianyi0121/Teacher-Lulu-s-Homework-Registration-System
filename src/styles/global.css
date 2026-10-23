@@ -616,7 +616,8 @@ pre {
 }
 
 .modal-body {
-  padding: 16px 20px;
+  /* 底部留白：最后一行与浮动 footer 之间留出呼吸位（评审 F6，1366×768 下最明显） */
+  padding: 16px 20px 32px;
   overflow: auto;
   flex: 1 1 auto;
 }
@@ -1141,9 +1142,12 @@ pre {
 }
 .voice-banner[data-tone="warn"] { background: var(--amber-bg); color: var(--amber); }
 
-/* 当日汇总（设计 §6.6.2） */
-.summary-root .summary-card { width: 1080px; }
+/* 当日汇总（设计 §6.6.2）
+   注意：卡片刻意不再写死 1080 —— 父级 .poster-root 已是 1080（含左右各 48 padding），
+   卡片再占 1080 会向右溢出 48px，被栅格化按容器宽度裁掉（评审 F2）。 */
+.summary-root .summary-card { width: 100%; }
 .summary-subtitle { text-align: center; color: var(--text-2); font-size: 20px; margin-top: 6px; }
+.summary-note { text-align: center; color: var(--text-3); font-size: 15px; margin-top: 8px; }
 .summary-empty { text-align: center; color: var(--text-3); font-size: 22px; padding: 60px 0; }
 .summary-section { padding: 14px 0; border-top: 1px dashed var(--line); }
 .summary-section:first-of-type { border-top: none; }
@@ -1170,7 +1174,15 @@ pre {
 .manual-section p, .manual-section li { font-size: 13px; line-height: 1.7; color: var(--text-1); }
 .manual-section code { background: var(--surface-alt); padding: 1px 5px; border-radius: 4px; }
 
-/* 工具栏在 1366 宽下要能换行，避免「只看未过关」被压成竖排 */
-.actions { flex-wrap: wrap; row-gap: 6px; height: auto; min-height: 52px; }
+/* 工具栏：1366 宽下 15 个控件必须单行（换行会把「清空/更新修改」挤到第二行，
+   网格随之下移，老师要多滚动一次）。收紧按钮内边距换取空间；
+   窄于 1200 才允许换行并恢复原内边距。 */
+.actions { flex-wrap: nowrap; gap: 6px; }
+.actions .pill { padding: 0 9px; font-size: 13px; }
 .filter-toggle { white-space: nowrap; flex: 0 0 auto; }
 .filter-toggle .toggle { flex: 0 0 auto; }
+
+@media (max-width: 1200px) {
+  .actions { flex-wrap: wrap; row-gap: 6px; height: auto; min-height: 52px; }
+  .actions .pill { padding: 0 14px; }
+}

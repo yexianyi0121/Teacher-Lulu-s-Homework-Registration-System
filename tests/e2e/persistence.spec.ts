@@ -39,30 +39,33 @@ test('persistence：人数 50→40→50 不丢隐藏数据（INV-8）', async ({
 });
 
 test('persistence：v1 数据自动迁移后可继续使用（AC-60 / M-1~M-3）', async ({ page }) => {
-  await page.goto('/');
-  await page.evaluate(() => {
-    const v1 = {
-      version: 1,
-      classInfo: { name: '三年二班', school: '某某中学', teacher: '刘露', subject: '语文', students: [], count: 3 },
-      drafts: {
-        k1: {
-          id: 'k1', date: '2026-03-13', content: '语文本', mode: 'homework',
-          entries: {
-            '1': { value: { kind: 'grade', grade: 'A+' }, stamp: 'none', updatedAt: 1 },
-            '2': { value: { kind: 'grade', grade: 'CHECK' }, stamp: 'none', updatedAt: 1 },
-            '3': { value: { kind: 'grade', grade: 'CROSS' }, stamp: 'none', updatedAt: 1 },
-          },
-          createdAt: 1, updatedAt: 1,
+  const v1 = {
+    version: 1,
+    classInfo: { name: '三年二班', school: '某某中学', teacher: '刘露', subject: '语文', students: [], count: 3 },
+    drafts: {
+      k1: {
+        id: 'k1', date: '2026-03-13', content: '语文本', mode: 'homework',
+        entries: {
+          '1': { value: { kind: 'grade', grade: 'A+' }, stamp: 'none', updatedAt: 1 },
+          '2': { value: { kind: 'grade', grade: 'CHECK' }, stamp: 'none', updatedAt: 1 },
+          '3': { value: { kind: 'grade', grade: 'CROSS' }, stamp: 'none', updatedAt: 1 },
         },
+        createdAt: 1, updatedAt: 1,
       },
-      activeKey: 'k1',
-      history: [],
-      settings: { count: 3, secondsJump: false, showName: false, excellentLine: 90, passLine: 60 },
-    };
+    },
+    activeKey: 'k1',
+    history: [],
+    settings: { count: 3, secondsJump: false, showName: false, excellentLine: 90, passLine: 60 },
+  };
+  // 必须在应用脚本执行前种入：先 goto 再 evaluate 的话，首屏的自动保存
+  // 可能把空白的 v2 写进 localStorage，reload 后 v2 优先于 v1，迁移用例偶发失败。
+  await page.addInitScript((seed) => {
+    if (sessionStorage.getItem('xq.e2e.seeded')) return;
+    sessionStorage.setItem('xq.e2e.seeded', '1');
     localStorage.clear();
-    localStorage.setItem('xq.state.v1', JSON.stringify(v1));
-  });
-  await page.reload();
+    localStorage.setItem('xq.state.v1', JSON.stringify(seed));
+  }, v1);
+  await page.goto('/');
   await page.waitForSelector('.cell');
 
   // A+ 原样保留；√ → 过关；× → 缺交
