@@ -1,13 +1,16 @@
 import type {
   Entry,
   HistoryEntry,
+  PassRule,
   PointLedgerEntry,
   PointRule,
   RecordDoc,
+  RuleCondition,
   SheetTemplateId,
   Tier,
 } from './types';
-import { isQualified, tierOf } from './scoring';
+import { tierOf } from './scoring';
+import { DEFAULT_PASS_RULE, isPassed } from './passRule';
 import { uid } from '../utils/id';
 
 /**
@@ -47,6 +50,7 @@ export function dedupeKeyOf(
 
 export interface EvaluateInput {
   entry: Entry;
+  passRule?: PassRule;
   studentNo: number;
   record: Pick<RecordDoc, 'key' | 'classId' | 'date' | 'content' | 'templateId' | 'scheme'>;
   /** 同班同模板的历史，按日期降序（不含本次） */
@@ -59,8 +63,9 @@ export interface EvaluateInput {
 
 function streakHit(input: EvaluateInput, times: number, templateId: SheetTemplateId): boolean {
   const { record, studentNo, prevRecords } = input;
+  const rule = input.passRule ?? DEFAULT_PASS_RULE;
   if (record.templateId !== templateId) return false;
-  if (!isQualified(input.entry, record.scheme)) return false;
+  if (!isPassed(input.entry, record.scheme, rule)) return false;
 
   const prev = prevRecords
     .filter((h) => h.templateId === templateId && h.date < record.date)
@@ -72,7 +77,7 @@ function streakHit(input: EvaluateInput, times: number, templateId: SheetTemplat
     const e = h.entries[String(studentNo)];
     if (!e) return false;
     // 用历史记录自己的方案判定（方案是快照，§16-7）
-    return isQualified(e, h.scheme);
+    return isPassed(e, h.scheme, rule);
   });
 }
 
@@ -210,8 +215,10 @@ export function monthStats(args: {
   month: string;                  // 'YYYY-MM'
   n: number;
   names?: Record<number, string | undefined>;
+  passRule?: PassRule;
 }): MonthStats {
   const { history, ledger, classId, month, n, names } = args;
+  const passRule = args.passRule ?? DEFAULT_PASS_RULE;
   const inMonth = history.filter((h) => h.classId === classId && h.date.startsWith(month));
 
   const rows: MonthRow[] = [];
@@ -229,7 +236,7 @@ export function monthStats(args: {
       sessions++;
       if (e.status === 'missing') missing++;
       if (e.makeup) madeUp++;
-      if (e.pass || isQualified(e, h.scheme)) qualified++;
+      if (isPassed(e, h.scheme, passRule)) qualified++;
     }
 
     const points = ledger
@@ -269,4 +276,71 @@ export function pointsOf(
   return ledger
     .filter((x) => x.classId === classId && x.studentNo === no && (!month || x.date.startsWith(month)))
     .reduce((s, x) => s + x.delta, 0);
+}
+
+
+/* ---------------- 自定义规则（V3 FR-41） ---------------- */
+
+/** 条件的稳定签名：用于「同条件 + 同频率」去重 */
+export function conditionKey(c: RuleCondition): string {
+  switch (c.kind) {
+    case 'tierAtLeast': return `tier:${c.tier}`;
+    case 'streak': return `streak:${c.times}:${c.templateId}`;
+    case 'status': return `status:${c.status}`;
+    case 'makeup': return 'makeup';
+    case 'weeklyDone': return `weekly:${c.templateId}`;
+    case 'manual': return 'manual';
+  }
+}
+
+/** 新建/编辑规则校验；返回 null 表示合法 */
+export function validateRule(rule: PointRule, existing: PointRule[]): string | null {
+  const name = rule.name.trim();
+  if (!name) return '规则名不能为空';
+  if (name.length > 16) return '规则名最多 16 字';
+  if (!Number.isInteger(rule.delta) || rule.delta === 0) return '分值必须是非 0 整数';
+  if (rule.delta < -10 || rule.delta > 10) return '分值需在 −10 ~ +10 之间';
+  if (existing.some((r) => r.id !== rule.id && r.name.trim() === name)) return '规则名重复';
+  const key = conditionKey(rule.condition);
+  if (existing.some((r) => r.id !== rule.id && r.freq === rule.freq && conditionKey(r.condition) === key)) {
+    return '相同条件与频率的规则已存在';
+  }
+  return null;
+}
+
+/**
+ * 删除自定义规则：不改历史账本，只追加冲正行（INV-10 / BR-73）。
+ * 每个受影响的学号一条，dedupeKey 带学号，保证可重复调用而不重复冲正。
+ */
+export function revertRuleLedger(
+  ledger: PointLedgerEntry[],
+  ruleId: string,
+  now: number,
+): PointLedgerEntry[] {
+  const sums = new Map<number, number>();
+  for (const x of ledger) {
+    if (x.ruleId !== ruleId || x.source === 'revert') continue;
+    sums.set(x.studentNo, (sums.get(x.studentNo) ?? 0) + x.delta);
+  }
+  const out: PointLedgerEntry[] = [];
+  for (const [studentNo, sum] of sums) {
+    if (sum === 0) continue;
+    const any = ledger.find((x) => x.ruleId === ruleId && x.studentNo === studentNo);
+    if (!any) continue;
+    const dedupeKey = `revert|${ruleId}|${studentNo}`;
+    if (ledger.some((x) => x.dedupeKey === dedupeKey)) continue;
+    out.push({
+      id: uid('pt'),
+      classId: any.classId,
+      studentNo,
+      date: any.date,
+      ruleId,
+      delta: -sum,
+      reason: '规则删除冲正',
+      source: 'revert',
+      dedupeKey,
+      createdAt: now,
+    });
+  }
+  return [...ledger, ...out];
 }
