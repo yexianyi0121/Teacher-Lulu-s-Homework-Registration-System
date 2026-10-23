@@ -1,4 +1,4 @@
-/** 剪贴板与下载（设计 §6.10 / §11 降级矩阵） */
+/** 剪贴板（设计 04 §6.11 / V1 §6.10）—— 下载统一走 infra/download.ts */
 
 export async function copyText(text: string): Promise<boolean> {
   try {
@@ -40,19 +40,4 @@ export async function copyPngBlob(blob: Blob): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-export function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-export function downloadText(text: string, filename: string): void {
-  downloadBlob(new Blob([text], { type: 'text/plain;charset=utf-8' }), filename);
 }

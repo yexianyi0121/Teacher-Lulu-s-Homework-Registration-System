@@ -1,19 +1,16 @@
 import { useStore } from '../store';
 import { selectHistoryWindow, selectStats } from '../store/selectors';
-import { MODE_LABEL } from '../domain/constants';
 import { formatDateCN } from '../domain/date';
+import { SHEET_TEMPLATES } from '../domain/constants';
 import { DonutChart } from './charts/DonutChart';
 import type { DonutSegment } from './charts/DonutChart';
 import { GroupBarChart } from './charts/GroupBarChart';
 import { LineChart } from './charts/LineChart';
 import type { LinePoint } from './charts/LineChart';
 
-/**
- * 数据分析卡片（PRD FR-07 / 设计 §16 #1、#3、#4）
- * 仅在单元测试模式挂载；图 3 与下拉框同源（最近 8 条历史）。
- */
+/** 数据分析卡片（设计 04 §6.2 / PRD-V2 §2.4）：仅 quality 模板挂载 */
 export function ChartsCard() {
-  const rec = useStore((s) => s.drafts[s.activeKey]);
+  const draft = useStore((s) => s.draft);
   const stats = useStore(selectStats);
   const settings = useStore((s) => s.settings);
   const history = useStore(selectHistoryWindow);
@@ -22,29 +19,30 @@ export function ChartsCard() {
   const open = useStore((s) => s.chartsOpen);
   const setOpen = useStore((s) => s.setChartsOpen);
 
-  if (!rec || rec.mode !== 'quiz') return null;
+  if (!SHEET_TEMPLATES[draft.templateId].showGraph) return null;
 
   const total = stats.entered;
   const ratio = (v: number) => (total === 0 ? 0 : v / total);
+  const s = draft.scheme;
 
   const segments: DonutSegment[] = [
-    { label: `${settings.excellentLine}分+`, value: stats.excellent, ratio: ratio(stats.excellent), color: 'var(--green)' },
-    { label: `80-${settings.excellentLine - 1}`, value: stats.good, ratio: ratio(stats.good), color: 'var(--blue)' },
-    { label: `${settings.passLine}-79`, value: stats.pass, ratio: ratio(stats.pass), color: 'var(--amber)' },
+    { label: `优秀(≥${Math.round(s.excellentRate * 100)}%)`, value: stats.excellent, ratio: ratio(stats.excellent), color: 'var(--green)' },
+    { label: `良好(≥${Math.round(s.goodRate * 100)}%)`, value: stats.good, ratio: ratio(stats.good), color: 'var(--blue)' },
+    { label: `及格(≥${Math.round(s.passRate * 100)}%)`, value: stats.pass, ratio: ratio(stats.pass), color: 'var(--amber)' },
     { label: '不及格', value: stats.fail, ratio: ratio(stats.fail), color: 'var(--red)' },
   ];
 
-  const compared = history.find((h) => h.id === compareId) ?? null;
+  const compared = history.find((h) => h.key === compareId) ?? null;
 
-  // 趋势按日期升序（老师可能补录往日作业，按提交先后画线会画出倒退的折线）
   const points: LinePoint[] = [
     ...[...history]
+      .filter((h) => h.metricsVersion === 2)
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((h) => ({
         label: `${Number(h.date.split('-')[1])}/${Number(h.date.split('-')[2])}`,
-        value: h.metrics.avg,
+        value: h.metrics.avgPercent,
       })),
-    { label: '本次', value: stats.avg },
+    { label: '本次', value: stats.avgPercent },
   ];
 
   return (
@@ -69,8 +67,8 @@ export function ChartsCard() {
         >
           <option value="">{history.length === 0 ? '暂无历史记录' : '选择历史记录对比...'}</option>
           {history.map((h) => (
-            <option key={h.id} value={h.id}>
-              {formatDateCN(h.date)} · {h.content || '未填写'} · {MODE_LABEL[h.mode]}
+            <option key={h.key} value={h.key}>
+              {formatDateCN(h.date)} · {h.content || '未填写'} · {SHEET_TEMPLATES[h.templateId].name}
             </option>
           ))}
         </select>
@@ -90,14 +88,22 @@ export function ChartsCard() {
                 ariaLabel={`分数段占比：优秀 ${stats.excellent} 人，良好 ${stats.good} 人，及格 ${stats.pass} 人，不及格 ${stats.fail} 人`}
               />
               <GroupBarChart
-                current={{ avg: stats.avg, rate: stats.excellentRate }}
-                history={compared ? { avg: compared.metrics.avg, rate: compared.metrics.excellentRate } : null}
+                current={{ avg: stats.avgPercent, rate: stats.qualifiedRate === null ? null : stats.qualifiedRate * 100 }}
+                history={
+                  compared && compared.metricsVersion === 2
+                    ? {
+                      avg: compared.metrics.avgPercent,
+                      rate: compared.metrics.qualifiedRate === null ? null : compared.metrics.qualifiedRate * 100,
+                    }
+                    : null
+                }
               />
               <LineChart points={points} />
             </>
           )}
         </div>
       ) : null}
+      {settings.showName ? null : null}
     </section>
   );
 }

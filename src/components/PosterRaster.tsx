@@ -1,52 +1,32 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { ClassInfo, Entries, Mode, Settings } from '../domain/types';
-import { buildPosterModel } from '../domain/poster-model';
+import { useStore } from '../store';
+import { selectPosterModel, selectSummary } from '../store/selectors';
 import { Poster } from './Poster';
-
-export interface PosterRasterProps {
-  classInfo: ClassInfo;
-  date: string;
-  content: string;
-  mode: Mode;
-  entries: Entries;
-  n: number;
-  settings: Settings;
-  onReady: (node: HTMLElement) => void;
-}
+import { DailySummaryPoster } from './DailySummaryPoster';
 
 /**
- * 屏幕外海报容器（设计 §6.6.2）
- * position: fixed; left: -20000px; width: 1080px —— 不参与布局，不影响编辑态
+ * 屏幕外海报容器（设计 04 §6.6）：position:fixed; left:-20000px; width:1080px
+ * 不参与布局、不影响编辑态；高度自适应（汇总图很长）。
  */
-export function PosterRaster({ classInfo, date, content, mode, entries, n, settings, onReady }: PosterRasterProps) {
+export function PosterRaster({ onReady }: { onReady: (node: HTMLElement) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const readyRef = useRef(onReady);
   readyRef.current = onReady;
 
-  const model = useMemo(
-    () =>
-      buildPosterModel({
-        subject: classInfo.subject,
-        teacher: classInfo.teacher,
-        school: classInfo.school,
-        date,
-        content,
-        mode,
-        entries,
-        n,
-        settings,
-      }),
-    [classInfo, date, content, mode, entries, n, settings],
-  );
+  const mode = useStore((s) => s.posterMode);
+  const poster = useStore(selectPosterModel);
+  const summary = useStore(selectSummary);
+
+  const ready = useMemo(() => (mode === 'daily' ? summary : poster), [mode, poster, summary]);
 
   useEffect(() => {
     if (ref.current) readyRef.current(ref.current);
-  }, [model]);
+  }, [ready]);
 
   return (
     <div className="poster-stage" aria-hidden="true">
       <div ref={ref}>
-        <Poster model={model} />
+        {mode === 'daily' ? <DailySummaryPoster model={summary} /> : <Poster model={poster} />}
       </div>
     </div>
   );

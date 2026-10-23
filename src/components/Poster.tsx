@@ -1,21 +1,18 @@
-import type { PosterModel } from '../domain/poster-model';
+import type { PosterModel } from '../domain/poster';
 import { CellView } from './CellView';
 
-export interface PosterProps {
-  model: PosterModel;
-}
-
 /**
- * 海报 DOM（设计 §6.6.3）：与编辑态共用 CellView 的视觉实现
- * 海报态不挂任何事件、不显示姓名与统计信息（PRD BR-24）。
+ * 单条海报（设计 04 §6.5）：与编辑态共用 CellView 的视觉实现。
+ * 海报态不挂任何事件、不显示姓名与统计（PRD BR-24 / AC-09.1）。
  */
-export function Poster({ model }: PosterProps) {
+export function Poster({ model }: { model: PosterModel }) {
   return (
     <div className="poster-root">
       <div className="poster-card">
         <h1 className="poster-title">{model.title}</h1>
 
         <div className="poster-badges">
+          <span className="poster-badge">{model.badges.className}</span>
           <span className="poster-badge">{model.badges.mode}</span>
           <span className="poster-badge">{model.badges.date}</span>
           {model.badges.content ? <span className="poster-badge">{model.badges.content}</span> : null}
@@ -29,10 +26,12 @@ export function Poster({ model }: PosterProps) {
               key={cell.no}
               variant="poster"
               no={cell.no}
-              value={cell.value}
-              stamp={cell.stamp}
-              mode={model.mode}
+              text={cell.text}
               tone={cell.tone}
+              stamp={cell.stamp}
+              status={cell.status}
+              pass={cell.pass}
+              makeup={cell.makeup}
             />
           ))}
         </div>
