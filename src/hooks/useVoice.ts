@@ -1,45 +1,32 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { useStore } from '../store';
-import { createRecognition, isSpeechSupported } from '../infra/speech';
-import type { SpeechRecognitionLike } from '../infra/speech';
-import { parseUtterance } from '../domain/voice-parse';
-import type { VoiceEdit } from '../domain/voice-parse';
-import { VOICE_TOGGLE_EVENT } from './useInputEngine';
+import { useStore, currentClass } from '../store';
+import { createRecognizer, isSpeechSupported, speechErrorHint } from '../infra/voice/recognizer';
+import type { RecognizerHandle } from '../infra/voice/recognizer';
+import { parseVoiceReport } from '../domain/voice/parse';
+import { putVoiceLog } from '../infra/idb';
+import { uid } from '../utils/id';
 
-function describe(action: VoiceEdit['action']): string {
-  switch (action.type) {
-    case 'grade':
-      return action.grade === 'CHECK' ? '√' : action.grade === 'CROSS' ? '×' : action.grade;
-    case 'score':
-      return `${action.score} 分`;
-    case 'stamp':
-      return action.stamp === 'corrected' ? '已更正' : '优秀';
-    case 'text':
-      return action.text;
-    case 'clear':
-      return '已清除';
-    default:
-      return '';
-  }
-}
+const TOGGLE_EVENT = 'xq:toggle-voice';
 
-function pickOutOfRange(text: string, count: number): number | null {
-  const re = /(\d+)\s*号/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    const n = Number(m[1]);
-    if (n > count) return n;
-  }
-  return null;
+function describeValue(c: ReturnType<typeof parseVoiceReport>['commands'][number]): string {
+  if (c.status === 'missing') return '缺交';
+  if (c.status === 'leave') return '请假';
+  if (c.pass === true) return '过关';
+  if (c.value?.kind === 'grade') return c.value.grade;
+  if (c.value?.kind === 'score') return `${c.value.score} 分`;
+  if (c.value?.kind === 'text') return c.value.text;
+  if (c.stamp === 'corrected') return '已更正';
+  if (c.makeup) return '补交';
+  return c.action ?? '—';
 }
 
 /**
- * 语音录入（PRD FR-12 / 设计 §6.8）
- * 仅在用户主动点击（或 Ctrl+M）时才连接浏览器语音服务。
+ * 语音录入（设计 04 §6.8）—— 仅用户主动点击/ Ctrl+M 时才连浏览器语音服务。
+ * 四层：识别 → 归一化 → 槽位解析 → 回显确认（闪示 + 可撤销）。
  */
 export function useVoice() {
   const listening = useStore((s) => s.voiceListening);
-  const recRef = useRef<SpeechRecognitionLike | null>(null);
+  const recRef = useRef<RecognizerHandle | null>(null);
 
   const stop = useCallback(() => {
     recRef.current?.stop();
@@ -48,80 +35,92 @@ export function useVoice() {
     useStore.getState().setVoiceInterim('');
   }, []);
 
+  const handleFinal = useCallback((text: string) => {
+    const s = useStore.getState();
+    const n = currentClass(s)?.count ?? 0;
+    const { commands, issues } = parseVoiceReport(text, {
+      n,
+      scheme: s.draft.scheme,
+      focusNo: s.focusedNo,
+    });
+
+    void putVoiceLog({
+      id: uid('voice'),
+      raw: text,
+      normalized: text,
+      parsedJson: JSON.stringify(commands),
+      accepted: commands.length > 0,
+      correctedTo: issues.map((i) => i.text).join(' | '),
+      at: Date.now(),
+    });
+
+    if (!commands.length) {
+      const msg = issues[0]?.text ?? `没听懂「${text}」`;
+      s.pushVoiceBanner({ id: uid('vb'), text: `🎤 ${msg}`, tone: 'warn' });
+      return;
+    }
+
+    s.applyVoiceCommands(commands);
+    const summary = commands.map((c) => `${c.no}号→${describeValue(c)}`).join('，');
+    s.pushVoiceBanner({ id: uid('vb'), text: `🎤 ${summary}`, tone: 'ok' });
+    s.setVoiceInterim('');
+    s.setFlashNo(commands[0].no);
+    window.setTimeout(() => {
+      const now = useStore.getState();
+      if (now.flashNo !== null) now.setFlashNo(null);
+    }, 600);
+
+    for (const i of issues) {
+      s.pushVoiceBanner({ id: uid('vb'), text: `🎤 ${i.no ? `${i.no}号：` : ''}${i.text}`, tone: 'warn' });
+    }
+  }, []);
+
   const toggle = useCallback(() => {
     const st = useStore.getState();
     if (st.voiceListening) {
       stop();
       return;
     }
-    if (!isSpeechSupported) {
-      st.showToast('当前浏览器不支持语音识别，请使用 Chrome / Edge', 'warn');
+    if (!isSpeechSupported()) {
+      st.showToast('当前浏览器不支持语音识别，请使用 Edge / Chrome', 'warn');
       return;
     }
 
-    const rec = createRecognition({
-      onInterim: (text) => useStore.getState().setVoiceInterim(text),
-      onFinal: (text) => {
-        const state = useStore.getState();
-        const outOfRange = pickOutOfRange(text, state.settings.count);
-        if (outOfRange !== null) {
-          state.showToast(`${outOfRange}号不存在`, 'warn');
+    const rec = createRecognizer({
+      onInterim: (t) => useStore.getState().setVoiceInterim(t),
+      onFinal: handleFinal,
+      onError: (code) => {
+        const s = useStore.getState();
+        s.showToast(speechErrorHint(code), code === 'network' ? 'warn' : 'error');
+        if (code === 'not-allowed' || code === 'service-not-allowed') {
+          s.setVoiceListening(false);
+        }
+      },
+      onStateChange: (state) => {
+        const s = useStore.getState();
+        if (state === 'unsupported') {
+          s.showToast('当前浏览器不支持语音识别，请使用 Edge / Chrome', 'warn');
+          s.setVoiceListening(false);
           return;
         }
-        const edits = parseUtterance(text, state.settings.count);
-        if (edits.length === 0) {
-          state.showToast(`没听懂：${text}`, 'warn');
-          return;
-        }
-        state.applyVoiceEdits(edits);
-        const nos = edits.map((e) => `${e.no}号`).join('、');
-        state.showToast(`${nos} → ${describe(edits[0].action)} ✓`, 'ok');
-        state.setVoiceInterim('');
-        window.setTimeout(() => {
-          const now = useStore.getState();
-          if (now.flashNo !== null) now.setFlashNo(null);
-        }, 320);
-      },
-      onError: (error) => {
-        const state = useStore.getState();
-        if (error === 'not-allowed' || error === 'service-not-allowed') {
-          state.showToast('请在地址栏允许麦克风权限', 'warn');
-        } else if (error !== 'aborted' && error !== 'no-speech') {
-          state.showToast('语音识别出错，请重试', 'warn');
-        }
-        state.setVoiceListening(false);
-      },
-      onEnd: () => {
-        const state = useStore.getState();
-        state.setVoiceListening(false);
-        state.setVoiceInterim('');
+        s.setVoiceListening(state === 'listening' || state === 'restarting');
       },
     });
 
-    if (!rec) {
-      st.showToast('当前浏览器不支持语音识别，请使用 Chrome / Edge', 'warn');
-      return;
-    }
-
     recRef.current = rec;
     st.setVoiceListening(true);
-    try {
-      rec.start();
-      st.showToast('聆听中… 试试说「12号优秀」或「5号已更正」', 'ok');
-    } catch {
-      st.setVoiceListening(false);
-      st.showToast('语音识别启动失败，请重试', 'warn');
-    }
-  }, [stop]);
+    rec.start();
+    st.showToast('聆听中… 试试说「12号优秀」或「5号已更正」', 'ok');
+  }, [handleFinal, stop]);
 
   useEffect(() => {
     const handler = () => toggle();
-    document.addEventListener(VOICE_TOGGLE_EVENT, handler);
+    document.addEventListener(TOGGLE_EVENT, handler);
     return () => {
-      document.removeEventListener(VOICE_TOGGLE_EVENT, handler);
+      document.removeEventListener(TOGGLE_EVENT, handler);
       recRef.current?.stop();
     };
   }, [toggle]);
 
-  return { supported: isSpeechSupported, listening, toggle, stop };
+  return { supported: isSpeechSupported(), listening, toggle, stop };
 }

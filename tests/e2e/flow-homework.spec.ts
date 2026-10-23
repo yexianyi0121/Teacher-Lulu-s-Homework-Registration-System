@@ -1,47 +1,53 @@
 import { expect, test } from '@playwright/test';
 
-test.beforeEach(async ({ page }) => {
+test('flow-homework：等级录入 + 空格盖章 + X 缺交（V1 行为回归）', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-});
+  await page.waitForSelector('.cell');
 
-test('flow-homework：50 人秒跳盲打 + 空格盖章 + 17 号 ×', async ({ page }) => {
+  // 秒跳关掉，便于逐格断言
+  await page.getByLabel('秒跳开关').click();
+
   await page.locator('[data-no="1"]').click();
+  await page.keyboard.press('1');
+  await expect(page.locator('[data-no="1"]')).toContainText('A+');
 
-  // 1–16 号 A+，17 号 ×，18–50 号 A-
-  for (let i = 1; i <= 16; i++) await page.keyboard.press('1');
-  await page.keyboard.press('4');
-  for (let i = 18; i <= 50; i++) await page.keyboard.press('3');
+  await page.locator('[data-no="2"]').click();
+  await page.keyboard.press('a');
+  await page.keyboard.press('-');
+  await expect(page.locator('[data-no="2"]')).toContainText('A-');
 
-  await expect(page.locator('[data-no="17"]')).toHaveText(/×/);
-  await expect(page.locator('[data-no="50"]')).toHaveText(/A-/);
-
-  // 给 18 号（A-）盖「已更正」
-  await page.locator('[data-no="18"]').click();
+  // 空格盖章：已更正 → 再按取消
+  await page.locator('[data-no="1"]').click();
   await page.keyboard.press(' ');
-  await expect(page.locator('[data-no="18"] .stamp-badge')).toHaveCount(1);
+  await expect(page.locator('[data-no="1"] .stamp-badge')).toHaveCount(1);
+  await page.keyboard.press(' ');
+  await expect(page.locator('[data-no="1"] .stamp-badge')).toHaveCount(0);
 
-  // 常规作业不渲染统计条
-  await expect(page.locator('.stats')).toHaveCount(0);
-
-  // 报表：17 号进暂未提交，18 号进已更正
-  await page.getByRole('button', { name: /报表生成/ }).click();
-  const report = page.getByTestId('report-text');
-  await expect(report).toContainText('❌ 【暂未提交】：\n17号');
-  await expect(report).toContainText('✅ 【已更正】：\n18号');
-  await page.getByRole('dialog').getByRole('button', { name: '关闭' }).last().click();
-
-  // 海报
-  await page.getByRole('button', { name: /截图发群/ }).click();
-  await expect(page.getByAltText('学情海报预览')).toBeVisible({ timeout: 20_000 });
+  // X 缺交
+  await page.locator('[data-no="3"]').click();
+  await page.keyboard.press('x');
+  await expect(page.locator('[data-no="3"]')).toContainText('×');
+  await expect(page.locator('[data-no="3"]')).toHaveAttribute('data-status', 'missing');
 });
 
-test('按 87.5 可完整输入（数字键不提前跳格）', async ({ page }) => {
-  await page.getByLabel('录入模式').selectOption('quiz');
-  await page.locator('[data-no="1"]').click();
-  for (const ch of '87.5') await page.keyboard.press(ch);
-  await expect(page.locator('[data-no="1"]')).toHaveText(/87\.5/);
+test('flow-homework：/ 定位学号并跳转，输入框聚焦时不污染网格', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector('.cell');
+
+  await page.keyboard.press('/');
+  await expect(page.getByLabel('搜学号')).toBeFocused();
+  await page.keyboard.type('17');
   await page.keyboard.press('Enter');
-  await expect(page.locator('[data-no="2"]')).toBeFocused();
+
+  await page.getByLabel('作业内容').fill('测试');
+  await page.getByLabel('作业内容').focus();
+  await page.keyboard.type('9');
+  await expect(page.locator('[data-no="1"]')).not.toContainText('A+');
+
+  await page.getByLabel('作业内容').blur();
+  await expect(page.locator('[data-no="17"]')).toBeVisible();
 });

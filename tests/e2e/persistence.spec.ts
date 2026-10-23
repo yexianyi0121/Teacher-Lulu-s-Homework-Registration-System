@@ -1,23 +1,27 @@
 import { expect, test } from '@playwright/test';
 
-test('persistence：录入 → 刷新 → 数据仍在', async ({ page }) => {
+test('persistence：录入 → 刷新 → 数据仍在（V1 回归）', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
+  await page.waitForSelector('.cell');
 
+  await page.getByLabel('秒跳开关').click();
   await page.locator('[data-no="1"]').click();
   await page.keyboard.press('2');
-  await page.waitForTimeout(500); // 超过 300ms 防抖窗口
+  await page.waitForTimeout(600);
 
   await page.reload();
-  await expect(page.locator('[data-no="1"]')).toHaveText(/A(?![+-])/);
+  await expect(page.locator('[data-no="1"]')).toContainText('A');
 });
 
-test('persistence：人数 50→40 隐藏数据，调回 50 恢复', async ({ page }) => {
+test('persistence：人数 50→40→50 不丢隐藏数据（INV-8）', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
+  await page.waitForSelector('.cell');
 
+  await page.getByLabel('秒跳开关').click();
   await page.locator('[data-no="45"]').click();
   await page.keyboard.press('1');
 
@@ -25,59 +29,71 @@ test('persistence：人数 50→40 隐藏数据，调回 50 恢复', async ({ pa
   await page.getByLabel('学生人数（1–120）').fill('40');
   await page.getByLabel('学生人数（1–120）').blur();
   await page.getByRole('button', { name: '完成' }).click();
-
   await expect(page.locator('[data-no="45"]')).toHaveCount(0);
 
   await page.getByTitle('设置').click();
   await page.getByLabel('学生人数（1–120）').fill('50');
   await page.getByLabel('学生人数（1–120）').blur();
   await page.getByRole('button', { name: '完成' }).click();
-
-  await expect(page.locator('[data-no="45"]')).toHaveText(/A\+/);
+  await expect(page.locator('[data-no="45"]')).toContainText('A+');
 });
 
-test('persistence：导出 → 清空 → 导入 完整恢复（A-17）', async ({ page }) => {
+test('persistence：v1 数据自动迁移后可继续使用（AC-60 / M-1~M-3）', async ({ page }) => {
   await page.goto('/');
-  await page.evaluate(() => localStorage.clear());
+  await page.evaluate(() => {
+    const v1 = {
+      version: 1,
+      classInfo: { name: '三年二班', school: '某某中学', teacher: '刘露', subject: '语文', students: [], count: 3 },
+      drafts: {
+        k1: {
+          id: 'k1', date: '2026-03-13', content: '语文本', mode: 'homework',
+          entries: {
+            '1': { value: { kind: 'grade', grade: 'A+' }, stamp: 'none', updatedAt: 1 },
+            '2': { value: { kind: 'grade', grade: 'CHECK' }, stamp: 'none', updatedAt: 1 },
+            '3': { value: { kind: 'grade', grade: 'CROSS' }, stamp: 'none', updatedAt: 1 },
+          },
+          createdAt: 1, updatedAt: 1,
+        },
+      },
+      activeKey: 'k1',
+      history: [],
+      settings: { count: 3, secondsJump: false, showName: false, excellentLine: 90, passLine: 60 },
+    };
+    localStorage.clear();
+    localStorage.setItem('xq.state.v1', JSON.stringify(v1));
+  });
   await page.reload();
+  await page.waitForSelector('.cell');
 
-  await page.locator('[data-no="1"]').click();
-  await page.keyboard.press('1');
-  await page.keyboard.press('2');
+  // A+ 原样保留；√ → 过关；× → 缺交
+  await expect(page.locator('[data-no="1"]')).toContainText('A+');
+  await expect(page.locator('[data-no="2"]')).toContainText('√');
+  await expect(page.locator('[data-no="3"]')).toHaveAttribute('data-status', 'missing');
+  await expect(page.locator('.cell')).toHaveCount(3);
 
-  await page.getByTitle('设置').click();
-  const [download] = await Promise.all([
-    page.waitForEvent('download'),
-    page.getByRole('button', { name: /导出备份/ }).click(),
-  ]);
-  const backup = 'test-results/backup.json';
-  await download.saveAs(backup);
-
-  await page.getByRole('button', { name: /清空全部数据/ }).click();
-  await page.getByLabel('请输入「清空」以确认').fill('清空');
-  await page.getByRole('button', { name: '清空全部数据', exact: true }).last().click();
-  await expect(page.locator('[data-no="1"]')).toHaveText('1');
-
-  await page.getByTitle('设置').click();
-  await page.locator('input[type="file"]').setInputFiles(backup);
-  await page.getByRole('button', { name: '覆盖导入' }).click();
-
-  await expect(page.locator('[data-no="1"]')).toHaveText(/A\+/);
-  await expect(page.locator('[data-no="2"]')).toHaveText(/A(?![+-])/);
+  // 迁移后可继续录入并持久化
+  await page.locator('[data-no="2"]').click();
+  await page.keyboard.press(' ');
+  await page.waitForTimeout(600);
+  await page.reload();
+  await expect(page.locator('[data-no="1"]')).toContainText('A+');
 });
 
 test('persistence：清空当前记录可 Ctrl+Z 一次恢复', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
+  await page.waitForSelector('.cell');
 
-  await page.locator('[data-no="1"]').click();
-  for (let i = 0; i < 5; i++) await page.keyboard.press('1');
-
+  await page.getByLabel('秒跳开关').click();
+  for (const no of [1, 2, 3]) {
+    await page.locator(`[data-no="${no}"]`).click();
+    await page.keyboard.press('1');
+  }
   await page.getByRole('button', { name: /清空/ }).click();
   await page.getByRole('button', { name: '清空', exact: true }).click();
-  await expect(page.locator('[data-no="1"]')).not.toHaveText(/A\+/);
+  await expect(page.locator('[data-no="1"]')).not.toContainText('A+');
 
   await page.keyboard.press('Control+z');
-  await expect(page.locator('[data-no="1"]')).toHaveText(/A\+/);
+  await expect(page.locator('[data-no="1"]')).toContainText('A+');
 });

@@ -1,61 +1,37 @@
 import { useMemo, useRef, useState } from 'react';
-import { useStore } from '../../store';
+import { useStore, currentClass } from '../../store';
 import { decodeCsv, parseRosterText } from '../../domain/roster-import';
 import { Modal } from '../ui/Modal';
 import { Pill } from '../ui/controls';
 
 export function ImportRosterModal() {
-  const settings = useStore((s) => s.settings);
-  const rec = useStore((s) => s.drafts[s.activeKey]);
   const setModal = useStore((s) => s.setModal);
   const importRoster = useStore((s) => s.importRoster);
   const openConfirm = useStore((s) => s.openConfirm);
-  const showToast = useStore((s) => s.showToast);
-
+  const cls = currentClass();
   const [text, setText] = useState('');
-  const [fileName, setFileName] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const parsed = useMemo(() => (text.trim() ? parseRosterText(text) : null), [text]);
-  const hiddenCount = useMemo(() => {
-    if (!rec) return 0;
-    const target = parsed?.students.length ?? settings.count;
-    return Object.keys(rec.entries).filter((k) => Number(k) > target).length;
-  }, [rec, parsed, settings.count]);
-
+  const parsed = useMemo(() => parseRosterText(text), [text]);
   const close = () => setModal(null);
 
   const apply = () => {
-    if (!parsed || parsed.students.length === 0) return;
+    if (!parsed.students.length) return;
     const next = parsed.students.length;
-    const doImport = () => {
-      importRoster(parsed.students);
-      if (hiddenCount > 0) {
-        showToast(`有 ${hiddenCount} 条历史数据超出当前人数，已隐藏`, 'warn');
-      }
-      setModal(null);
-    };
-    if (next !== settings.count) {
+    if (cls && next !== cls.count) {
       openConfirm({
-        title: '导入花名册',
-        message: `将把学生人数从 ${settings.count} 调整为 ${next}。超出人数的已录数据会保留但不在网格显示，人数调回后自动恢复。`,
-        confirmText: '确认导入',
-        onConfirm: doImport,
+        title: '导入名单会改变人数',
+        message: `当前 ${cls.count} 人，导入后 ${next} 人。少出的学号数据不会被删除（只是隐藏），确定继续？`,
+        confirmText: '导入',
+        onConfirm: () => {
+          importRoster(parsed.students);
+          close();
+        },
       });
-    } else {
-      doImport();
+      return;
     }
-  };
-
-  const readFile = async (file: File) => {
-    try {
-      const isCsv = /\.csv$/i.test(file.name);
-      const content = isCsv ? decodeCsv(await file.arrayBuffer()) : await file.text();
-      setText(content);
-      setFileName(file.name);
-    } catch {
-      showToast('文件解析失败，请检查是否为 CSV 或纯文本', 'error');
-    }
+    importRoster(parsed.students);
+    close();
   };
 
   return (
@@ -65,76 +41,54 @@ export function ImportRosterModal() {
       onClose={close}
       footer={
         <>
-          <Pill variant="ghost" onClick={close}>
-            取消
-          </Pill>
-          <Pill variant="save" onClick={apply} disabled={!parsed || parsed.students.length === 0}>
-            确认导入
+          <Pill variant="ghost" onClick={close}>取消</Pill>
+          <Pill variant="save" onClick={apply} disabled={!parsed.students.length}>
+            导入 {parsed.students.length} 人
           </Pill>
         </>
       }
     >
       <div className="field">
-        <label className="field-label" htmlFor="roster-text">
-          粘贴文本：每行一条，支持 <code>1 张三</code>、<code>1,张三</code>、<code>张三</code>
-        </label>
+        <label className="field-label" htmlFor="roster-text">粘贴名单（一行一人，可带学号）</label>
         <textarea
           id="roster-text"
           rows={8}
           value={text}
-          placeholder={'1 张三\n2 李四\n3 王五'}
-          style={{
-            borderRadius: 10,
-            border: '1px solid var(--line)',
-            padding: 10,
-            fontSize: 13,
-            lineHeight: 1.7,
-            resize: 'vertical',
-            fontFamily: 'inherit',
-          }}
-          onChange={(e) => {
-            setText(e.target.value);
-            setFileName('');
-          }}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={'1 张三\n2 李四\n王五'}
         />
+        <div className="field-hint">
+          支持「1 张三」「1,张三」「纯姓名」三种写法；超过 120 人会截断。
+        </div>
       </div>
 
       <div className="settings-actions">
-        <Pill variant="ghost" onClick={() => fileRef.current?.click()}>
-          📄 上传 CSV / TXT
-        </Pill>
+        <Pill variant="ghost" onClick={() => fileRef.current?.click()}>📂 选择 CSV / TXT</Pill>
         <input
           ref={fileRef}
           type="file"
-          accept=".csv,.txt,text/csv,text/plain"
+          accept=".csv,.txt,text/plain,text/csv"
           className="sr-only"
-          onChange={(e) => {
+          onChange={async (e) => {
             const f = e.target.files?.[0];
-            if (f) void readFile(f);
+            if (!f) return;
+            const buf = await f.arrayBuffer();
+            setText(decodeCsv(buf));
             e.target.value = '';
           }}
         />
-        {fileName ? <span className="field-hint">已读取：{fileName}</span> : null}
       </div>
 
-      {parsed ? (
-        <div style={{ marginTop: 12, fontSize: 13, lineHeight: 1.8 }}>
-          <div>
-            解析到 <strong>{parsed.students.length}</strong> 名学生
-            {parsed.students.length > 0 ? `（1–${parsed.students.length} 号）` : ''}
-          </div>
-          {parsed.students.slice(0, 5).map((s) => (
-            <div key={s.no} className="field-hint">
-              {s.no} {s.name ?? ''}
-            </div>
-          ))}
-          {parsed.warnings.length > 0 ? (
-            <div className="field-error" style={{ marginTop: 6 }}>
-              {parsed.warnings.map((w) => (
-                <div key={w}>{w}</div>
-              ))}
-            </div>
-          ) : null}
+      {parsed.warnings.length ? (
+        <ul className="field-hint" style={{ marginTop: 8 }}>
+          {parsed.warnings.map((w) => <li key={w}>⚠️ {w}</li>)}
+        </ul>
+      ) : null}
+
+      {parsed.students.length ? (
+        <div className="field-hint" style={{ marginTop: 8 }}>
+          预览：{parsed.students.slice(0, 8).map((s) => `${s.no}${s.name ? s.name : ''}`).join('、')}
+          {parsed.students.length > 8 ? ' …' : ''}
         </div>
       ) : null}
     </Modal>
