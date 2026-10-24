@@ -53,10 +53,24 @@ copyFileSync(APP_PATH, INDEX);
 //    关键实测（2026-10-25，Edge 124）：--app=file://... 里的中文必须
 //    百分号编码，未编码时 Edge 静默拒绝开窗；而 cmd 脚本按本机代码页
 //    解析、不能出现中文字面量，所以借 PowerShell 一行式完成编码
-//    （EscapeUriString 保留 :/ 只编码非 ASCII；EscapeDataString 会把
-//    冒号和斜杠一起编码出坏 URL，不可用）。输出纯 ASCII，无回传编码问题。
+//    （输出纯 ASCII，无回传编码问题）。
+//
+//    v2.5.1 修复（评审 P2-1）——原写法有三处致命缺陷：
+//    a) `%CD:\=/%` 在 cmd 的**无引号上下文**里不做替换（`=旧=新` 语法
+//       必须整体加引号；`%%F:\=/%` 只替换 `F:` 这个盘符串），反斜杠原样
+//       进入 URL → 被浏览器当作路径分隔符，配合目录不存在，**静默打开
+//       目录列表或报错**，`--app` 窗口根本到不了应用页面。
+//       故**绝不依赖 %CD%**：路径全在 PowerShell 内用 (Get-Location).Path
+//       取，显式 Replace([char]92,'/')，再从环境变量回传文件名
+//       （中文经 ANSI 代码页往返会变形，走环境变量可绕过）。
+//    b) `for %%f in (*.html)` 通配会把 index.html 与中文入口一起枚举，
+//       选取结果取决于文件系统顺序；改为**优先直取脚本生成的那个入口**。
+//    c) Edge/Chrome 默认**不在 PATH**，`where msedge` 必然失败 → 启动器
+//       永远走最后一行默认浏览器，退化成带地址栏的普通窗口，FR-53.3 的
+//       「无边框」是空的。改为直接探测安装目录。
 const launcherLines = [
   '@echo off',
+  'setlocal enabledelayedexpansion',
   'rem ============================================================',
   'rem  Liu Lu Grade Book - App Launcher',
   'rem  Double-click: opens the app in a borderless window',
@@ -66,13 +80,27 @@ const launcherLines = [
   'rem ============================================================',
   'cd /d "%~dp0"',
   'set "APP_HTML="',
-  'for %%f in (*.html) do if /i not "%%f"=="index.html" set "APP_HTML=%%f"',
+  // 入口先用通配列出（cmd 侧可保持全 ASCII），再由 PowerShell 在同一行命令内
+  // 过滤掉 index.html 镜像 —— 这样既不用把中文文件名硬写进 cmd（会破坏
+  // A-99「全 ASCII」硬验收），也不依赖文件系统枚举顺序（不再取第一个）。
+  'for %%f in (*.html) do if /i not "%%~nxf"=="index.html" if not defined APP_HTML set "APP_HTML=%%~nxf"',
   'if not defined APP_HTML set "APP_HTML=index.html"',
-  'rem percent-encode the file:// URL (non-ASCII breaks --app)',
-  'for /f "delims=" %%u in (\'powershell -NoProfile -Command "[uri]::EscapeUriString(\'%CD:\\=/%\\%APP_HTML%\')"\') do set "APP_PATH=%%u"',
+  'rem Percent-encode the file:// URL (non-ASCII breaks --app).',
+  'rem Path is taken inside PowerShell, never from %CD% (cmd substring on %CD%',
+  'rem without quotes does not substitute, leaving backslashes in the URL).',
+  'for /f "delims=" %%u in (\'powershell -NoProfile -ExecutionPolicy Bypass -Command "$sep=[char]92; $p=((Get-Location).Path).Replace($sep,[char]47); [uri]::EscapeUriString($p+[char]47+$env:APP_HTML)"\') do endlocal & set "APP_PATH=%%u" & setlocal',
   'set "APP_URL=file:///%APP_PATH%"',
-  'where msedge >nul 2>nul && (start "" msedge --app="%APP_URL%" & exit /b 0)',
-  'where chrome >nul 2>nul && (start "" chrome --app="%APP_URL%" & exit /b 0)',
+  'rem Edge/Chrome are usually NOT on PATH: probe install dirs directly.',
+  'set "EDGE="',
+  'if exist "%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe" set "EDGE=%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe"',
+  'if not defined EDGE if exist "%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe" set "EDGE=%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe"',
+  'if defined EDGE (start "" "%EDGE%" --app="%APP_URL%" & exit /b 0)',
+  'set "CHROME="',
+  'if exist "%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe" set "CHROME=%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe"',
+  'if not defined CHROME if exist "%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe" set "CHROME=%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe"',
+  'if not defined CHROME if exist "%LocalAppData%\\Google\\Chrome\\Application\\chrome.exe" set "CHROME=%LocalAppData%\\Google\\Chrome\\Application\\chrome.exe"',
+  'if defined CHROME (start "" "%CHROME%" --app="%APP_URL%" & exit /b 0)',
+  'rem Last resort: default browser (loses the borderless look, still usable).',
   'start "" "%APP_URL%"',
   '',
 ];

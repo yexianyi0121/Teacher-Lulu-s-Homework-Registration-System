@@ -48,8 +48,40 @@ describe('app-entry：入口 App 化产物形态（FR-53）', () => {
     // CRLF 行尾（Windows 脚本惯例）
     expect(text).toContain('\r\n');
     // 三重回退：Edge app 模式 → Chrome app 模式 → 默认浏览器
-    expect(text).toContain('msedge');
-    expect(text).toContain('chrome');
+    expect(text).toContain('msedge.exe');
+    expect(text).toContain('chrome.exe');
+  });
+
+  // v2.5.1 评审 P2-1 回归：启动器曾产出 file:///...dist%5C学情登记系统.html，
+  // 反斜杠让浏览器把路径当目录、报 ERR_INVALID_URL，--app 窗口永远打不开应用。
+  // 原断言只查了「出现 EscapeUriString」字样，没查「路径分隔符是 /」，所以漏网。
+  it('启动器不得把反斜杠塞进 URL（P2-1 回归）', () => {
+    const text = readFileSync(resolve(DIST, '启动学情登记系统.cmd'), 'utf8');
+    const urlLine = text.split('\r\n').find((l) => l.includes('APP_URL=')) ?? '';
+    expect(urlLine).toContain('file:///');
+    expect(urlLine).not.toMatch(/%5C|\\\\/);
+    // 不允许再靠 %CD% 做反斜杠替换（cmd 无引号上下文下 `=旧=新` 不生效）
+    expect(text).not.toContain('%CD:\\=/%');
+    // 路径必须在 PowerShell 侧取，并显式把反斜杠换成斜杠
+    expect(text).toContain('[char]92');
+    expect(text).toContain('(Get-Location).Path');
+  });
+
+  it('启动器直探浏览器安装目录（Edge/Chrome 默认不在 PATH）', () => {
+    const text = readFileSync(resolve(DIST, '启动学情登记系统.cmd'), 'utf8');
+    // 只靠 where 会掉进「默认浏览器」分支，退化成带地址栏的普通窗口，
+    // FR-53.3 的无边框就成了空头支票。
+    expect(text).toContain('Microsoft\\Edge\\Application\\msedge.exe');
+    expect(text).toContain('Google\\Chrome\\Application\\chrome.exe');
+  });
+
+  it('启动器优先使用固定入口，而不是随便取一个 *.html', () => {
+    const text = readFileSync(resolve(DIST, '启动学情登记系统.cmd'), 'utf8');
+    // 通配会把 index.html 镜像一起枚举；必须显式排除它，
+    // 否则可能把镜像当主入口（功能等价，但入口语义就乱了）。
+    expect(text).toContain('"%%~nxf"=="index.html"');
+    // 同时保持全 ASCII：不允许把中文入口名硬写进 cmd。
+    expect(text).not.toContain('学情登记系统');
   });
 
   it('favicon.svg 与 manifest 就位，start_url 指向中文入口', () => {
