@@ -4,7 +4,7 @@ import { classifyRoster } from '../../src/domain/roster';
 import { buildReport } from '../../src/domain/report';
 import { buildSummaryModel, sectionStatLine, summaryOverflowNote, SUMMARY_LIMIT } from '../../src/domain/poster';
 import { snapshotDay, type DaySheetSnapshot } from '../../src/domain/summary';
-import type { Entries, PersistedStateV3, RecordDoc, ScoringScheme, SheetTemplateId } from '../../src/domain/types';
+import type { Entries, PersistedStateV4, RecordDoc, ScoringScheme, SheetTemplateId } from '../../src/domain/types';
 import { DEFAULT_SETTINGS, DEFAULT_GRADE_EMOJI } from '../../src/domain/constants';
 import { DEFAULT_PASS_RULE } from '../../src/domain/passRule';
 import {
@@ -253,7 +253,7 @@ describe('F1 回归：当日汇总必须走真实链路（snapshotDay → comput
       createdAt: number;
     }>,
     n = 50,
-  ): PersistedStateV3 {
+  ): PersistedStateV4 {
     const records: RecordDoc[] = sheets.map((s) => ({
       key: s.key,
       classId: 'cls_test',
@@ -267,7 +267,7 @@ describe('F1 回归：当日汇总必须走真实链路（snapshotDay → comput
       updatedAt: s.createdAt,
     }));
     return {
-      version: 3,
+      version: 4,
       activeClassId: 'cls_test',
       classes: [{
         id: 'cls_test', name: '三年二班', school: '某某中学', teacher: '刘露', subject: '语文',

@@ -2,6 +2,7 @@
 // 与 V1 的差异：值/状态/过关/补交四维正交；等级 7 档；方案决定值域；多班级；积分账本。
 
 import type { DigitKeyMode } from './digitKey';
+import type { ThemeKey } from './theme';
 
 // ---------- 取值 ----------
 export type GradeLetter = 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'C' | 'D';
@@ -186,7 +187,7 @@ export interface Settings {
   honorIncludesA: boolean;
   voiceEnabled: boolean;
   voiceAutoConfirmMs: number;     // 回显自动确认延时，默认 1500
-  theme: 'auto' | 'light';
+  theme: ThemeKey;                // V4 FR-48：6 套背景主题，pink 默认（取代原明暗死字段）
   // ---- V3 新增 ----
   passRule: PassRule;
   gradeEmoji: Record<GradeLetter, string>;
@@ -196,11 +197,27 @@ export interface Settings {
   autoBackupDays: number;         // 0 = 关闭；默认 7（仅提醒）
   // ---- V4 新增（设计 09 ADR-28）----
   digitKey: DigitKeyMode;         // 数字键语义；'auto' 默认，新建表沿用（FR-46.1）
+  posterFollowTheme: boolean;     // 海报是否跟随背景主题；默认 false（FR-48.3，发群要稳定白底）
+  installHintDismissed: boolean;  // 移动端「添加到主屏幕」提示是否已关闭（FR-51.1）
+  lastExportAt: string | null;    // 最近一次导出 ISO 时间；null = 从未导出（FR-51.2 七天提醒）
 }
 
 // ---------- 持久化根 ----------
 export interface PersistedStateV2 {
   version: 2;
+  activeClassId: string;
+  classes: ClassDoc[];
+  records: RecordDoc[];
+  history: HistoryEntry[];
+  pointRules: PointRule[];
+  pointLedger: PointLedgerEntry[];
+  settings: Settings;
+  lastSavedAt: number;
+}
+
+/** V4 持久化根（设计 09 ADR-28；结构同 V3，settings 多 4 个字段） */
+export interface PersistedStateV4 {
+  version: 4;
   activeClassId: string;
   classes: ClassDoc[];
   records: RecordDoc[];

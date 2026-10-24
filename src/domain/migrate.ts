@@ -7,6 +7,7 @@ import type {
   PersistedStateV1,
   PersistedStateV2,
   PersistedStateV3,
+  PersistedStateV4,
   RecordDoc,
   ScoringScheme,
   SheetTemplateId,
@@ -14,6 +15,7 @@ import type {
   V1Entry,
 } from './types';
 import { DEFAULT_RULES, DEFAULT_SCHEMES, DEFAULT_SHEET_ID, DEFAULT_SETTINGS } from './constants';
+import { themeOf } from './theme';
 import { round1 } from './round';
 
 /**
@@ -28,6 +30,12 @@ export class UnknownStateError extends Error {
     super('UNKNOWN_STATE');
     this.name = 'UnknownStateError';
   }
+}
+
+export function isV4State(raw: unknown): raw is PersistedStateV4 {
+  if (!raw || typeof raw !== 'object') return false;
+  const o = raw as Partial<PersistedStateV4>;
+  return o.version === 4 && Array.isArray(o.classes) && Array.isArray(o.records);
 }
 
 export function isV3State(raw: unknown): raw is PersistedStateV3 {
@@ -261,13 +269,39 @@ export function migrateV2toV3(old: PersistedStateV2): PersistedStateV3 {
   };
 }
 
-/** 统一入口：任何版本 → v3 */
-export function migrate(raw: unknown): { state: PersistedStateV3; migrated: boolean } {
-  if (isV3State(raw)) return { state: raw, migrated: false };
-  if (isV2State(raw)) return { state: migrateV2toV3(raw), migrated: true };
+/**
+ * v3 → v4（设计 09 ADR-28）：只补 settings 字段，**不动** entries / history / pointLedger。
+ * 旧 theme 值（'auto' | 'light'）不是合法 ThemeKey → 回落 pink（B-4）。
+ */
+export function migrateV3toV4(old: PersistedStateV3): PersistedStateV4 {
+  return {
+    ...old,
+    version: 4,
+    settings: {
+      ...DEFAULT_SETTINGS,
+      ...old.settings,
+      theme: themeOf(old.settings?.theme),
+      passRule: { ...DEFAULT_SETTINGS.passRule, gradePass: [...DEFAULT_SETTINGS.passRule.gradePass] },
+      gradeEmoji: { ...DEFAULT_SETTINGS.gradeEmoji },
+      digitKey: old.settings?.digitKey ?? DEFAULT_SETTINGS.digitKey,
+      posterFollowTheme: old.settings?.posterFollowTheme ?? false,
+      installHintDismissed: old.settings?.installHintDismissed ?? false,
+      lastExportAt: old.settings?.lastExportAt ?? null,
+    },
+  };
+}
+
+/** 统一入口：任何版本 → v4 */
+export function migrate(raw: unknown): { state: PersistedStateV4; migrated: boolean } {
+  if (isV4State(raw)) return { state: raw, migrated: false };
+  if (isV3State(raw)) return { state: migrateV3toV4(raw), migrated: true };
+  if (isV2State(raw)) {
+    const v3 = migrateV2toV3(raw);
+    return { state: migrateV3toV4(v3), migrated: true };
+  }
   if (isV1State(raw)) {
     const v2 = migrateV1toV2(raw);
-    return { state: migrateV2toV3(v2.state), migrated: true };
+    return { state: migrateV3toV4(migrateV2toV3(v2.state)), migrated: true };
   }
   throw new UnknownStateError();
 }

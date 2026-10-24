@@ -37,7 +37,7 @@ test('E2E-23 持久化往返：录入 3 格 + 改班级名 + 存历史 → 关�
     await page.keyboard.press('Control+s');
     await expect(page.locator('[data-no="1"]')).toContainText('A');
     await page.waitForTimeout(800);
-    expect(await lsKeys(page)).toContain('xq.state.v3');
+    expect(await lsKeys(page)).toContain('xq.state.v4');
   });
 
   await test.step('关闭浏览器 → 同 userDataDir 重开', async () => {
@@ -82,7 +82,7 @@ test('E2E-24 数据健康：面板数字真实，导出 JSON 可再导入', asyn
     await test.step('健康面板数字与真实存储一致', async () => {
       await page.getByTitle('设置').click();
       const health = page.getByTestId('storage-health');
-      await expect(health).toContainText('存储键：xq.state.v3');
+      await expect(health).toContainText('存储键：xq.state.v4');
       await expect(health).toContainText('记录 1 条');
       await expect(health).toContainText('历史 1 条');
       await expect(health).toContainText('打开方式：网址');
@@ -96,7 +96,7 @@ test('E2E-24 数据健康：面板数字真实，导出 JSON 可再导入', asyn
       await download.saveAs(file);
       const json = JSON.parse(readFileSync(file, 'utf8'));
       expect(json.app).toBe('学情登记分析系统');
-      expect(json.version).toBe(3);
+      expect(json.version).toBe(4);
       expect(json.state.records.length).toBe(1);
       expect(json.state.classes[0].name).toBe('三年二班');
     });
@@ -133,7 +133,7 @@ test('E2E-25 损坏自愈：主存写坏 → 从快照恢复并把坏数据另�
 
     await test.step('造 IDB 快照', async () => {
       const ok = await page.evaluate(async () => {
-        const raw = localStorage.getItem('xq.state.v3');
+        const raw = localStorage.getItem('xq.state.v4');
         if (!raw) return 'NO_STATE';
         await new Promise<void>((resolve, reject) => {
           const req = indexedDB.open('xq-backup', 2);
@@ -164,7 +164,7 @@ test('E2E-25 损坏自愈：主存写坏 → 从快照恢复并把坏数据另�
       await page.close();
       const np = await p.ctx.newPage();
       await np.addInitScript(() => {
-        localStorage.setItem('xq.state.v3', '{broken json');
+        localStorage.setItem('xq.state.v4', '{broken json');
       });
       await np.goto(BASE);
       await np.waitForSelector('.cell');
@@ -182,10 +182,10 @@ test('E2E-25 损坏自愈：主存写坏 → 从快照恢复并把坏数据另�
       expect(corrupt.length).toBeGreaterThan(0);
       const raw = await page2.evaluate((k) => localStorage.getItem(k), corrupt[0]);
       expect(raw).toBe('{broken json');
-      const main = await page2.evaluate(() => localStorage.getItem('xq.state.v3'));
+      const main = await page2.evaluate(() => localStorage.getItem('xq.state.v4'));
       expect(main!.startsWith('{broken')).toBe(false);
       const parsed = JSON.parse(main!);
-      expect(parsed.version).toBe(3);
+      expect(parsed.version).toBe(4);
       expect(parsed.records[0].entries['1'].value.grade).toBe('A');
     });
   } finally {

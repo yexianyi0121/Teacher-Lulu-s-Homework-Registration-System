@@ -1448,6 +1448,36 @@ pre {
 .emoji-item select { width: 64px; height: 30px; padding: 0 4px; }
 .emoji-grade { color: var(--text-2); min-width: 22px; }
 
+/* V4 外观：6 套主题卡片（FR-48） */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+}
+.theme-card:hover { border-color: var(--brand); }
+.theme-card[data-on="1"] { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+.theme-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.theme-swatch {
+  width: 100%;
+  height: 34px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+}
+.theme-name { font-size: 13px; color: var(--text-1); font-weight: 500; }
+
 .makeup-list {
   max-height: 260px;
   overflow: auto;

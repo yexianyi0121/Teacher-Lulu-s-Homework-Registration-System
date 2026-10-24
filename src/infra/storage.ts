@@ -1,28 +1,30 @@
-import type { PersistedStateV3, RecordDoc, Entry, ScoringScheme } from '../domain/types';
+import type { PersistedStateV4, RecordDoc, Entry, ScoringScheme } from '../domain/types';
 import {
   BACKUP_V1_KEY,
   BACKUP_V2_KEY,
+  BACKUP_V3_KEY,
   HISTORY_LIMIT,
   STORAGE_KEY,
   STORAGE_KEY_V1,
   STORAGE_KEY_V2,
+  STORAGE_KEY_V3,
 } from '../domain/constants';
-import { isV1State, isV2State, isV3State, migrate, UnknownStateError } from '../domain/migrate';
+import { isV1State, isV2State, isV3State, isV4State, migrate, UnknownStateError } from '../domain/migrate';
 import { refreshHistoryMetrics } from '../domain/history';
 import { shouldBlockOverwrite } from './storageHealth';
 import { getSnapshots, putSnapshot } from './idb';
 
 /**
- * V3 持久化（设计 06 §2 / §3.8）—— 只在这里碰 localStorage。
+ * V4 持久化（设计 09 ADR-28 由 V3 升级）—— 只在这里碰 localStorage。
  * 规则：
- *   - 读：v3 → v2（迁移）→ v1（迁移）→ IDB 快照；
+ *   - 读：v4 → v3（迁移）→ v2（迁移）→ v1（迁移）→ IDB 快照；
  *   - 迁移前把原文写入 xq.backup.v2 / xq.backup.v1（只写一次，不覆盖已有备份）；
  *   - 迁移失败 → 不写回、不覆盖，返回 error 由 UI 进入只读并提供下载；
  *   - 写：saveState() 必须先过 shouldBlockOverwrite（INV-24）；
  *   - 主存损坏 → 原文另存 xq.corrupt.{ts}（不删），再回落快照。
  */
 
-export const CURRENT_VERSION = 3;
+export const CURRENT_VERSION = 4;
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -81,7 +83,7 @@ function isRecord(v: unknown): v is RecordDoc {
   return Object.values(v.entries).every(isEntry);
 }
 
-export function validateState(data: unknown): data is PersistedStateV3 {
+export function validateState(data: unknown): data is PersistedStateV4 {
   if (!isObject(data)) return false;
   if (data.version !== CURRENT_VERSION) return false;
   if (typeof data.activeClassId !== 'string') return false;
@@ -97,7 +99,7 @@ export function validateState(data: unknown): data is PersistedStateV3 {
 }
 
 /** 序列化：截断历史到 200（V2 起不做草稿淘汰——L-2 不丢数据） */
-export function serialize(state: PersistedStateV3): PersistedStateV3 {
+export function serialize(state: PersistedStateV4): PersistedStateV4 {
   return {
     ...state,
     version: CURRENT_VERSION,
@@ -116,7 +118,7 @@ export interface SaveResult {
  * 写盘（INV-24）：所有调用方只能走这里，不得直接 localStorage.setItem(STORAGE_KEY)。
  * 覆盖保护：内存空 + 磁盘非空 → 拒绝。
  */
-export function saveState(state: PersistedStateV3): SaveResult {
+export function saveState(state: PersistedStateV4): SaveResult {
   let prevRaw: string | null = null;
   try {
     prevRaw = localStorage.getItem(STORAGE_KEY);
@@ -138,7 +140,7 @@ export function saveState(state: PersistedStateV3): SaveResult {
 }
 
 export interface LoadResult {
-  state: PersistedStateV3 | null;
+  state: PersistedStateV4 | null;
   recovered: boolean;
   migrated: boolean;
   error?: 'MIGRATE_FAILED' | 'UNKNOWN_STATE' | 'NEWER_VERSION';
@@ -187,13 +189,28 @@ export function parseState(rawText: string, sourceKey = STORAGE_KEY): LoadResult
     return { state: null, recovered: false, migrated: false, error: 'NEWER_VERSION', rawBackup: rawText, notes };
   }
 
-  if (isV3State(parsed)) {
+  if (isV4State(parsed)) {
     if (!validateState(parsed)) {
       quarantine('corrupt', rawText);
       return { state: null, recovered: false, migrated: false, error: 'UNKNOWN_STATE', rawBackup: rawText, notes };
     }
     const state = refreshHistoryMetrics(parsed);
     return { state, recovered: false, migrated: false, notes };
+  }
+
+  if (isV3State(parsed)) {
+    backupOnce(BACKUP_V3_KEY, rawText);
+    try {
+      const { state } = migrate(parsed);
+      notes.push('已把旧版数据升级到 V4（原始数据已备份）');
+      return { state: refreshHistoryMetrics(state), recovered: false, migrated: true, notes };
+    } catch (e) {
+      return {
+        state: null, recovered: false, migrated: false,
+        error: e instanceof UnknownStateError ? 'UNKNOWN_STATE' : 'MIGRATE_FAILED',
+        rawBackup: rawText, notes,
+      };
+    }
   }
 
   if (isV2State(parsed)) {
@@ -236,10 +253,11 @@ function countSchemesWithoutMax(state: { records?: RecordDoc[]; history?: Record
   return all.filter((r) => (r.scheme.kind === 'mixed' || r.scheme.kind === 'score') && !r.scheme.maxScore).length;
 }
 
-/** 启动读取：v3 → v2 → v1 → IDB 快照 */
+/** 启动读取：v4 → v3 → v2 → v1 → IDB 快照 */
 export async function loadState(): Promise<LoadResult> {
   const candidates: Array<[string, string | null]> = [
     [STORAGE_KEY, readKey(STORAGE_KEY)],
+    [STORAGE_KEY_V3, readKey(STORAGE_KEY_V3)],
     [STORAGE_KEY_V2, readKey(STORAGE_KEY_V2)],
     [STORAGE_KEY_V1, readKey(STORAGE_KEY_V1)],
   ];
@@ -262,7 +280,7 @@ export async function loadState(): Promise<LoadResult> {
   return { state: null, recovered: false, migrated: false, notes: [] };
 }
 
-export async function takeSnapshot(state: PersistedStateV3): Promise<void> {
+export async function takeSnapshot(state: PersistedStateV4): Promise<void> {
   const at = Date.now();
   await putSnapshot({ id: String(at), at, payload: JSON.stringify(serialize(state)) });
 }

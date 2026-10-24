@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { estimateWeekPart, groupWeek, paginateWeek, WEEK_MAX_HEIGHT } from '../../src/domain/posterWeek';
 import { DEFAULT_GRADE_EMOJI } from '../../src/domain/constants';
 import { DEFAULT_PASS_RULE } from '../../src/domain/passRule';
-import type { PersistedStateV3, RecordDoc } from '../../src/domain/types';
+import type { PersistedStateV4, RecordDoc } from '../../src/domain/types';
 import { e, makeScheme, score, studentsOf } from '../fixtures';
 
 const DISPLAY = { passRule: DEFAULT_PASS_RULE, showEmoji: false, gradeEmoji: DEFAULT_GRADE_EMOJI };
@@ -15,15 +15,16 @@ function rec(date: string, sheetId: string, content: string, createdAt: number):
   };
 }
 
-function state(records: RecordDoc[]): PersistedStateV3 {
+function state(records: RecordDoc[]): PersistedStateV4 {
   return {
-    version: 3, activeClassId: 'cls_1',
+    version: 4, activeClassId: 'cls_1',
     classes: [{ id: 'cls_1', name: '三年二班', school: '某某中学', teacher: '刘露', subject: '语文', students: studentsOf(10), count: 10, createdAt: 1 }],
     records, history: [], pointRules: [], pointLedger: [],
     settings: {
-      secondsJump: true, showName: false, honorIncludesA: false, voiceEnabled: true, voiceAutoConfirmMs: 1500, theme: 'auto',
+      secondsJump: true, showName: false, honorIncludesA: false, voiceEnabled: true, voiceAutoConfirmMs: 1500, theme: 'pink',
       passRule: DEFAULT_PASS_RULE, gradeEmoji: DEFAULT_GRADE_EMOJI, showEmoji: false,
       defaultComment: '', showSchoolInPoster: false, autoBackupDays: 7, digitKey: 'auto',
+      posterFollowTheme: false, installHintDismissed: false, lastExportAt: null,
     },
     lastSavedAt: 1,
   };

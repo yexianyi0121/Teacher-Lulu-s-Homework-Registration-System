@@ -1,4 +1,4 @@
-import type { Entries, PersistedStateV3, ScoringScheme, SessionMetrics, SheetTemplateId } from './types';
+import type { Entries, PersistedStateV4, ScoringScheme, SessionMetrics, SheetTemplateId } from './types';
 import { SHEET_TEMPLATES } from './constants';
 import { computeStats } from './stats';
 
@@ -21,14 +21,14 @@ export interface DaySheetSnapshot {
 }
 
 export function snapshotDay(
-  state: PersistedStateV3,
+  state: PersistedStateV4,
   classId: string,
   date: string,
 ): DaySheetSnapshot[] {
   const cls = state.classes.find((c) => c.id === classId);
   const n = cls?.count ?? 0;
 
-  const byKey = new Map<string, PersistedStateV3['records'][number]>();
+  const byKey = new Map<string, PersistedStateV4['records'][number]>();
   for (const h of state.history) if (h.classId === classId && h.date === date) byKey.set(h.key, h);
   for (const r of state.records) if (r.classId === classId && r.date === date) byKey.set(r.key, r);
 

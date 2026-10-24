@@ -14,7 +14,7 @@ import type {
   Stamp,
   Student,
 } from '../domain/types';
-import type { PersistedStateV3 } from '../domain/types';
+import type { PersistedStateV4 } from '../domain/types';
 import type { DigitKeyMode } from '../domain/digitKey';
 import type { WeekPart } from '../domain/posterWeek';
 import type { VoiceCommand, VoiceIssue } from '../domain/voice/parse';
@@ -196,8 +196,8 @@ export interface AppState {
   // 历史 / 存档
   deleteHistory: (key: string) => void;
   clearHistory: () => void;
-  exportState: () => PersistedStateV3;
-  replaceState: (next: PersistedStateV3) => void;
+  exportState: () => PersistedStateV4;
+  replaceState: (next: PersistedStateV4) => void;
   resetAll: () => void;
 }
 

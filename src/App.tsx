@@ -55,6 +55,7 @@ export function App() {
   const { toggle: toggleVoice, listening, supported } = useVoice();
 
   const draft = useStore((s) => s.draft);
+  const theme = useStore((s) => s.settings.theme);
   const stats = useStore(selectStats);
   const visibleNos = useStore(selectVisibleNos);
   const modal = useStore((s) => s.modal);
@@ -175,6 +176,11 @@ export function App() {
       window.removeEventListener('xq:poster', onPoster);
     };
   });
+
+  // V4 FR-48.2：主题挂在 documentElement，模态层/弹窗也能继承；切换即时生效
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   return (
     <div className="app">

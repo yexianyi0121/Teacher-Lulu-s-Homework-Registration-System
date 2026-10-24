@@ -1,4 +1,4 @@
-import type { PersistedStateV3 } from '../domain/types';
+import type { PersistedStateV4 } from '../domain/types';
 import { STORAGE_KEY } from '../domain/constants';
 
 /**
@@ -17,7 +17,7 @@ export interface StorageHealth {
   classes: number;
 }
 
-export function readHealth(state: PersistedStateV3, snapshotCount: number): StorageHealth {
+export function readHealth(state: PersistedStateV4, snapshotCount: number): StorageHealth {
   const mode: StorageHealth['mode'] =
     typeof location !== 'undefined' && location.protocol === 'file:' ? 'file' : 'http';
   const origin = typeof location !== 'undefined' ? location.origin : '';
@@ -54,7 +54,7 @@ function isEmpty(s: LooseState): boolean {
  *   - 磁盘内容坏了（parse 失败）→ 放行（有快照兜底，强行拦截会让用户永远写不进去）
  *   - 仅当「即将写入为空」且「磁盘非空」→ 拦截
  */
-export function shouldBlockOverwrite(next: PersistedStateV3, prevRaw: string | null): boolean {
+export function shouldBlockOverwrite(next: PersistedStateV4, prevRaw: string | null): boolean {
   if (!prevRaw) return false;
   let prev: LooseState;
   try {

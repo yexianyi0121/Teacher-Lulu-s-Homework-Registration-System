@@ -1,4 +1,4 @@
-import type { HistoryEntry, PersistedStateV3, SessionMetrics } from './types';
+import type { HistoryEntry, PersistedStateV4, SessionMetrics } from './types';
 import { computeStats } from './stats';
 
 /**
@@ -14,7 +14,7 @@ import { computeStats } from './stats';
  *   - 人数取该记录所属班级的 `count`；班级已被删除时退化为「该记录里出现过的最大学号」。
  *   - 完全幂等：重算结果与现有值相同就原样返回，不产生新对象。
  */
-export function refreshHistoryMetrics(state: PersistedStateV3): PersistedStateV3 {
+export function refreshHistoryMetrics(state: PersistedStateV4): PersistedStateV4 {
   if (state.history.length === 0) return state;
 
   const counts = new Map(state.classes.map((c) => [c.id, c.count]));

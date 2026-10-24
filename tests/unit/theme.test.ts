@@ -1,0 +1,70 @@
+import { describe, expect, it } from 'vitest';
+import { DEFAULT_THEME, THEMES, isThemeKey, themeMeta, themeOf, type ThemeKey } from '../../src/domain/theme';
+
+const HEX = /^#[0-9A-Fa-f]{6}$/;
+
+describe('THEMES：6 套预设元数据（FR-48.1）', () => {
+  it('恰好 6 套', () => {
+    expect(THEMES).toHaveLength(6);
+  });
+
+  it('key 唯一', () => {
+    expect(new Set(THEMES.map((t) => t.key)).size).toBe(6);
+  });
+
+  it('名称非空且不重复', () => {
+    const names = THEMES.map((t) => t.name);
+    expect(names.every((n) => n.length > 0)).toBe(true);
+    expect(new Set(names).size).toBe(6);
+  });
+
+  it('色值都是合法 #RRGGBB', () => {
+    for (const t of THEMES) {
+      expect(t.bg, t.key).toMatch(HEX);
+      expect(t.brand, t.key).toMatch(HEX);
+    }
+  });
+
+  it('默认主题是 pink（樱粉）', () => {
+    expect(DEFAULT_THEME).toBe('pink');
+    expect(THEMES[0].key).toBe('pink');
+    expect(THEMES[0].name).toContain('默认');
+  });
+
+  it('night 与 plain 存在（FR-48.4 / 纯白）', () => {
+    const keys = THEMES.map((t) => t.key);
+    expect(keys).toEqual(expect.arrayContaining<ThemeKey>(['night', 'plain']));
+  });
+});
+
+describe('isThemeKey / themeOf', () => {
+  it('合法 key 通过', () => {
+    for (const t of THEMES) expect(isThemeKey(t.key)).toBe(true);
+  });
+
+  it('未知值与旧值回落 pink（B-4：v3 的 auto/light 不是主题 key）', () => {
+    expect(themeOf('auto')).toBe('pink');
+    expect(themeOf('light')).toBe('pink');
+    expect(themeOf('dark')).toBe('pink');
+    expect(themeOf('')).toBe('pink');
+    expect(themeOf(undefined)).toBe('pink');
+    expect(themeOf(null)).toBe('pink');
+    expect(themeOf(42)).toBe('pink');
+  });
+
+  it('合法 key 原样返回', () => {
+    expect(themeOf('mint')).toBe('mint');
+    expect(themeOf('night')).toBe('night');
+  });
+});
+
+describe('themeMeta', () => {
+  it('按 key 取元数据', () => {
+    expect(themeMeta('sky').name).toBe('天青');
+    expect(themeMeta('sky').brand).toBe('#4A7BC8');
+  });
+
+  it('查不到时给第一套（pink），不抛错', () => {
+    expect(themeMeta('nope' as ThemeKey).key).toBe('pink');
+  });
+});

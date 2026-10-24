@@ -92,3 +92,33 @@
     --cell-h: 84px;
   }
 }
+
+/* ============ V4 主题（设计 09 ADR-24 / FR-48） ============
+   只换三组变量：--bg-gradient / --brand / --brand-soft。
+   不动 --surface / --text-* / 语义色 → 卡片仍是白底，对比度天然满足 FR-48.6；
+   night 也只换页面背景与主色，不做全暗色（FR-48.4）。 */
+:root,
+:root[data-theme="pink"] {
+  --bg-gradient: linear-gradient(135deg, #FDEBF3 0%, #F6EFFB 45%, #EAF3FD 100%);
+  --brand: #FF6FA5; --brand-soft: #FFE3EE;
+}
+:root[data-theme="mint"] {
+  --bg-gradient: linear-gradient(135deg, #EAF7F0 0%, #F0F7FB 55%, #EAF3FD 100%);
+  --brand: #3FA97A; --brand-soft: #DFF2E9;
+}
+:root[data-theme="sky"] {
+  --bg-gradient: linear-gradient(135deg, #EAF3FD 0%, #F2F0FB 55%, #FDF3F8 100%);
+  --brand: #4A7BC8; --brand-soft: #E3ECFA;
+}
+:root[data-theme="sand"] {
+  --bg-gradient: linear-gradient(135deg, #FDF7EC 0%, #FAF3E8 55%, #F4F7FA 100%);
+  --brand: #C08A3E; --brand-soft: #F7EBD8;
+}
+:root[data-theme="night"] {
+  --bg-gradient: linear-gradient(135deg, #2A2340 0%, #3A2F52 55%, #23324A 100%);
+  --brand: #8E7CD8; --brand-soft: #EAE4FA;
+}
+:root[data-theme="plain"] {
+  --bg-gradient: #FFFFFF;
+  --brand: #FF6FA5; --brand-soft: #FFE3EE;
+}

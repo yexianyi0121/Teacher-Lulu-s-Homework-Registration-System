@@ -24,6 +24,9 @@ export function PosterRaster({
   const poster = useStore((s) => selectPosterBySheet(s, target.mode === 'single' ? target.sheetId : s.draft.sheetId));
   const summary = useStore(selectSummary);
   const week = useStore((s) => selectWeek(s, target.mode === 'week' ? target.weekStart : undefined));
+  // FR-48.3：海报默认不跟随背景主题（发家长群要稳定的白卡 + 品牌粉）；
+  // 设置里打开「海报也套用背景」后才跟随。
+  const posterTheme = useStore((s) => (s.settings.posterFollowTheme ? s.settings.theme : 'pink'));
 
   const pageCount = target.mode === 'week' ? week.pages.length : 1;
 
@@ -38,7 +41,7 @@ export function PosterRaster({
   }, [signature, pageCount]);
 
   return (
-    <div className="poster-stage" aria-hidden="true">
+    <div className="poster-stage" aria-hidden="true" data-theme={posterTheme}>
       {target.mode === 'week' ? (
         week.pages.map((_, i) => (
           <div key={i} ref={(el) => { refs.current[i] = el; }}>

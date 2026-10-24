@@ -31,7 +31,7 @@ function v2(): PersistedStateV2 {
     settings: {
       ...DEFAULT_SETTINGS,
       secondsJump: false, showName: true, honorIncludesA: true,
-      voiceEnabled: true, voiceAutoConfirmMs: 1500, theme: 'auto',
+      voiceEnabled: true, voiceAutoConfirmMs: 1500, theme: 'pink',
     },
     lastSavedAt: 1,
   };

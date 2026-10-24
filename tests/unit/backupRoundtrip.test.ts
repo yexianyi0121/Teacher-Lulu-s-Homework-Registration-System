@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { exportAllBlob, importAll } from '../../src/infra/backup';
 import { DEFAULT_SETTINGS } from '../../src/domain/constants';
-import type { PersistedStateV2, PersistedStateV3 } from '../../src/domain/types';
+import type { PersistedStateV2, PersistedStateV4 } from '../../src/domain/types';
 import { e, makeScheme, score, studentsOf } from '../fixtures';
 
 async function blobText(blob: Blob): Promise<string> {
@@ -13,9 +13,9 @@ async function blobText(blob: Blob): Promise<string> {
   });
 }
 
-function v3(): PersistedStateV3 {
+function v3(): PersistedStateV4 {
   return {
-    version: 3,
+    version: 4,
     activeClassId: 'cls_1',
     classes: [{ id: 'cls_1', name: '三年二班', school: '某某中学', teacher: '刘露', subject: '语文', students: studentsOf(40), count: 40, createdAt: 1 }],
     records: [{
@@ -46,7 +46,7 @@ describe('exportAllBlob → importAll：完整往返（FR-44 / E2E-24）', () =>
     const text = await blobText(exportAllBlob(v3()));
     const env = JSON.parse(text);
     expect(env.app).toBe('学情登记分析系统');
-    expect(env.version).toBe(3);
+    expect(env.version).toBe(4);
     expect(typeof env.exportedAt).toBe('string');
     expect(env.state.records).toHaveLength(1);
   });
@@ -63,12 +63,12 @@ describe('exportAllBlob → importAll：完整往返（FR-44 / E2E-24）', () =>
       version: 2,
       settings: {
         secondsJump: true, showName: false, honorIncludesA: false,
-        voiceEnabled: true, voiceAutoConfirmMs: 1500, theme: 'auto',
+        voiceEnabled: true, voiceAutoConfirmMs: 1500, theme: 'pink',
       },
     } as unknown as PersistedStateV2;
     const result = importAll(JSON.stringify(old));
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.state.version).toBe(3);
+    if (result.ok) expect(result.state.version).toBe(4);
   });
 
   it('坏 JSON / 未知版本 → 给出原因而不是抛异常', () => {

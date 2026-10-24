@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { refreshHistoryMetrics } from '../../src/domain/history';
-import type { Entries, HistoryEntry, PersistedStateV3, ScoringScheme } from '../../src/domain/types';
+import type { Entries, HistoryEntry, PersistedStateV4, ScoringScheme } from '../../src/domain/types';
 import { DEFAULT_SETTINGS } from '../../src/domain/constants';
 import { makeScheme, studentsOf, e, text } from '../fixtures';
 
@@ -37,9 +37,9 @@ function historyOf(over: Partial<HistoryEntry>): HistoryEntry {
   };
 }
 
-function stateWith(history: HistoryEntry[]): PersistedStateV3 {
+function stateWith(history: HistoryEntry[]): PersistedStateV4 {
   return {
-    version: 3,
+    version: 4,
     activeClassId: 'cls_1',
     classes: [{
       id: 'cls_1', name: '三年二班', school: '', teacher: '刘露', subject: '语文',

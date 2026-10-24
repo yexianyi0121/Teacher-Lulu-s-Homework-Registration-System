@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore, currentClass } from '../../store';
 import { selectNames } from '../../store/selectors';
 import { COMMENT_MAX, EMOJI_CHOICES, GRADE_ORDER, SUBJECTS, DEFAULT_GRADE_EMOJI } from '../../domain/constants';
+import { THEMES } from '../../domain/theme';
 import { formatDateCN, monthOf, stampForFile } from '../../domain/date';
 import type { GradeLetter, PassRuleKind } from '../../domain/types';
 import { downloadBlob, downloadText } from '../../infra/download';
@@ -264,6 +265,41 @@ export function SettingsModal() {
             </Pill>
           </div>
         ) : null}
+      </section>
+
+      <section className="settings-section" data-section="appearance">
+        <div className="settings-title">外观（背景主题）</div>
+        <div className="theme-grid" role="radiogroup" aria-label="背景主题">
+          {THEMES.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              role="radio"
+              aria-checked={s.settings.theme === t.key}
+              className="theme-card"
+              data-theme-key={t.key}
+              data-on={s.settings.theme === t.key ? '1' : undefined}
+              onClick={() => s.updateSettings({ theme: t.key })}
+            >
+              <span className="theme-swatch" style={{ background: t.bg, borderColor: t.brand }} aria-hidden="true" />
+              <span className="theme-name">{t.name}</span>
+            </button>
+          ))}
+        </div>
+        <div className="field-hint">
+          切换立即生效，只换页面背景与主色；卡片与网格保持白底，发群的海报也不受影响（默认）。
+        </div>
+        <div className="switch-row">
+          <span>海报也套用背景</span>
+          <Toggle
+            checked={s.settings.posterFollowTheme}
+            onChange={(v) => s.updateSettings({ posterFollowTheme: v })}
+            label="海报跟随主题"
+          />
+        </div>
+        <div className="field-hint">
+          默认关闭：海报保持白底 + 品牌粉，发家长群视觉稳定。打开后海报会跟随上面的主题。
+        </div>
       </section>
 
       <section className="settings-section" data-section="poster">

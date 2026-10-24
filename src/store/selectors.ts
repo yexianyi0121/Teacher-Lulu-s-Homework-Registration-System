@@ -1,7 +1,7 @@
 import type {
   Entries,
   PassRule,
-  PersistedStateV3,
+  PersistedStateV4,
   PosterTarget,
   RosterGroups,
   ScoringScheme,
@@ -97,9 +97,9 @@ export function selectReport(s: AppState): string {
   });
 }
 
-function posterState(s: AppState): PersistedStateV3 {
+function posterState(s: AppState): PersistedStateV4 {
   return {
-    version: 3,
+    version: 4,
     activeClassId: s.activeClassId,
     classes: s.classes,
     records: Object.values(s.records),

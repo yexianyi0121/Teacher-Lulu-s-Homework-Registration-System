@@ -230,13 +230,15 @@ export const MAKEUP_NOTE_MAX = 30;
 export const WRAP_WIDTH = 70;
 export const SCORE_MIN = 0;
 export const SCORE_MAX_LIMIT = 1000;
-export const STORAGE_KEY = 'xq.state.v3';
+export const STORAGE_KEY = 'xq.state.v4';
+export const STORAGE_KEY_V3 = 'xq.state.v3';
 /** V2 存储键：v3 不存在时读取并迁移（不得直接删） */
 export const STORAGE_KEY_V2 = 'xq.state.v2';
 /** V1 存储键：最老的一代，读取时最后回落 */
 export const STORAGE_KEY_V1 = 'xq.state.v1';
 export const BACKUP_V1_KEY = 'xq.backup.v1';
 export const BACKUP_V2_KEY = 'xq.backup.v2';
+export const BACKUP_V3_KEY = 'xq.backup.v3';
 export const ENV_MARK_KEY = 'xq.env';
 export const SNAPSHOT_INTERVAL = 30_000;
 
@@ -263,7 +265,7 @@ export const DEFAULT_SETTINGS: Settings = {
   honorIncludesA: false,
   voiceEnabled: true,
   voiceAutoConfirmMs: 1500,
-  theme: 'auto',
+  theme: 'pink',
   passRule: DEFAULT_PASS_RULE,
   gradeEmoji: DEFAULT_GRADE_EMOJI,
   showEmoji: true,
@@ -271,6 +273,9 @@ export const DEFAULT_SETTINGS: Settings = {
   showSchoolInPoster: false,
   autoBackupDays: 7,
   digitKey: 'auto',
+  posterFollowTheme: false,
+  installHintDismissed: false,
+  lastExportAt: null,
 };
 
 /** 报表分隔线（恰好 25 个半角连字符） */

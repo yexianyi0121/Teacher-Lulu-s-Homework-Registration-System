@@ -1,4 +1,4 @@
-import type { PersistedStateV3 } from './types';
+import type { PersistedStateV4 } from './types';
 import { addDaysISO, formatDateCN, weekRange, weekStartOf, dayHeading } from './date';
 import { snapshotDay, hasContent } from './summary';
 import { cellsOf, sectionStatLine, type PosterDisplayOptions, type SummarySection } from './poster';
@@ -30,7 +30,7 @@ export interface WeekModel {
 
 /** 把某班某周（7 天）的登记按日分组；无登记的日期也保留（图上显示「当日无登记」） */
 export function groupWeek(
-  state: Pick<PersistedStateV3, 'classes' | 'records' | 'history' | 'settings'>,
+  state: Pick<PersistedStateV4, 'classes' | 'records' | 'history' | 'settings'>,
   classId: string,
   weekStart: string,
   display: PosterDisplayOptions,
@@ -40,7 +40,7 @@ export function groupWeek(
 
   return Array.from({ length: 7 }, (_, i) => {
     const date = addDaysISO(start, i);
-    const snaps = snapshotDay(state as PersistedStateV3, classId, date).filter(hasContent);
+    const snaps = snapshotDay(state as PersistedStateV4, classId, date).filter(hasContent);
     const sheets: SummarySection[] = snaps.map((s) => ({
       key: s.key,
       icon: s.icon,
@@ -91,7 +91,7 @@ export function paginateWeek(
 export function buildWeekModel(args: {
   className: string;
   weekStart: string;
-  state: Pick<PersistedStateV3, 'classes' | 'records' | 'history' | 'settings'>;
+  state: Pick<PersistedStateV4, 'classes' | 'records' | 'history' | 'settings'>;
   classId: string;
   display: PosterDisplayOptions;
   comment?: string;

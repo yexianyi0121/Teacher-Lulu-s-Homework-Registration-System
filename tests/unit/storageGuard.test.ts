@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { readHealth, shouldBlockOverwrite } from '../../src/infra/storageHealth';
 import { DEFAULT_SETTINGS } from '../../src/domain/constants';
-import type { PersistedStateV3 } from '../../src/domain/types';
+import type { PersistedStateV4 } from '../../src/domain/types';
 import { studentsOf } from '../fixtures';
 
-function state(records = 0, history = 0): PersistedStateV3 {
+function state(records = 0, history = 0): PersistedStateV4 {
   return {
-    version: 3,
+    version: 4,
     activeClassId: 'cls_1',
     classes: [{ id: 'cls_1', name: '三年二班', school: '', teacher: '', subject: '语文', students: studentsOf(5), count: 5, createdAt: 1 }],
     records: Array.from({ length: records }, (_, i) => ({
@@ -55,7 +55,7 @@ describe('readHealth：健康面板数字', () => {
     expect(h.records).toBe(2);
     expect(h.history).toBe(3);
     expect(h.classes).toBe(1);
-    expect(h.key).toBe('xq.state.v3');
+    expect(h.key).toBe('xq.state.v4');
     expect(h.bytes).toBeGreaterThan(0);
     expect(h.snapshotCount).toBe(5);
   });

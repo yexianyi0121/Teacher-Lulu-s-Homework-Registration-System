@@ -1,6 +1,6 @@
-import type { PersistedStateV3 } from '../domain/types';
+import type { PersistedStateV4 } from '../domain/types';
 import { ENV_MARK_KEY } from '../domain/constants';
-import { isV1State, isV2State, isV3State, migrate } from '../domain/migrate';
+import { isV1State, isV2State, isV3State, isV4State, migrate } from '../domain/migrate';
 import { validateState } from './storage';
 
 /**
@@ -12,7 +12,7 @@ export interface BackupEnvelope {
   app: '学情登记分析系统';
   version: number;
   exportedAt: string;
-  state: PersistedStateV3;
+  state: PersistedStateV4;
 }
 
 export interface EnvMark {
@@ -21,7 +21,7 @@ export interface EnvMark {
   at: number;
 }
 
-export function exportAllBlob(s: PersistedStateV3): Blob {
+export function exportAllBlob(s: PersistedStateV4): Blob {
   const env: BackupEnvelope = {
     app: '学情登记分析系统',
     version: s.version,
@@ -32,7 +32,7 @@ export function exportAllBlob(s: PersistedStateV3): Blob {
 }
 
 export type ImportResult =
-  | { ok: true; state: PersistedStateV3 }
+  | { ok: true; state: PersistedStateV4 }
   | { ok: false; reason: string };
 
 export function importAll(text: string): ImportResult {
@@ -47,12 +47,12 @@ export function importAll(text: string): ImportResult {
   const raw = maybe && typeof maybe === 'object' && 'state' in maybe && maybe.state ? maybe.state : parsed;
 
   try {
-    if (isV3State(raw)) {
+    if (isV4State(raw)) {
       return validateState(raw)
         ? { ok: true, state: raw }
-        : { ok: false, reason: '数据结构校验未通过（version 3）' };
+        : { ok: false, reason: '数据结构校验未通过（version 4）' };
     }
-    if (isV2State(raw) || isV1State(raw)) {
+    if (isV3State(raw) || isV2State(raw) || isV1State(raw)) {
       const { state } = migrate(raw);
       return validateState(state)
         ? { ok: true, state }
