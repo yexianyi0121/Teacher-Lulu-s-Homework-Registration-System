@@ -3,6 +3,7 @@ import { useStore, currentClass } from '../../store';
 import { selectNames } from '../../store/selectors';
 import { COMMENT_MAX, EMOJI_CHOICES, GRADE_ORDER, SUBJECTS, DEFAULT_GRADE_EMOJI } from '../../domain/constants';
 import { THEMES } from '../../domain/theme';
+import { APP_CONTACT_EMAIL, APP_CONTACT_MAILTO, APP_NAME, APP_REPO_URL, APP_AUTHOR, APP_VERSION } from '../../domain/appInfo';
 import { formatDateCN, monthOf, stampForFile } from '../../domain/date';
 import type { GradeLetter, PassRuleKind } from '../../domain/types';
 import { downloadBlob, downloadText } from '../../infra/download';
@@ -503,6 +504,43 @@ export function SettingsModal() {
             </div>
           </>
         )}
+      </section>
+
+      {/* FR-52（v2.4.0）：设置新增「关于」——版本 / 作者 / 联系邮箱 / 开源地址。
+          版本号镜像 package.json（appInfo.test.ts 断言同步）；链接均由用户主动点击打开 */}
+      <section className="settings-section" data-section="about">
+        <div className="settings-title">关于</div>
+        <ul className="about-list">
+          <li>
+            <span className="about-label">系统</span>
+            <span className="about-value">{APP_NAME}</span>
+          </li>
+          <li>
+            <span className="about-label">版本</span>
+            <span className="about-value" data-testid="about-version">v{APP_VERSION}</span>
+          </li>
+          <li>
+            <span className="about-label">作者</span>
+            <span className="about-value">
+              <a href={APP_REPO_URL} target="_blank" rel="noopener noreferrer">{APP_AUTHOR}</a>
+            </span>
+          </li>
+          <li>
+            <span className="about-label">联系邮箱</span>
+            <span className="about-value">
+              <a href={APP_CONTACT_MAILTO}>{APP_CONTACT_EMAIL}</a>
+            </span>
+          </li>
+          <li>
+            <span className="about-label">开源地址</span>
+            <span className="about-value about-repo">
+              <a href={APP_REPO_URL} target="_blank" rel="noopener noreferrer">{APP_REPO_URL}</a>
+            </span>
+          </li>
+        </ul>
+        <div className="field-hint">
+          纯前端、纯本地：数据只存在这台设备的浏览器里，不上传任何服务器。有问题欢迎发邮件或到 GitHub 提 Issue。
+        </div>
       </section>
 
       <div className="field-hint">

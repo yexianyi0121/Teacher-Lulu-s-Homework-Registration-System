@@ -18,6 +18,9 @@
   --line: #E8EBF2;
   --cell-line-empty: #DCE1EA;
 
+  /* 链接（设置 → 关于的 GitHub / mailto；白底实测 ≈5.1:1，六套主题通用，不随主题换） */
+  --link: #2F6FBA;
+
   /* 语义色（文字 / 底 / 边） */
   --green: #5BAE4B;  --green-bg: #EDF7E4;  --green-line: #8CC46A;
   --blue:  #3B6FA8;  --blue-bg:  #E9F1FB;  --blue-line:  #7FB3E8;

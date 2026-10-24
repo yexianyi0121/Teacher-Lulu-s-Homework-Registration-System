@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('flow-manual：从头部打开手册，18 章齐全，搜索「补交」可定位（AC-56 / AC-57）', async ({ page }) => {
+test('flow-manual：从头部打开手册，19 章齐全，搜索「补交」可定位（AC-56 / AC-57）', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -21,6 +21,9 @@ test('flow-manual：从头部打开手册，18 章齐全，搜索「补交」可
   }
   await expect(dialog).toContainText('反引号');
   await expect(dialog).toContainText('7 天');
+  // v2.4.0 新增「关于本系统」章（FR-52）
+  await expect(dialog).toContainText('关于本系统');
+  await expect(dialog).toContainText('共 19 章');
 
 
   await page.getByLabel('搜索手册').fill('补交');
