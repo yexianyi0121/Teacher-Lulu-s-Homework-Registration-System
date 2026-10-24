@@ -1,6 +1,8 @@
 // V2 数据模型（设计 04 §4.1，【必须】逐字照抄；两处放宽见注释）
 // 与 V1 的差异：值/状态/过关/补交四维正交；等级 7 档；方案决定值域；多班级；积分账本。
 
+import type { DigitKeyMode } from './digitKey';
+
 // ---------- 取值 ----------
 export type GradeLetter = 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'C' | 'D';
 
@@ -109,6 +111,8 @@ export interface RecordDoc {
   entries: Entries;
   /** 本表评价语（≤ 60 字，V3 FR-35；空串表示沿用默认） */
   comment?: string;
+  /** 本表数字键语义覆盖（V4 FR-46.1；缺省 = 跟随 settings.digitKey，即 auto） */
+  digitKey?: DigitKeyMode;
   createdAt: number;
   updatedAt: number;
 }
@@ -190,6 +194,8 @@ export interface Settings {
   defaultComment: string;         // 默认评价语，≤ 60 字
   showSchoolInPoster: boolean;    // 默认 false（替代原 Designed by）
   autoBackupDays: number;         // 0 = 关闭；默认 7（仅提醒）
+  // ---- V4 新增（设计 09 ADR-28）----
+  digitKey: DigitKeyMode;         // 数字键语义；'auto' 默认，新建表沿用（FR-46.1）
 }
 
 // ---------- 持久化根 ----------

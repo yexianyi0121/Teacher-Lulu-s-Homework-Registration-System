@@ -14,6 +14,10 @@ test('flow-quality：混合方案下打分数与等级，统计按百分比', as
 
   await page.getByLabel('秒跳开关').click(); // 先关秒跳，逐格录
 
+  // V4 FR-46：混合表数字键默认是等级；要打分数先点 chip 切语义
+  await page.locator('.digit-chip').click();
+  await expect(page.locator('.digit-chip')).toContainText('数字＝分数');
+
   await page.locator('[data-no="1"]').click();
   await page.keyboard.press('8');
   await page.keyboard.press('7');
@@ -49,6 +53,8 @@ test('flow-quality：满分 120 的表按百分比判定（73 分及格 / 71 分
   await page.getByRole('button', { name: '完成' }).click();
 
   await page.getByLabel('秒跳开关').click();
+  // V4 FR-46：先切到「数字＝分数」再录分数
+  await page.locator('.digit-chip').click();
   await page.locator('[data-no="1"]').click();
   await page.keyboard.press('7');
   await page.keyboard.press('3');

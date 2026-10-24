@@ -23,7 +23,7 @@ function state(records: RecordDoc[]): PersistedStateV3 {
     settings: {
       secondsJump: true, showName: false, honorIncludesA: false, voiceEnabled: true, voiceAutoConfirmMs: 1500, theme: 'auto',
       passRule: DEFAULT_PASS_RULE, gradeEmoji: DEFAULT_GRADE_EMOJI, showEmoji: false,
-      defaultComment: '', showSchoolInPoster: false, autoBackupDays: 7,
+      defaultComment: '', showSchoolInPoster: false, autoBackupDays: 7, digitKey: 'auto',
     },
     lastSavedAt: 1,
   };

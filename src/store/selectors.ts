@@ -15,10 +15,19 @@ import { buildWeekModel } from '../domain/posterWeek';
 import { snapshotDay, hasContent } from '../domain/summary';
 import { isPassed } from '../domain/passRule';
 import { weekStartOf } from '../domain/date';
+import type { DigitKeyMode } from '../domain/digitKey';
 import type { AppState } from './store-types';
 import { currentClass } from './index';
 
 const countOf = (s: AppState) => currentClass(s)?.count ?? 0;
+
+/**
+ * 当前表的数字键语义（V4 FR-46.1）：本表覆盖 > 全局默认 > auto。
+ * 内核（useInputEngine）与 UI（HintBar chip）都只能从这里取，保证两处永远一致。
+ */
+export function selectDigitKeyMode(s: AppState): DigitKeyMode {
+  return s.draft.digitKey ?? s.settings.digitKey ?? 'auto';
+}
 
 /** 展示选项（两套色系 / 表情 / 过关规则）—— 所有渲染入口共用 */
 export function selectDisplayOptions(s: AppState): PosterDisplayOptions {

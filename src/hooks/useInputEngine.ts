@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { selectVisibleNos } from '../store/selectors';
+import { selectDigitKeyMode, selectVisibleNos } from '../store/selectors';
 import { gradeAllowed } from '../domain/grading';
 import { schemeAllowsGrade, schemeAllowsScore } from '../domain/scoring';
 import type { GradeLetter } from '../domain/types';
 import { gridColumns } from '../domain/layout';
 import { buildGradeKeyMap } from '../domain/keymap';
 import { checkScore, maxScoreOf, reasonText, sanitizeScoreChar } from '../domain/scoreInput';
+import { nextDigitKeyModeFor, resolveDigitMeaning, describeDigitMeaning } from '../domain/digitKey';
 
 /** 键位引擎（设计 04 §9.2 / V3 06 §3.3）：命令键挂 document，弹窗内仍生效 */
 
@@ -196,6 +197,15 @@ export function useInputEngine() {
         return;
       }
 
+      /* ---------- 反引号：切换数字键语义（V4 FR-46.3） ---------- */
+      if (key === '`') {
+        e.preventDefault();
+        const next = nextDigitKeyModeFor(selectDigitKeyMode(s), scheme, s.draft.templateId);
+        s.setDigitKey(next);
+        s.showToast(`数字键已切到「${describeDigitMeaning(resolveDigitMeaning(next, scheme, s.draft.templateId))}」`, 'ok');
+        return;
+      }
+
       /* ---------- 搜索 ---------- */
       if (key === '/') {
         e.preventDefault();
@@ -309,32 +319,59 @@ export function useInputEngine() {
         return;
       }
 
-      /* ---------- 数字 / 小数点 ---------- */
+      /* ---------- 数字 / 小数点 ----------
+       * V4 ADR-22：语义先由 resolveDigitMeaning 裁决，再分支。
+       * mixed 表默认解析为 grade（敲 1 = A+）；切到 score 后才进分数缓冲区。 */
       if (/^[0-9]$/.test(key) || key === '.') {
         if (pendingRef.current) commitPending();
 
-        if (schemeAllowsScore(scheme)) {
-          e.preventDefault();
-          appendBuffer(key);
-          return;
-        }
-        if (schemeAllowsGrade(scheme) && km[key]) {
-          e.preventDefault();
-          const no = s.focusedNo;
-          if (no === null) return;
+        const meaning = resolveDigitMeaning(selectDigitKeyMode(s), scheme, s.draft.templateId);
+
+        if (meaning === 'grade') {
           const g = km[key];
-          if (gradeAllowed(g, scheme)) {
+          if (g && gradeAllowed(g, scheme)) {
+            e.preventDefault();
+            const no = s.focusedNo;
+            if (no === null) return;
             s.commitValue(no, { kind: 'grade', grade: g });
             maybeAdvance(no);
+            return;
+          }
+          // 小数点在任何语义下都是分数入口
+          if (key === '.' && schemeAllowsScore(scheme)) {
+            e.preventDefault();
+            appendBuffer(key);
+            return;
+          }
+          // 等级模式下按到没有对应等级的数字（如 8/9，或档位不足时的 4）：
+          // 不静默吞键（R-10），也不偷偷变成分数
+          if (key !== '.') {
+            e.preventDefault();
+            s.showToast(
+              schemeAllowsScore(scheme) ? '本表没有该等级键，可按 ` 切到「数字＝分数」再输入' : '本表没有该等级键',
+              'warn',
+            );
           }
           return;
         }
-        if (scheme.kind === 'check' && /^[0-9]$/.test(key)) {
+
+        if (meaning === 'score') {
+          if (schemeAllowsScore(scheme)) {
+            e.preventDefault();
+            appendBuffer(key);
+            return;
+          }
+          s.showToast('本表不接受分数', 'warn');
+          return;
+        }
+
+        // dictation
+        if (/^[0-9]$/.test(key)) {
           e.preventDefault();
           dictationDigit(key);
           return;
         }
-        s.showToast('本表不接受分数', 'warn');
+        s.showToast('听写只接受 0–9', 'warn');
         return;
       }
 

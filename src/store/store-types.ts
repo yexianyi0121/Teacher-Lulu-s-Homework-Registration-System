@@ -15,6 +15,7 @@ import type {
   Student,
 } from '../domain/types';
 import type { PersistedStateV3 } from '../domain/types';
+import type { DigitKeyMode } from '../domain/digitKey';
 import type { WeekPart } from '../domain/posterWeek';
 import type { VoiceCommand, VoiceIssue } from '../domain/voice/parse';
 
@@ -163,6 +164,7 @@ export interface AppState {
   switchRecord: (patch: { date?: string; content?: string; sheetId?: string; templateId?: SheetTemplateId }) => void;
   setScheme: (patch: Partial<ScoringScheme>) => void;
   setComment: (v: string) => void;
+  setDigitKey: (mode: DigitKeyMode) => void;
   resetScheme: () => void;
   commitToHistory: () => void;
   clearCurrentRecord: () => void;

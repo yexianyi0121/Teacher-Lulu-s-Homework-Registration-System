@@ -27,9 +27,15 @@ describe('buildHint：随方案联动（AC-42.1）', () => {
     expect(hint).toContain('4 B+');
   });
 
-  it('混合方案同时提示等级键位与分数', () => {
+  it('混合方案默认提示等级键位，并说明可切到分数（V4 ADR-22）', () => {
     const hint = buildHint('custom', makeScheme('mixed'));
     expect(hint).toContain('1 A+');
-    expect(hint).toContain('也可输分数');
+    expect(hint).toContain('按 ` 切「数字＝分数」');
+  });
+
+  it('混合方案切到「数字＝分数」后提示语随之改变', () => {
+    const hint = buildHint('custom', makeScheme('mixed'), undefined, 'score');
+    expect(hint).toContain('数字＝分数，Enter 提交');
+    expect(hint).not.toContain('1 A+');
   });
 });

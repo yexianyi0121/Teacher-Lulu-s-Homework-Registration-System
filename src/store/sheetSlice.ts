@@ -10,7 +10,7 @@ type SheetSlice = Pick<
   AppState,
   | 'switchTemplate' | 'switchSheet' | 'setDate' | 'setContent' | 'switchRecord'
   | 'setScheme' | 'resetScheme' | 'setComment' | 'commitToHistory' | 'clearCurrentRecord'
-  | 'deleteHistory' | 'clearHistory'
+  | 'deleteHistory' | 'clearHistory' | 'setDigitKey'
 >;
 
 function upsert(history: HistoryEntry[], entry: HistoryEntry): HistoryEntry[] {
@@ -51,6 +51,17 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
       const s = get();
       const rec = { ...s.draft, comment: v.slice(0, 60), updatedAt: Date.now() };
       set({ draft: rec, records: { ...s.records, [rec.key]: s.records[rec.key] ? rec : rec } });
+    },
+
+    /** V4 FR-46.1：数字键语义按表持久，同时记为新表默认（settings.digitKey） */
+    setDigitKey(mode) {
+      const s = get();
+      const rec = { ...s.draft, digitKey: mode, updatedAt: Date.now() };
+      set({
+        draft: rec,
+        records: { ...s.records, [rec.key]: rec },
+        settings: { ...s.settings, digitKey: mode },
+      });
     },
 
     switchRecord(patch) {

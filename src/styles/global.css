@@ -138,6 +138,30 @@ pre {
   text-overflow: ellipsis;
 }
 
+/* V4 ADR-22：数字键语义 chip——混合表下数字键有两种含义，状态必须始终可见 */
+.hint .digit-chip {
+  flex: none;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--brand);
+  border-radius: 999px;
+  background: var(--brand-soft, #ffe3ee);
+  color: var(--text-1);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.hint .digit-chip[data-meaning='score'] {
+  border-color: var(--tier-good-ink, #2f6fb5);
+  background: color-mix(in srgb, var(--tier-good-ink, #2f6fb5) 12%, white);
+}
+.hint .digit-chip:hover { filter: brightness(0.97); }
+.hint .digit-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.hint .hint-text { overflow: hidden; text-overflow: ellipsis; }
+
 /* ---------- 通用控件 ---------- */
 .pill {
   height: 40px;

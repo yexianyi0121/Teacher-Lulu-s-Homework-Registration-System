@@ -270,6 +270,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultComment: '',
   showSchoolInPoster: false,
   autoBackupDays: 7,
+  digitKey: 'auto',
 };
 
 /** 报表分隔线（恰好 25 个半角连字符） */
