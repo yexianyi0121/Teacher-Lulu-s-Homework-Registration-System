@@ -1,7 +1,7 @@
 {
   "name": "teacher-lulu-homework-registration",
   "private": true,
-  "version": "2.4.0",
+  "version": "2.5.0",
   "type": "module",
   "description": "《学情登记分析系统》— 初中语文教师作业/测验极速登记与一键出图出文案工具",
   "engines": {
@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/inline-dist.mjs",
+    "build": "vite build && node scripts/inline-dist.mjs && node scripts/postbuild-app.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "node scripts/check-layers.mjs",

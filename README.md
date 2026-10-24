@@ -10,7 +10,16 @@
 
 ### 双击打开（最省事）
 
-直接双击仓库里的 **`dist/index.html`**，用 Chrome / Edge 打开即可：不装东西、不联网、不用服务器。
+下载 ZIP 解压后，进 `dist/` 目录，**三选一**：
+
+| 入口 | 效果 |
+| --- | --- |
+| **`启动学情登记系统.cmd`**（推荐 Windows） | 无边框窗口，像桌面应用：无地址栏、无标签页，任务栏显示樱花图标 |
+| **`学情登记系统.html`** | 普通浏览器窗口打开（Edge / Chrome），不装东西、不联网、不用服务器 |
+| `index.html` | 与上面**完全相同**的应用（兼容旧链接 / 静态服务器 / 测试，日常不用管） |
+
+> 首次双击 `.cmd` 时 Windows 可能提示「打开文件 - 安全警告」（文件来自网络），点「打开」即可，只此一次。
+> macOS 用户双击 `学情登记系统.html` 用 Chrome 打开后：菜单 ⋮ → 更多工具 → 创建快捷方式 → 勾选「在窗口中打开」，之后从程序坞启动即为无边框窗口。
 
 > 数据存在**这台电脑的这个浏览器**里；换电脑请用【设置 → 导出备份】搬数据。
 
@@ -126,8 +135,8 @@ pnpm dev          # 开发
 pnpm typecheck    # tsc --noEmit
 pnpm lint         # 分层约束检查（domain/store/infra 不得反向依赖）
 pnpm test:run     # 单测 + 组件测试（Vitest）
-pnpm test:e2e     # E2E（Playwright，53 条：V1/V2/V3 回归 42 + V4 9 + v2.3.1 1 + v2.4.0 2）
-pnpm build        # 构建 dist/ 并把入口内联进 index.html（双击可用）
+pnpm test:e2e     # E2E（Playwright，56 条：V1/V2/V3 回归 42 + V4 9 + v2.3.1 1 + v2.4.0 2 + v2.5.0 3）
+pnpm build        # 构建 dist/：入口内联 + 改名「学情登记系统.html」+ 生成 cmd 启动器（双击可用）
 ```
 
 ### 目录
@@ -146,7 +155,7 @@ src/
 
 1. **纯函数先行**：统计 / 名单 / 报表 / 导出 / 积分 / 语音解析全部在 `domain/`，可脱离 DOM 单测（黄金样例 A/B/C 逐位断言）。
 2. **零新增运行时依赖**：只用 react / react-dom / zustand / clsx / html-to-image。ZIP、拼音近似表、手册都是手写实现。
-3. **`dist/assets` 保留 + 入口内联**：满足「双击 index.html 可用」（`file://` 下外部 module 会被 CORS 拦截）。
+3. **`dist/assets` 保留 + 入口内联 + 入口改名**：满足「双击就用」（`file://` 下外部 module 会被 CORS 拦截）；`postbuild-app.mjs` 把入口改名为「学情登记系统.html」、`index.html` 留同内容镜像、并生成 Windows `--app` 无边框启动器（`scripts/postbuild-app.mjs` 头部注释记录了为什么不能用 0 秒跳转页）。
 
 ---
 

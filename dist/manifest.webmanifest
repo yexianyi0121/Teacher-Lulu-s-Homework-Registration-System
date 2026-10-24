@@ -3,14 +3,27 @@
   "short_name": "学情登记",
   "description": "作业/测验成绩极速登记 + 一键出图出文案",
   "lang": "zh-CN",
-  "start_url": "./index.html",
+  "start_url": "./学情登记系统.html",
   "scope": "./",
   "display": "standalone",
   "theme_color": "#F6EFFB",
   "background_color": "#FFF5F7",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

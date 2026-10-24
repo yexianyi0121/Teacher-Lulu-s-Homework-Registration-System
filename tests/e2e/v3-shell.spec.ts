@@ -27,7 +27,7 @@ test('E2E-33 标题/图标/manifest 在网址下全部生效', async ({ page, re
   expect(manifest.name).toBe(TITLE);
   expect(manifest.short_name).toBe('学情登记');
   expect(manifest.display).toBe('standalone');
-  expect(manifest.start_url).toBe('./index.html');
+  expect(manifest.start_url).toBe('./学情登记系统.html');
   const iconSrcs = (manifest.icons as Array<{ src: string; purpose?: string }>).map((i) => i.src);
   expect(iconSrcs).toContain('icon-192.png');
   expect(iconSrcs).toContain('icon-512.png');
@@ -44,11 +44,11 @@ test('E2E-33 标题/图标/manifest 在网址下全部生效', async ({ page, re
   await expect(page.locator('.header .brand')).toContainText('学情登记分析系统');
 });
 
-test('E2E-33 双击 dist/index.html（file://）也能起：标题正确、50 格、无脚本错误', async ({ page }) => {
+test('E2E-33 双击 dist/学情登记系统.html（file://）也能起：标题正确、50 格、无脚本错误', async ({ page }) => {
   const errs: string[] = [];
   page.on('pageerror', (e) => errs.push(e.message));
 
-  const url = new URL('../../dist/index.html', import.meta.url).href;
+  const url = new URL('../../dist/学情登记系统.html', import.meta.url).href;
   await page.goto(url);
   await page.waitForSelector('.cell');
 
