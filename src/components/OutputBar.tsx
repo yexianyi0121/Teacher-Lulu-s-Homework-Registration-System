@@ -34,7 +34,7 @@ export function OutputBar({
         ariaLabel="报表生成"
         title="生成报表（Ctrl+Enter）"
       >
-        📋 报表生成
+        <span aria-hidden="true">📋</span><span className="output-label">报表生成</span>
       </Pill>
       <Pill
         variant="poster"
@@ -43,13 +43,13 @@ export function OutputBar({
         ariaLabel="单条海报"
         title="单条海报（Ctrl+J）"
       >
-        🖼️ 单条海报
+        <span aria-hidden="true">🖼️</span><span className="output-label">单条海报</span>
       </Pill>
       <Pill variant="ghost" onClick={onSummary} busy={busy === 'daily'} ariaLabel="当日汇总" title="当日全部登记拼成一张长图">
-        📸 当日汇总
+        <span aria-hidden="true">📸</span><span className="output-label">当日汇总</span>
       </Pill>
       <Pill variant="ghost" onClick={onWeek} busy={busy === 'week'} ariaLabel="本周汇总" title="本周按日拼接的长图">
-        🗓️ 本周汇总
+        <span aria-hidden="true">🗓️</span><span className="output-label">本周汇总</span>
       </Pill>
     </div>
   );

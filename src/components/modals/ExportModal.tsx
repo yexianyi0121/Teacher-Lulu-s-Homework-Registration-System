@@ -62,6 +62,7 @@ export function ExportModal() {
       { name: '汇总.csv', data: utf8(summary) },
     ]);
     downloadBlob(blob, `${safeName(cls.name)}_${mode === 'month' ? month : range.label}.zip`);
+    s.markExported();           // FR-51.2：导出即重置 7 天未导出提醒
     s.showToast(records.length ? `已导出 ${records.length} 条登记` : '该区间无数据（已导出表头）', records.length ? 'ok' : 'warn');
   };
 
@@ -70,6 +71,7 @@ export function ExportModal() {
     const map = { detail, points, summary } as const;
     const file = { detail: '登记明细.csv', points: '月度积分.csv', summary: '汇总.csv' } as const;
     downloadCsv(map[kind], `${safeName(cls.name)}_${file[kind]}`);
+    s.markExported();
   };
 
   return (

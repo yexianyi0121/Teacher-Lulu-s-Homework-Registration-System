@@ -7,7 +7,7 @@ import { todayISO } from '../domain/date';
 type ClassSlice = Pick<
   AppState,
   | 'addClass' | 'renameClass' | 'deleteClass' | 'switchClass'
-  | 'setCount' | 'updateClassInfo' | 'importRoster' | 'updateSettings'
+  | 'setCount' | 'updateClassInfo' | 'importRoster' | 'updateSettings' | 'markExported'
 >;
 
 /** 切班后的落点：该班最近更新的记录；没有就建一条今天的常规作业 */
@@ -124,6 +124,12 @@ export function createClassSlice(set: StoreSet, get: StoreGet): ClassSlice {
       const merged: Settings = { ...s.settings, ...patch };
       merged.voiceAutoConfirmMs = Math.min(5000, Math.max(500, Math.round(merged.voiceAutoConfirmMs)));
       set({ settings: merged });
+    },
+
+    /** 记录一次数据导出（FR-51.2：供 7 天未导出提醒判定） */
+    markExported() {
+      const s = get();
+      set({ settings: { ...s.settings, lastExportAt: new Date().toISOString() } });
     },
   };
 }

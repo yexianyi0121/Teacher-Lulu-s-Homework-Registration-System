@@ -186,6 +186,7 @@ export interface AppState {
   updateClassInfo: (patch: Partial<Pick<ClassDoc, 'name' | 'school' | 'teacher' | 'subject'>>) => void;
   importRoster: (students: Student[]) => void;
   updateSettings: (patch: Partial<Settings>) => void;
+  markExported: () => void;
 
   // 积分
   manualAward: (nos: number[], delta: number, reason: string, ruleId?: string | null) => void;

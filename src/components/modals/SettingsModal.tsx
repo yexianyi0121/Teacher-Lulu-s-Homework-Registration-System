@@ -344,6 +344,7 @@ export function SettingsModal() {
           <Pill variant="ghost" onClick={() => {
             downloadBlob(exportAllBlob(s.exportState()), `学情备份-${stampForFile()}.json`);
             markBackupDone();
+            s.markExported();      // FR-51.2：导出即重置 7 天未导出提醒
             s.showToast('已导出完整备份（含班级、登记、积分、设置）', 'ok');
           }}>
             📦 导出全部数据

@@ -57,7 +57,7 @@ export function Header({ onImport, onSettings, onManual }: HeaderProps) {
     <header className="header">
       <div className="brand">
         <span className="brand-emoji" aria-hidden="true">🌸</span>
-        <span>学情登记分析系统</span>
+        <span className="brand-text">学情登记分析系统</span>
       </div>
 
       <div className="header-right">
@@ -98,7 +98,7 @@ export function Header({ onImport, onSettings, onManual }: HeaderProps) {
           title="提交后自动跳到下一格"
           onClick={() => updateSettings({ secondsJump: !secondsJump })}
         >
-          ⚡ 秒跳
+          <span aria-hidden="true">⚡</span><span className="jump-text">秒跳</span>
         </button>
 
         <div className="search-wrap">

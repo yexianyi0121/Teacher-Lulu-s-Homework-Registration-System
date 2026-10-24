@@ -764,12 +764,19 @@ pre {
   padding: 16px 20px 32px;
   overflow: auto;
   flex: 1 1 auto;
+  /* 列向 flex 子项默认 min-height:auto，会被内容顶穿 max-height，
+     footer 掉到屏外点不到（375×667 实测）；置 0 让弹窗真正内部滚动 */
+  min-height: 0;
 }
 
 .modal-foot {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  /* 手机端按钮多（海报弹窗 8 个），必须允许换行，否则 flex-end 下溢出项
+     被挤到屏幕左侧外（375px 实测「关闭」x=-445 点不到） */
+  flex-wrap: wrap;
+  row-gap: 8px;
   gap: 8px;
   padding: 12px 20px;
   border-top: 1px solid var(--line);
@@ -1094,10 +1101,182 @@ pre {
 }
 
 @media (max-width: 767px) {
-  .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  /* V4 FR-50.2：手机端网格 10 → 5 列，格子降到 56px（原 4 列太挤，5 列更接近一屏 10 行） */
+  .grid { grid-template-columns: repeat(5, minmax(0, 1fr)); --cell-h: 56px; --cell-gap: 6px; }
   .app { padding: 12px; }
   .stats { height: auto; flex-wrap: wrap; padding: 8px; }
   .stat { min-width: 72px; }
+  /* V4 ADR-26.2：录入带在手机端横向滚动（chip 行），不换行不挤压 */
+  .input-bar {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex-wrap: nowrap;
+    height: 48px;
+  }
+  .input-bar::-webkit-scrollbar { display: none; }
+  .input-bar .input-grow { display: none; }
+  /* V4 ADR-26.3：输出带变底部固定操作条（4 项图标 + 文字，48px 高） */
+  .output-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    height: 52px;
+    margin-bottom: 0;
+    padding: 0 8px;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: blur(6px);
+    border-top: 1px solid var(--line);
+    border-radius: 12px 12px 0 0;
+  }
+  .output-bar .output-note { display: none; }
+  .output-bar .output-grow { display: none; }
+  .output-bar .pill { padding: 0 8px; font-size: 12px; gap: 4px; }
+  /* V4 ADR-26.3b：底部操作条 4 项只留图标（文字隐藏，aria-label 保留），
+     375px 下 4×44 + 3×4 ≈ 188px，给录入留足宽度 */
+  .output-bar { gap: 4px; }
+  .output-bar .output-label { display: none; }
+  .hint { height: auto; min-height: 28px; }
+  /* 弹窗贴边距收窄，给小屏多留内容区（配合 .modal-body min-height:0 内部滚动） */
+  .modal-overlay { padding: 12px; }
+}
+
+/* ---------- V4 移动端：提示条（FR-51.1 / FR-51.2，仅 ≤767px 显示） ---------- */
+.mobile-notices {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 60px;                  /* 底部固定操作条（52px）上方 */
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.mobile-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #FFF7E0;
+  border: 1px solid #F2D48A;
+  color: #8A6410;
+  font-size: 13px;
+  pointer-events: auto;
+  box-shadow: 0 4px 16px rgba(120, 100, 40, .12);
+}
+.mobile-notice span { flex: 1 1 auto; line-height: 1.45; }
+.mobile-notice button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid #EBC96A;
+  border-radius: var(--radius-pill);
+  background: #FFFFFF;
+  color: #8A6410;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mobile-notice--export { background: var(--blue-bg); border-color: var(--blue-line); color: #2F5B8F; }
+.mobile-notice--export button { border-color: var(--blue-line); color: #2F5B8F; }
+
+/* ---------- V4 移动端数字键盘（FR-50.4 / ADR-26.4） ---------- */
+.mobile-keypad {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;                    /* 高于底部输出条（20），键盘期间独占底部 */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 32px rgba(60, 50, 80, .18);
+  animation: mk-in .18s ease-out;
+}
+@keyframes mk-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.mk-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mk-title { font-size: 15px; font-weight: 600; color: var(--text-1); font-variant-numeric: tabular-nums; }
+.mk-done {
+  min-height: 32px;
+  padding: 4px 14px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mk-display {
+  min-height: 46px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-1);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  line-height: 34px;
+}
+.mk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mk-row { display: flex; gap: 8px; }
+.mk-key {
+  min-height: 48px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.mk-key:active { background: var(--brand-soft); transform: scale(.97); }
+.mk-key--ok { background: var(--brand); border-color: var(--brand); color: #FFFFFF; font-size: 22px; }
+.mk-key--grade { background: var(--brand-soft); border-color: var(--brand); color: var(--text-1); }
+.mk-key--act { flex: 1 1 0; font-size: 13px; font-weight: 500; background: var(--surface-alt); }
+.mk-hint { font-size: 12px; color: var(--text-2); text-align: center; line-height: 1.4; }
+
+@media (min-width: 768px) {
+  /* 提示条只服务手机端；桌面端沿用 BR-78 的 Toast 提醒 */
+  .mobile-notices { display: none !important; }
+}
+
+/* V4 ADR-26.1：<1024px header 收纳——品牌文字隐藏只留 🌸、保存状态收进设置、
+   秒跳只留图标、搜索框收窄。功能一个不丢（aria-label 保留，E2E 仍可操作）。 */@media (max-width: 1023px) {
+  .header { height: 56px; }
+  .header .brand-text { display: none; }
+  .save-indicator--btn { display: none; }
+  .header .jump-text { display: none; }
+  .search-box { width: 92px; }
+  .search-box input { width: 100%; }
+  .class-select { max-width: 132px; }
+}
+
+/* V4 ADR-26.1b：≤767px header 元件继续收紧，保证 375px 单行不溢出
+   （班级选择 88 / 秒跳 38 / 搜索 72 / 图标 30×3 + 4px 间距 ≈ 342 ≤ 351）。
+   放在 1023 块之后：同特异性下后者胜，手机端的窄覆盖平板端的宽。 */
+@media (max-width: 767px) {
+  .header { gap: 8px; }
+  .header-right { gap: 4px; }
+  .header-right .pill { padding: 0 8px; }
+  .header .class-select { max-width: 88px; }   /* 提高特异性：压过后面的桌面基准 200px */
+  .search-box { width: 72px; padding: 0 8px; }
+  .search-box:focus-within { width: 72px; }   /* 手机端不展开，避免挤出右侧按钮 */
+  .icon-btn { width: 30px; height: 30px; font-size: 15px; }
 }
 
 @keyframes breathe {

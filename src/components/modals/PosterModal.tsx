@@ -5,6 +5,7 @@ import { addDaysISO } from '../../domain/date';
 import { COMMENT_MAX, SHEET_TEMPLATES } from '../../domain/constants';
 import { copyPngBlob } from '../../infra/clipboard';
 import { downloadBlob } from '../../infra/download';
+import { shareImageBlob } from '../../infra/share';
 import { Modal } from '../ui/Modal';
 import { Pill } from '../ui/controls';
 
@@ -65,6 +66,15 @@ export function PosterModal({
     showToast('当前浏览器不支持复制图片，已下载 PNG，可手动粘贴', 'warn');
   };
 
+  /** FR-51.3：手机端优先系统分享，不支持则回退下载 */
+  const handleShare = async () => {
+    if (!blob) return;
+    const outcome = await shareImageBlob(blob, `${fileBase}.png`, TITLES[target.mode]);
+    if (outcome === 'shared') showToast('已调起系统分享 ✓', 'ok');
+    else if (outcome === 'downloaded') showToast('当前环境不支持系统分享，已下载 PNG', 'warn');
+    // cancelled：用户自己关的分享面板，不打扰
+  };
+
   return (
     <Modal
       title={TITLES[target.mode]}
@@ -96,6 +106,7 @@ export function PosterModal({
           <Pill variant="ghost" onClick={downloadAll} disabled={!pages.length}>
             ⬇️ 下载 PNG{pages.length > 1 ? `（${pages.length} 张）` : ''}
           </Pill>
+          <Pill variant="poster" onClick={() => void handleShare()} disabled={!blob}>📤 分享图片</Pill>
           <Pill variant="poster" onClick={handleCopy} disabled={!blob}>📋 复制图片</Pill>
         </>
       }

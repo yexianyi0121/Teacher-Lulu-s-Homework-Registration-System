@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useStore } from './store';
 import { hasEntries } from './store/initial';
 import { selectSheetsOfDay, selectStats, selectVisibleNos } from './store/selectors';
@@ -9,7 +10,7 @@ import { useInputEngine } from './hooks/useInputEngine';
 import { useAutoSave } from './hooks/useAutoSave';
 import { useVoice } from './hooks/useVoice';
 import { rasterizeWithRetry } from './infra/rasterize';
-import { exportAllBlob } from './infra/backup';
+import { exportAllBlob, markBackupDone } from './infra/backup';
 import { downloadBlob } from './infra/download';
 import { Header } from './components/Header';
 import { ParamsBar } from './components/ParamsBar';
@@ -19,6 +20,8 @@ import { StatsBar } from './components/StatsBar';
 import { ChartsCard } from './components/ChartsCard';
 import { HintBar } from './components/HintBar';
 import { Grid } from './components/Grid';
+import { MobileKeypad } from './components/MobileKeypad';
+import { MobileNotices } from './components/MobileNotices';
 import { PosterRaster } from './components/PosterRaster';
 import { VoiceConfirm } from './components/VoiceConfirm';
 import { SettingsModal } from './components/modals/SettingsModal';
@@ -75,6 +78,35 @@ export function App() {
   const generatingRef = useRef(false);
   const targetRef = useRef<PosterTarget>(posterTarget);
   targetRef.current = posterTarget;
+
+  /** V4 FR-50.4：手机端点格子 → 底部升起数字键盘（桌面仍走物理键盘，不弹） */
+  const [keypadNo, setKeypadNo] = useState<number | null>(null);
+  const focusedNo = useStore((s) => s.focusedNo);
+
+  const onRootClick = (e: ReactMouseEvent<HTMLDivElement>) => {
+    const cell = (e.target as HTMLElement).closest?.('.cell') as HTMLElement | null;
+    if (!cell || !cell.closest('.grid')) return;      // 只认登记网格里的格子
+    const no = Number(cell.dataset.no);
+    if (!Number.isInteger(no) || no < 1) return;
+    if (!window.matchMedia('(max-width: 767px)').matches) return;
+    setKeypadNo(no);
+  };
+
+  // 秒跳前移焦点时，键盘板跟着搬到新格（连续录入不用重复点）
+  useEffect(() => {
+    if (keypadNo === null) return;
+    if (focusedNo !== null && focusedNo !== keypadNo) setKeypadNo(focusedNo);
+  }, [focusedNo, keypadNo]);
+
+  // Esc 收起键盘板
+  useEffect(() => {
+    if (keypadNo === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setKeypadNo(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [keypadNo]);
 
   /** FR-49.7b：弹窗关闭后焦点回到原格（连续录入不用重新点格子） */
   const focusBackRef = useRef<number | null>(null);
@@ -183,7 +215,7 @@ export function App() {
   }, [theme]);
 
   return (
-    <div className="app">
+    <div className="app" onClick={onRootClick}>
       <div className="app-inner">
         {envMismatch ? (
           <div className="warn-bar warn-bar--env" role="alert">
@@ -200,6 +232,8 @@ export function App() {
               onClick={() => {
                 const st = useStore.getState();
                 downloadBlob(exportAllBlob(st.exportState()), `学情备份-${todayISO()}.json`);
+                markBackupDone();
+                st.markExported();     // FR-51.2：导出即重置 7 天提醒
               }}
             >
               导出备份
@@ -215,6 +249,8 @@ export function App() {
               onClick={() => {
                 const st = useStore.getState();
                 downloadBlob(exportAllBlob(st.exportState()), `学情备份-${todayISO()}.json`);
+                markBackupDone();
+                st.markExported();
               }}
             >
               导出备份
@@ -272,6 +308,8 @@ export function App() {
         <Grid />
       </div>
 
+      <MobileNotices />
+
       {modal === 'settings' ? <SettingsModal /> : null}
       {modal === 'report' ? <ReportModal /> : null}
       {modal === 'poster' ? (
@@ -305,6 +343,8 @@ export function App() {
           🎤 {voiceInterim || '聆听中…'}
         </div>
       ) : null}
+
+      {keypadNo !== null ? <MobileKeypad no={keypadNo} onClose={() => setKeypadNo(null)} /> : null}
     </div>
   );
 }
