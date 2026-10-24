@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { MANUAL, searchManual } from '../../src/domain/manual';
 
-describe('manual：12 章与检索（AC-29.1 / AC-29.2）', () => {
-  it('共 12 章', () => {
-    expect(MANUAL).toHaveLength(12);
+describe('manual：15 章与检索（AC-29.1 / AC-29.2）', () => {
+  it('共 15 章', () => {
+    expect(MANUAL).toHaveLength(15);
   });
 
   it('每章都有标题与至少 2 条步骤', () => {
@@ -18,6 +18,16 @@ describe('manual：12 章与检索（AC-29.1 / AC-29.2）', () => {
     expect(new Set(MANUAL.map((s) => s.id)).size).toBe(MANUAL.length);
   });
 
+  it('V3 三节齐全：数据健康 / 本周汇总 / 评价语与自定义规则（P3-1）', () => {
+    const ids = MANUAL.map((s) => s.id);
+    expect(ids).toEqual(expect.arrayContaining(['data-safety', 'week-summary', 'comment-rules']));
+    for (const id of ['data-safety', 'week-summary', 'comment-rules']) {
+      const sec = MANUAL.find((s) => s.id === id)!;
+      expect(sec.title.length).toBeGreaterThan(0);
+      expect(sec.steps?.length ?? 0).toBeGreaterThanOrEqual(2);
+    }
+  });
+
   it('搜索「补交」能定位到补交章', () => {
     const hits = searchManual('补交');
     expect(hits.length).toBeGreaterThan(0);
@@ -29,7 +39,7 @@ describe('manual：12 章与检索（AC-29.1 / AC-29.2）', () => {
   });
 
   it('空搜索返回全部，无匹配返回空数组', () => {
-    expect(searchManual('')).toHaveLength(12);
+    expect(searchManual('')).toHaveLength(15);
     expect(searchManual('不存在的关键词xyz')).toHaveLength(0);
   });
 

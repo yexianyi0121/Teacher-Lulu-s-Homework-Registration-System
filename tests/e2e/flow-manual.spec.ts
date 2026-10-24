@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('flow-manual：从头部打开手册，12 章齐全，搜索「补交」可定位（AC-56 / AC-57）', async ({ page }) => {
+test('flow-manual：从头部打开手册，15 章齐全，搜索「补交」可定位（AC-56 / AC-57）', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -10,6 +10,12 @@ test('flow-manual：从头部打开手册，12 章齐全，搜索「补交」可
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('使用手册');
   await expect(dialog).toContainText('5 分钟上手');
+  // V3 三节（P3-1）与「达标/过关」双口径说明（P3-2）
+  for (const title of ['数据健康与备份恢复', '本周汇总与三向切换', '评价语与自定义积分规则']) {
+    await expect(dialog).toContainText(title);
+  }
+  await expect(dialog).toContainText('达标但不过关');
+
 
   await page.getByLabel('搜索手册').fill('补交');
   await expect(dialog).toContainText('补交');
