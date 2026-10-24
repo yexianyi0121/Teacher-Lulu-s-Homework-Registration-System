@@ -79,7 +79,16 @@ export function Header({ onImport, onSettings, onManual }: HeaderProps) {
           <option value="__new__">＋ 新建 / 管理班级…</option>
         </select>
 
-        <span className="save-indicator" aria-live="polite">{fmtTime(lastSavedAt)}</span>
+        {/* FR-49.7e：保存状态可点击 → 打开数据健康面板，给用户一个检查入口 */}
+        <button
+          type="button"
+          className="save-indicator save-indicator--btn"
+          aria-live="polite"
+          title="查看数据健康 / 上次保存 / 立即备份"
+          onClick={() => onSettings()}
+        >
+          {fmtTime(lastSavedAt)}
+        </button>
 
         <button
           type="button"

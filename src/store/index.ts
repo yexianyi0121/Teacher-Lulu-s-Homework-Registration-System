@@ -78,7 +78,10 @@ export const useStore = create<AppState>()((set, get) => ({
   lastSavedAt: null,
   pulsingNo: null,
   flashNo: null,
-  chartsOpen: true,   // 恢复 V1 的默认展开：老师习惯「切到质量监测就有三张图」（评审 F7）
+  // V4 FR-49.6：统计条与图表默认收起（1366×768 高度预算），老师要看点一下展开。
+  // 注：V2 评审 F7 曾要求图表默认展开；V4 高度闸门优先，展开仍是一键。
+  chartsOpen: false,
+  statsOpen: false,
   compareId: null,
   filterNotPassed: false,
   voiceListening: false,

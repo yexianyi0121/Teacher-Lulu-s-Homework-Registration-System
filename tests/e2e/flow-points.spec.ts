@@ -22,7 +22,8 @@ test('flow-points：连续 3 次听写过关 → 账本 +5 且只加一次（AC-
   // 再保存一次，不应重复加分
   await page.keyboard.press('Control+s');
 
-  await page.getByRole('button', { name: /积分/ }).click();
+  await page.getByRole('button', { name: '更多' }).click();
+  await page.getByRole('menuitem', { name: /积分/ }).click();
   await page.getByRole('tab', { name: '账本' }).click();
   await expect(page.getByRole('dialog')).toContainText('连续3次听写全对');
   await expect(page.getByRole('dialog')).toContainText('+5');
@@ -47,7 +48,8 @@ test('flow-points：月度表显示本人积分与名次', async ({ page }) => {
   await page.keyboard.press('x');           // 缺交 → −3
   await page.keyboard.press('Control+s');
 
-  await page.getByRole('button', { name: /积分/ }).click();
+  await page.getByRole('button', { name: '更多' }).click();
+  await page.getByRole('menuitem', { name: /积分/ }).click();
   await page.getByRole('tab', { name: '月度统计' }).click();
   await page.getByLabel('选择月份').selectOption('2026-03');
 

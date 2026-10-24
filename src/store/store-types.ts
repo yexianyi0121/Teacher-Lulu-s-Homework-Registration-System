@@ -97,6 +97,7 @@ export interface AppState {
   pulsingNo: number | null;
   flashNo: number | null;
   chartsOpen: boolean;
+  statsOpen: boolean;
   compareId: string | null;
   filterNotPassed: boolean;
   voiceListening: boolean;
@@ -136,6 +137,7 @@ export interface AppState {
   setPulsingNo: (no: number | null) => void;
   setFlashNo: (no: number | null) => void;
   setChartsOpen: (open: boolean) => void;
+  setStatsOpen: (open: boolean) => void;
   setCompareId: (id: string | null) => void;
   setFilterNotPassed: (v: boolean) => void;
   setVoiceListening: (v: boolean) => void;

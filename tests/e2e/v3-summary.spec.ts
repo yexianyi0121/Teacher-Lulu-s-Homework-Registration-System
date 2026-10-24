@@ -22,7 +22,7 @@ test('E2E-26 汇总三向切换 + 单条换表重新生成', async ({ page }) =>
   await expect(page.locator('[data-no="1"]')).toContainText('全对');
 
   await test.step('单条海报：带表选择器，列出当天两张表', async () => {
-    await page.getByRole('button', { name: /截图发群/ }).click();
+    await page.getByRole('button', { name: /单条海报/ }).click();
     const dlg = page.getByRole('dialog', { name: '海报预览' });
     await expect(dlg).toBeVisible();
     const sel = dlg.getByLabel('选择登记表');

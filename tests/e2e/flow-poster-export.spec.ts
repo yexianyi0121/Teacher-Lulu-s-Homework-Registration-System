@@ -51,7 +51,8 @@ test('flow-export：导出月度 ZIP（含 3 个 CSV，文件名带班级与月�
   await page.keyboard.press('Enter');
   await page.keyboard.press('Control+s');
 
-  await page.getByRole('button', { name: /^📤 导出$/ }).click();
+  await page.getByRole('button', { name: '更多' }).click();
+  await page.getByRole('menuitem', { name: /导出/ }).click();
   await page.getByLabel('月份').fill('2026-03');
 
   const [download] = await Promise.all([

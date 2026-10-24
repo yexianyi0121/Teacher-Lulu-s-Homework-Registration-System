@@ -4,9 +4,11 @@ import { cx } from '../../utils/cx';
 export interface PillProps {
   children: ReactNode;
   onClick?: () => void;
-  variant?: 'default' | 'jump-on' | 'voice' | 'voice-on' | 'report' | 'poster' | 'save' | 'ghost' | 'active';
+  variant?: 'default' | 'jump-on' | 'voice' | 'voice-on' | 'report' | 'poster' | 'save' | 'ghost' | 'active' | 'danger';
   size?: 'md' | 'lg';
   disabled?: boolean;
+  /** 生成中：显示 spinner 并禁用（FR-49.7a），其余按钮不受影响 */
+  busy?: boolean;
   title?: string;
   ariaLabel?: string;
   ariaPressed?: boolean;
@@ -19,6 +21,7 @@ export function Pill({
   variant = 'default',
   size = 'md',
   disabled,
+  busy,
   title,
   ariaLabel,
   ariaPressed,
@@ -41,18 +44,22 @@ export function Pill({
                   ? 'pill--ghost'
                   : variant === 'active'
                     ? 'pill--active'
-                    : '';
+                    : variant === 'danger'
+                      ? 'pill--danger'
+                      : '';
 
   return (
     <button
       type="button"
       className={cx('pill', size === 'lg' && 'pill-lg', variantClass, className)}
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || busy}
       title={title}
       aria-label={ariaLabel}
       aria-pressed={ariaPressed}
+      aria-busy={busy || undefined}
     >
+      {busy ? <span className="spinner" aria-hidden="true" /> : null}
       {children}
     </button>
   );

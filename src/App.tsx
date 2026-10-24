@@ -13,7 +13,8 @@ import { exportAllBlob } from './infra/backup';
 import { downloadBlob } from './infra/download';
 import { Header } from './components/Header';
 import { ParamsBar } from './components/ParamsBar';
-import { ActionsBar } from './components/ActionsBar';
+import { OutputBar, type OutputJob } from './components/OutputBar';
+import { InputBar } from './components/InputBar';
 import { StatsBar } from './components/StatsBar';
 import { ChartsCard } from './components/ChartsCard';
 import { HintBar } from './components/HintBar';
@@ -69,9 +70,25 @@ export function App() {
   const blockedOverwrite = useStore((s) => s.blockedOverwrite);
 
   const [stage, setStage] = useState(false);
+  const [busy, setBusy] = useState<OutputJob>(null);
   const generatingRef = useRef(false);
   const targetRef = useRef<PosterTarget>(posterTarget);
   targetRef.current = posterTarget;
+
+  /** FR-49.7b：弹窗关闭后焦点回到原格（连续录入不用重新点格子） */
+  const focusBackRef = useRef<number | null>(null);
+  const prevModalRef = useRef<string | null>(modal);
+  useEffect(() => {
+    const prev = prevModalRef.current;
+    prevModalRef.current = modal;
+    if (modal && !prev) {
+      focusBackRef.current = useStore.getState().focusedNo;
+    } else if (!modal && prev) {
+      const back = focusBackRef.current;
+      focusBackRef.current = null;
+      if (back !== null) useStore.getState().setFocusedNo(back);
+    }
+  }, [modal]);
 
   const tpl = SHEET_TEMPLATES[draft.templateId];
   const total = useStore((s) => s.classes.find((c) => c.id === s.activeClassId)?.count ?? 0);
@@ -82,7 +99,7 @@ export function App() {
     if (count === 0) return;
     st.openConfirm({
       title: '清空当前记录',
-      message: `确定清空本条登记的全部录入（${count} 个单元格）？可 Ctrl+Z 撤销。`,
+      message: `将清空 ${count} 格（本条登记的全部录入）。可 Ctrl+Z 撤销。`,
       confirmText: '清空',
       danger: true,
       onConfirm: () => st.clearCurrentRecord(),
@@ -90,7 +107,7 @@ export function App() {
   };
 
   /** 汇总状态机（V3 §3.6）：只接收目标值，不读闭包里的旧值 */
-  const handlePoster = (target: PosterTarget) => {
+  const handlePoster = (target: PosterTarget, job?: OutputJob) => {
     const st = useStore.getState();
     let next = target;
 
@@ -117,6 +134,7 @@ export function App() {
     st.setPosterLoading(true);
     st.setModal('poster');       // 立即打开，显示「生成中…」
     generatingRef.current = true;
+    setBusy(job ?? null);        // FR-49.7a：对应按钮转 spinner，其余不灰
     setStage(true);
   };
 
@@ -141,6 +159,7 @@ export function App() {
       useStore.getState().setModal(null);
     } finally {
       useStore.getState().setPosterLoading(false);
+      setBusy(null);
       setStage(false);
     }
   };
@@ -210,14 +229,17 @@ export function App() {
           onManual={() => setModal('manual')}
         />
         <ParamsBar />
-        <ActionsBar
+        <OutputBar
+          busy={busy}
+          onReport={() => setModal('report')}
+          onPoster={() => handlePoster({ mode: 'single', sheetId: draft.sheetId }, 'poster')}
+          onSummary={() => handlePoster({ mode: 'daily' }, 'daily')}
+          onWeek={() => handlePoster({ mode: 'week', weekStart: weekStartOf(draft.date) }, 'week')}
+        />
+        <InputBar
           onVoice={toggleVoice}
           voiceListening={listening}
           voiceSupported={supported}
-          onReport={() => setModal('report')}
-          onPoster={() => handlePoster({ mode: 'single', sheetId: draft.sheetId })}
-          onSummary={() => handlePoster({ mode: 'daily' })}
-          onWeek={() => handlePoster({ mode: 'week', weekStart: weekStartOf(draft.date) })}
           onClear={handleClear}
           onSave={() => useStore.getState().commitToHistory()}
         />

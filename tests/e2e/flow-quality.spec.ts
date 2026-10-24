@@ -75,6 +75,9 @@ test('flow-quality：质量监测模板出现统计条，且标签随阈值变�
   await page.waitForSelector('.cell');
 
   await page.getByLabel('登记类型').selectOption('quality');
+  // V4 FR-49.6：统计条默认收起（高度预算），点一下展开全部 12 项
+  await expect(page.locator('.stats--collapsed')).toContainText('本次统计');
+  await page.locator('.stats--collapsed').click();
   await expect(page.locator('.stats')).toBeVisible();
   await expect(page.locator('.stats')).toContainText('优秀');
   await expect(page.locator('.stats')).toContainText('达标率');

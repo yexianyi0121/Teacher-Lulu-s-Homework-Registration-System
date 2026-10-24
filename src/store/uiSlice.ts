@@ -7,7 +7,7 @@ type UiSlice = Pick<
   | 'setModal' | 'openConfirm' | 'closeConfirm' | 'showToast' | 'clearToast'
   | 'setPoster' | 'setPosterPages' | 'setPosterLoading' | 'setPosterTarget' | 'setStorageDegraded' | 'setReadOnly'
   | 'setCellError' | 'setEnvMismatch' | 'setBlockedOverwrite' | 'setWeekParts'
-  | 'markSaved' | 'setPulsingNo' | 'setFlashNo' | 'setChartsOpen' | 'setCompareId'
+  | 'markSaved' | 'setPulsingNo' | 'setFlashNo' | 'setChartsOpen' | 'setStatsOpen' | 'setCompareId'
   | 'setFilterNotPassed' | 'setVoiceListening' | 'setVoiceInterim'
   | 'pushVoiceBanner' | 'removeVoiceBanner' | 'clearVoiceBanners'
 >;
@@ -173,6 +173,10 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
 
     setChartsOpen(open) {
       set({ chartsOpen: open });
+    },
+
+    setStatsOpen(open) {
+      set({ statsOpen: open });
     },
 
     setCompareId(id) {

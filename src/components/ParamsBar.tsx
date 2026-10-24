@@ -1,14 +1,12 @@
 import { useStore } from '../store';
 import { SHEET_TEMPLATES, TEMPLATE_LIST } from '../domain/constants';
 import type { SheetTemplateId } from '../domain/types';
-import { Pill } from './ui/controls';
 
 export function ParamsBar() {
   const draft = useStore((s) => s.draft);
   const switchTemplate = useStore((s) => s.switchTemplate);
   const setDate = useStore((s) => s.setDate);
   const setContent = useStore((s) => s.setContent);
-  const setModal = useStore((s) => s.setModal);
 
   return (
     <div className="params">
@@ -49,10 +47,6 @@ export function ParamsBar() {
           onChange={(e) => setContent(e.target.value)}
         />
       </label>
-
-      <Pill variant="ghost" onClick={() => setModal('scheme')} title="本表评分方案">
-        ⚙️ 本表设置
-      </Pill>
     </div>
   );
 }

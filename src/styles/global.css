@@ -100,22 +100,98 @@ pre {
 }
 
 .params {
-  height: 56px;
+  height: 48px;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
-.actions {
-  height: 52px;
+/* ============ V4 三段式（ADR-25）：输出带 / 录入带 / 提示条 ============
+   高度预算：header 64 · params 48 · output 48 · input 48 · hint 28 · grid 412 · 间距 112 → 760 ≤ 768 */
+.output-bar {
+  height: 48px;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
-  flex-wrap: nowrap;
-  overflow: visible;
+  margin-bottom: 6px;
 }
+.output-bar .output-note {
+  font-size: 12px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.output-bar .output-grow { flex: 1 1 auto; min-width: 0; }
+
+.input-bar {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  min-width: 0;
+}
+.input-bar .input-grow { flex: 1 1 auto; min-width: 0; }
+/* FR-49.3：清空（写入）与更新修改（存储）之间 12px 分隔，且与输出带视觉隔离 */
+.input-bar .input-sep {
+  flex: none;
+  width: 1px;
+  height: 22px;
+  background: var(--line);
+  margin: 0 6px;
+}
+
+.pill--danger {
+  border: 1px solid var(--red-line);
+  color: var(--red);
+  background: transparent;
+}
+.pill--danger:hover { background: var(--red-bg); }
+
+.pill .spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: xq-spin .7s linear infinite;
+  flex: none;
+}
+@keyframes xq-spin { to { transform: rotate(360deg); } }
+
+/* ⋯ 更多浮层（FR-49.4：积分/导出的第二入口） */
+.more-wrap { position: relative; flex: none; }
+.more-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  min-width: 132px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+  padding: 6px;
+  display: grid;
+  gap: 2px;
+  z-index: 30;
+}
+.more-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-1);
+  font-size: var(--fs-base);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.more-menu button:hover { background: var(--surface-alt); }
 
 .stats-slot {
   margin-bottom: 8px;
@@ -126,13 +202,13 @@ pre {
 }
 
 .hint {
-  height: 32px;
+  height: 28px;
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   color: var(--text-2);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -392,10 +468,23 @@ pre {
 
 .cell[data-flash="1"] { animation: flash .3s ease-out 2; }
 
+/* V4 ADR-23：单元格四角分区（L-11 单一实现）
+   左上学号 / 右上印章 / 右下状态角标 / 中部主值。
+   cell / mini / poster 三个变体只改尺寸变量，不改位置；禁止在内联 style 写 top/left。 */
+.cell {
+  --no-inset-top: 4px;  --no-inset-left: 6px;
+  --stamp-inset-top: 2px; --stamp-inset-right: 5px;
+  --badge-inset-bottom: 3px; --badge-inset-right: 4px;
+}
+
 .cell-no {
   position: absolute;
-  top: 4px;
-  left: 6px;
+  top: var(--no-inset-top);
+  left: var(--no-inset-left);
+  max-width: 62%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 10px;
   font-weight: 500;
   color: var(--text-2);
@@ -484,8 +573,8 @@ pre {
 
 .cell[data-variant="poster"] .cell-no {
   font-size: 12px;
-  top: 3px;
-  left: 5px;
+  --no-inset-top: 3px;
+  --no-inset-left: 5px;
 }
 
 .cell[data-variant="poster"] .cell-value { font-size: 24px; }
@@ -507,6 +596,37 @@ pre {
   padding: 0 10px;
   overflow-x: auto;
 }
+
+/* V4 FR-49.6：统计条默认收起态（一行摘要，高度对齐参数行） */
+.stats--collapsed {
+  width: 100%;
+  height: 48px;
+  border-style: solid;
+  border-width: 1px;
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.stats--collapsed:hover { color: var(--text-1); border-color: var(--brand); }
+.stats-collapse {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background: var(--surface-alt);
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 12px;
+}
+.stats-collapse:hover { color: var(--text-1); }
 
 .stat {
   flex: 1 1 0;
@@ -939,6 +1059,16 @@ pre {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+/* FR-49.7e：保存状态可点击 → 数据健康面板 */
+.save-indicator--btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+}
+.save-indicator--btn:hover { background: var(--surface-alt); color: var(--text-2); }
+.save-indicator--btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 
 .sr-only {
   position: absolute;
@@ -955,7 +1085,6 @@ pre {
 /* ---------- 响应式（PRD §4.8） ---------- */
 @media (max-width: 1279px) {
   .grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-  .actions { flex-wrap: wrap; height: auto; }
 }
 
 @media (max-width: 1023px) {
@@ -1198,17 +1327,19 @@ pre {
 .manual-section p, .manual-section li { font-size: 13px; line-height: 1.7; color: var(--text-1); }
 .manual-section code { background: var(--surface-alt); padding: 1px 5px; border-radius: 4px; }
 
-/* 工具栏：1366 宽下 15 个控件必须单行（换行会把「清空/更新修改」挤到第二行，
+/* 工具栏：1366 宽下所有控件必须单行（换行会把「清空/更新修改」挤到第二行，
    网格随之下移，老师要多滚动一次）。收紧按钮内边距换取空间；
    窄于 1200 才允许换行并恢复原内边距。 */
-.actions { flex-wrap: nowrap; gap: 6px; }
-.actions .pill { padding: 0 9px; font-size: 13px; }
+.input-bar { flex-wrap: nowrap; }
+.input-bar .pill { padding: 0 9px; font-size: 13px; }
+.output-bar { flex-wrap: nowrap; }
+.output-bar .pill { padding: 0 12px; }
 .filter-toggle { white-space: nowrap; flex: 0 0 auto; }
 .filter-toggle .toggle { flex: 0 0 auto; }
 
 @media (max-width: 1200px) {
-  .actions { flex-wrap: wrap; row-gap: 6px; height: auto; min-height: 52px; }
-  .actions .pill { padding: 0 14px; }
+  .input-bar { flex-wrap: wrap; row-gap: 6px; height: auto; min-height: 48px; }
+  .input-bar .pill { padding: 0 14px; }
 }
 
 /* ==================== V3：单元格双色系 / 三态角标 / 表情 ==================== */
@@ -1235,8 +1366,8 @@ pre {
 
 .cell-badge {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  bottom: var(--badge-inset-bottom);
+  right: var(--badge-inset-right);
   min-width: var(--badge-size);
   height: var(--badge-size);
   padding: 0 3px;
@@ -1269,45 +1400,28 @@ pre {
 
 .cell-emoji { margin-left: 4px; font-size: .8em; }
 
-.cell[data-variant="mini"] .cell-badge { --badge-size: 11px; --badge-font: 8px; top: 1px; right: 1px; }
+.cell[data-variant="mini"] .cell-badge { --badge-size: 11px; --badge-font: 8px; --badge-inset-bottom: 1px; --badge-inset-right: 1px; }
 .cell[data-variant="mini"] .cell-sub { display: none; }
 .cell[data-variant="mini"] .cell-emoji { display: none; }
-.cell[data-variant="mini"] .cell-stamp { font-size: 8px; }
+.cell[data-variant="mini"] .cell-stamp { font-size: 8px; --stamp-inset-top: 1px; --stamp-inset-right: 2px; }
 
 .cell-stamp {
   position: absolute;
-  top: 2px;
-  left: 4px;
-  font-size: 12px;
+  top: var(--stamp-inset-top);
+  right: var(--stamp-inset-right);
+  font-size: 14px;
   line-height: 1;
   z-index: 2;
 }
 
 .cell[data-error="1"] { box-shadow: inset 0 0 0 2px #E57373; }
 
-/* 工具栏两行（V3 §4.3） */
-.actions {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  height: auto;
-  min-height: calc(var(--btn-h) * 2 + 8px);
-  flex-wrap: nowrap;
-}
-.actions-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: var(--btn-h);
-  min-width: 0;
-}
-.actions-row .pill {
-  height: var(--btn-h);
-  padding: 0 var(--pill-pad-x);
-  font-size: var(--fs-base);
-}
-.actions-row .pill--select { height: var(--btn-h); }
-.filter-toggle { white-space: nowrap; flex: 0 0 auto; font-size: var(--fs-base); }
+/* 录入带 / 输出带共用的 pill 尺寸（V4 ADR-25：两带各 48px） */
+.output-bar .pill,
+.input-bar .pill { height: var(--btn-h); padding: 0 var(--pill-pad-x); font-size: var(--fs-base); }
+.output-bar .pill--select,
+.input-bar .pill--select { height: var(--btn-h); }
+.input-bar .filter-toggle { white-space: nowrap; flex: 0 0 auto; font-size: var(--fs-base); }
 
 /* 周汇总 */
 .week-day { border-top: 1px dashed var(--line); padding-top: 12px; margin-top: 12px; }
