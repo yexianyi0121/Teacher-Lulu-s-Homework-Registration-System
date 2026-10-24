@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { MANUAL, searchManual } from '../../src/domain/manual';
 
-describe('manual：15 章与检索（AC-29.1 / AC-29.2）', () => {
-  it('共 15 章', () => {
-    expect(MANUAL).toHaveLength(15);
+describe('manual：18 章与检索（AC-29.1 / AC-29.2）', () => {
+  it('共 18 章', () => {
+    expect(MANUAL).toHaveLength(18);
   });
 
   it('每章都有标题与至少 2 条步骤', () => {
@@ -28,6 +28,32 @@ describe('manual：15 章与检索（AC-29.1 / AC-29.2）', () => {
     }
   });
 
+  it('V4 三节齐全：数字键语义 / 背景主题 / 手机端（设计 09 §2 手册要求）', () => {
+    const ids = MANUAL.map((s) => s.id);
+    expect(ids).toEqual(expect.arrayContaining(['digit-key', 'theme', 'mobile']));
+    for (const id of ['digit-key', 'theme', 'mobile']) {
+      const sec = MANUAL.find((s) => s.id === id)!;
+      expect(sec.title.length).toBeGreaterThan(0);
+      expect(sec.steps?.length ?? 0).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('数字键语义章写清混合表切换方式（chip 与反引号）', () => {
+    const sec = MANUAL.find((s) => s.id === 'digit-key')!;
+    const hay = [sec.intro ?? '', ...(sec.steps ?? []), ...(sec.tips ?? [])].join('\n');
+    expect(hay).toContain('反引号');
+    expect(hay).toContain('数字＝分数');
+  });
+
+  it('手机端章写清键盘板 / 安装提示 / 7 天导出提醒 / 分享', () => {
+    const sec = MANUAL.find((s) => s.id === 'mobile')!;
+    const hay = [sec.intro ?? '', ...(sec.steps ?? []), ...(sec.tips ?? [])].join('\n');
+    expect(hay).toContain('数字键盘');
+    expect(hay).toContain('主屏幕');
+    expect(hay).toContain('7 天');
+    expect(hay).toContain('分享');
+  });
+
   it('搜索「补交」能定位到补交章', () => {
     const hits = searchManual('补交');
     expect(hits.length).toBeGreaterThan(0);
@@ -39,7 +65,7 @@ describe('manual：15 章与检索（AC-29.1 / AC-29.2）', () => {
   });
 
   it('空搜索返回全部，无匹配返回空数组', () => {
-    expect(searchManual('')).toHaveLength(15);
+    expect(searchManual('')).toHaveLength(18);
     expect(searchManual('不存在的关键词xyz')).toHaveLength(0);
   });
 

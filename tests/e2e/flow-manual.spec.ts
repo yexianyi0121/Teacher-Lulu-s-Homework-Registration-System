@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('flow-manual：从头部打开手册，15 章齐全，搜索「补交」可定位（AC-56 / AC-57）', async ({ page }) => {
+test('flow-manual：从头部打开手册，18 章齐全，搜索「补交」可定位（AC-56 / AC-57）', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -15,6 +15,12 @@ test('flow-manual：从头部打开手册，15 章齐全，搜索「补交」可
     await expect(dialog).toContainText(title);
   }
   await expect(dialog).toContainText('达标但不过关');
+  // V4 三节（设计 09 §2：数字键语义 / 背景主题 / 手机端）
+  for (const title of ['数字键语义', '背景主题', '手机端使用']) {
+    await expect(dialog).toContainText(title);
+  }
+  await expect(dialog).toContainText('反引号');
+  await expect(dialog).toContainText('7 天');
 
 
   await page.getByLabel('搜索手册').fill('补交');
