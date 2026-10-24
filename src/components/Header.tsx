@@ -74,10 +74,14 @@ export function Header({ onImport, onSettings, onManual }: HeaderProps) {
           }}
         >
           {classes.map((c) => (
-            <option key={c.id} value={c.id}>{`${c.name} · ${c.count}人`}</option>
+            <option key={c.id} value={c.id}>{c.name}</option>
           ))}
           <option value="__new__">＋ 新建 / 管理班级…</option>
         </select>
+
+        {/* V4.1 P3-1：人数原内嵌在 option 文本里，375px 会把班级名一起裁掉。
+            改为独立展示（窄屏 CSS 隐藏），班级名在任何视口都完整可见（FR-50.6）。 */}
+        <span className="class-count" aria-hidden="true">· {count}人</span>
 
         {/* FR-49.7e：保存状态可点击 → 打开数据健康面板，给用户一个检查入口 */}
         <button

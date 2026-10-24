@@ -35,6 +35,17 @@ describe('THEMES：6 套预设元数据（FR-48.1）', () => {
     const keys = THEMES.map((t) => t.key);
     expect(keys).toEqual(expect.arrayContaining<ThemeKey>(['night', 'plain']));
   });
+
+  it('plain 主色是中性石墨 #4A4A57，不是粉色（v2.3.1 用户意见 2：纯白不能还是樱粉）', () => {
+    expect(themeMeta('plain').bg).toBe('#FFFFFF');
+    expect(themeMeta('plain').brand).toBe('#4A4A57');
+    // 与 pink 的主色必须不同——否则 6 套主题只有 5 种主色，「纯白」名不副实
+    expect(themeMeta('plain').brand).not.toBe(themeMeta('pink').brand);
+  });
+
+  it('6 套主色互不相同（plain 中性化后不再与 pink 撞色）', () => {
+    expect(new Set(THEMES.map((t) => t.brand)).size).toBe(6);
+  });
 });
 
 describe('isThemeKey / themeOf', () => {

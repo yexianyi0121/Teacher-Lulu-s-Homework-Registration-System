@@ -99,9 +99,12 @@ export function cellDisplay(entry: Entry | undefined, s: ScoringScheme, opts: Di
   if (v.kind === 'grade') {
     const p = percentOf(entry, s);
     const tone = p === null ? 'gray' : tierTone(tierOfPercent(p, s));
+    // v2.3.1 用户意见 3：某等级表情可设为空串（「不显示」）——domain 层归一为 undefined，
+    // 不让空串漏给 UI / 海报 / 导出（CellView 的 `emoji ? …` 只是第二道闸）
+    const em = emojiMap[v.grade];
     return {
       text: v.grade, kind: 'grade', tone, grade: v.grade,
-      emoji: showEmoji ? emojiMap[v.grade] : undefined,
+      emoji: showEmoji && em ? em : undefined,
       badge, subText: makeupText, full: v.grade,
     };
   }

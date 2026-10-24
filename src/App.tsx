@@ -215,7 +215,9 @@ export function App() {
   }, [theme]);
 
   return (
-    <div className="app" onClick={onRootClick}>
+    // data-keypad：手机端键盘板打开时，底部固定条让位（否则键盘盖住操作条，
+    // 录完数据点不到「出图」——v2.3.1 修 P2-1 时暴露的真实 UX 问题）
+    <div className="app" onClick={onRootClick} data-keypad={keypadNo !== null ? '1' : undefined}>
       <div className="app-inner">
         {envMismatch ? (
           <div className="warn-bar warn-bar--env" role="alert">

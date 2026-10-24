@@ -80,6 +80,14 @@ describe('cellDisplay：等级色与表情', () => {
     expect(cellDisplay(e(g('A+')), grade, opts).emoji).toBe('😄');
     expect(cellDisplay(e(g('A+')), grade, { ...opts, showEmoji: false }).emoji).toBeUndefined();
   });
+
+  it('某等级表情设为空串（「不显示」）→ 该等级不输出 emoji，其余等级不受影响（v2.3.1 用户意见 3）', () => {
+    const custom = { ...opts, gradeEmoji: { ...DEFAULT_GRADE_EMOJI, 'C': '', 'D': '' } };
+    expect(cellDisplay(e(g('C')), grade, custom).emoji).toBeUndefined();
+    expect(cellDisplay(e(g('D')), grade, custom).emoji).toBeUndefined();
+    expect(cellDisplay(e(g('A+')), grade, custom).emoji).toBe('😄');   // 高等级表情保留
+    expect(cellDisplay(e(g('A')), grade, custom).emoji).toBe('🙂');
+  });
 });
 
 describe('cellDisplay：分数四档色（AC-37.2）', () => {

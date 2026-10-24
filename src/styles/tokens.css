@@ -94,9 +94,11 @@
 }
 
 /* ============ V4 主题（设计 09 ADR-24 / FR-48） ============
-   只换三组变量：--bg-gradient / --brand / --brand-soft。
-   不动 --surface / --text-* / 语义色 → 卡片仍是白底，对比度天然满足 FR-48.6；
-   night 也只换页面背景与主色，不做全暗色（FR-48.4）。 */
+   换三组变量：--bg-gradient / --brand / --brand-soft。
+   --surface / --text-* / 语义色不动 → 卡片仍是白底，卡内文字对比度天然满足 FR-48.6；
+   night 也只换页面背景与主色，不做全暗色（FR-48.4）。
+   FR-48.6-b（v2.3.1 补）：压在页面渐变背景上（而非卡片里）的文字同样要 ≥4.5:1，
+   因此 night 额外提供 --text-on-bg / --text-2-on-bg 两个浅色文字变量。 */
 :root,
 :root[data-theme="pink"] {
   --bg-gradient: linear-gradient(135deg, #FDEBF3 0%, #F6EFFB 45%, #EAF3FD 100%);
@@ -117,8 +119,13 @@
 :root[data-theme="night"] {
   --bg-gradient: linear-gradient(135deg, #2A2340 0%, #3A2F52 55%, #23324A 100%);
   --brand: #8E7CD8; --brand-soft: #EAE4FA;
+  /* FR-48.6-b：页面背景上的文字（品牌名/参数标签/提示条）用这两个浅色 */
+  --text-on-bg: #EDE8F7;   /* vs 夜背景 ≈ 10~12:1 */
+  --text-2-on-bg: #C3BBDA; /* vs 夜背景 ≈ 6.8:1 */
 }
+/* v2.3.1 用户意见：纯白主题不能沿用粉色主色（否则按钮/chip 仍是一片樱粉，
+   用户看到的「纯白」只是背景白了）。主色改中性石墨，soft 改浅灰。 */
 :root[data-theme="plain"] {
   --bg-gradient: #FFFFFF;
-  --brand: #FF6FA5; --brand-soft: #FFE3EE;
+  --brand: #4A4A57; --brand-soft: #ECECF1;
 }

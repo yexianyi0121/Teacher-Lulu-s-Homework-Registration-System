@@ -214,6 +214,14 @@ pre {
   text-overflow: ellipsis;
 }
 
+/* V4.1 P2-2 / FR-48.6-b：night 主题下「压在页面渐变背景上」的文字必须用浅色。
+   --text-1（深藏青）压夜背景只有 1.20:1，远低于 4.5:1；
+   卡片内文字不动（卡是白底，天然达标）。变量在 tokens.css 的 night 组。 */
+:root[data-theme="night"] .brand-text { color: var(--text-on-bg); }
+:root[data-theme="night"] .field-label { color: var(--text-on-bg); }
+:root[data-theme="night"] .hint { color: var(--text-2-on-bg); }
+:root[data-theme="night"] .hint .digit-chip { color: var(--text-on-bg); }
+
 /* V4 ADR-22：数字键语义 chip——混合表下数字键有两种含义，状态必须始终可见 */
 .hint .digit-chip {
   flex: none;
@@ -402,6 +410,7 @@ pre {
 
 .search-box input {
   width: 100%;
+  min-width: 0;   /* v2.3.1：flex 子项默认 min-width:auto，60px 窄框会被 placeholder 撑爆 1px */
   font-size: 14px;
 }
 
@@ -977,10 +986,12 @@ pre {
   box-shadow: 0 12px 40px rgba(170, 140, 190, .18);
 }
 
+/* v2.3.1 用户意见 1：标题不再跟随品牌色（默认粉），改为近黑——
+   海报是发给家长看的正式图，粉色大标题显得随意；海报卡片始终白底，黑色可读。 */
 .poster-title {
   font-size: 36px;
   font-weight: 700;
-  color: var(--brand);
+  color: #2E2633;
   text-align: center;
   letter-spacing: 1px;
   margin-bottom: 18px;
@@ -1023,6 +1034,16 @@ pre {
   text-align: center;
   font-size: 14px;
   color: var(--text-3);
+}
+
+/* v2.3.1 用户意见 4：评价语原与页脚学校名同色（--text-3 灰）难以区分。
+   评价语加深一档并加粗，学校名保持浅灰——一眼能分出「老师的话」与「落款」。 */
+.poster-comment {
+  color: #3D3346;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.6;
+  margin-bottom: 4px;
 }
 
 .poster-preview {
@@ -1116,19 +1137,35 @@ pre {
   }
   .input-bar::-webkit-scrollbar { display: none; }
   .input-bar .input-grow { display: none; }
-  /* V4 ADR-26.3：输出带变底部固定操作条（4 项图标 + 文字，48px 高） */
+  /* V4 ADR-26.3 + v2.3.1 P2-1：输出带是真正的底部固定操作条（fixed，非 sticky）。
+     sticky 对文档流上半部的元素无效（它本来就在页面上方，永远滚出屏幕），
+     必须 fixed 贴视口底；FR-50.3 规格口径：4 项图标 + aria-label，48px 高。
+     left/right 用 12px（= .app 的 padding）而不是 0：fixed 条宽随之等于内容区宽，
+     不会把 .app-inner 的 scrollWidth 撑爆（375px 实测溢出 1px 的根源）。 */
   .output-bar {
-    position: sticky;
+    position: fixed;
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
     bottom: 0;
-    z-index: 20;
-    height: 52px;
+    z-index: 40;
+    height: 48px;
     margin-bottom: 0;
     padding: 0 8px;
-    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    padding-bottom: env(safe-area-inset-bottom);
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
     backdrop-filter: blur(6px);
     border-top: 1px solid var(--line);
     border-radius: 12px 12px 0 0;
   }
+  /* fixed 条脱离文档流，给内容区补出底部空间，最后一行学生不被挡住 */
+  .app-inner { padding-bottom: calc(48px + env(safe-area-inset-bottom)); }
+  /* 提示条堆叠在操作条上方（条高 48 + 8 间距） */
+  .mobile-notices { bottom: 56px; }
+  /* v2.3.1：键盘板打开期间底部固定条让位——键盘（z-60）会盖住操作条，
+     录完数据先「完成」收键盘，操作条滑回。模态键盘心智，同手机输入法。 */
+  .output-bar { transition: transform .18s ease; }
+  .app[data-keypad="1"] .output-bar { transform: translateY(110%); pointer-events: none; }
+  .app[data-keypad="1"] .mobile-notices { transform: translateY(220%); pointer-events: none; }
   .output-bar .output-note { display: none; }
   .output-bar .output-grow { display: none; }
   .output-bar .pill { padding: 0 8px; font-size: 12px; gap: 4px; }
@@ -1266,17 +1303,26 @@ pre {
   .class-select { max-width: 132px; }
 }
 
-/* V4 ADR-26.1b：≤767px header 元件继续收紧，保证 375px 单行不溢出
-   （班级选择 88 / 秒跳 38 / 搜索 72 / 图标 30×3 + 4px 间距 ≈ 342 ≤ 351）。
+/* V4.1 P3-1：≤767px header 单行不溢出，同时班级名完整可见（FR-50.6）。
+   人数已从 select option 挪到 .class-count（窄屏隐藏），select 只放班级名，
+   5 字班名（≈107px）也能完整显示；预算：20+6+116+4+30+4+60+4+28×3 ≈ 324 ≤ 351。
    放在 1023 块之后：同特异性下后者胜，手机端的窄覆盖平板端的宽。 */
 @media (max-width: 767px) {
-  .header { gap: 8px; }
+  .header { gap: 4px; }
   .header-right { gap: 4px; }
-  .header-right .pill { padding: 0 8px; }
-  .header .class-select { max-width: 88px; }   /* 提高特异性：压过后面的桌面基准 200px */
-  .search-box { width: 72px; padding: 0 8px; }
-  .search-box:focus-within { width: 72px; }   /* 手机端不展开，避免挤出右侧按钮 */
-  .icon-btn { width: 30px; height: 30px; font-size: 15px; }
+  .header-right .pill { padding: 0 6px; }
+  .header .class-select { max-width: 116px; }   /* 提高特异性：压过后面的桌面基准 200px */
+  .search-box { width: 60px; padding: 0 6px; }
+  .search-box:focus-within { width: 60px; }   /* 手机端不展开，避免挤出右侧按钮 */
+  .icon-btn { width: 28px; height: 28px; font-size: 14px; }
+  /* 人数信息窄屏省略（评审认可的方案），班级名本身绝不裁字 */
+  .class-count { display: none; }
+  /* V4.1 P3-3：窄视口四角避让——印章缩到 11px 并内缩到 2px，
+     与 1-3 位主值的包围盒不相交（E2E-36b 五对全断言）。
+     .cell .cell-stamp 提高特异性：文件后段的基准 .cell-stamp（font-size:14px）
+     与媒体查询同特异性，写在后面会赢——必须压过它。 */
+  .cell { --stamp-inset-top: 1px; --stamp-inset-right: 2px; }
+  .cell .cell-stamp { font-size: 11px; }
 }
 
 @keyframes breathe {
@@ -1412,6 +1458,15 @@ pre {
 .params-grow { flex: 1 1 220px; min-width: 0; }
 .params-grow input { width: 100%; }
 .class-select { max-width: 200px; }
+
+/* V4.1 P3-1：班级人数独立展示（原内嵌在 select option 文本里，375px 会连班级名一起裁掉）。
+   窄屏 ≤767px 隐藏（media 块内），桌面与平板显示。 */
+.class-count {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
 
 .cell-slot { position: relative; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .cell-name {

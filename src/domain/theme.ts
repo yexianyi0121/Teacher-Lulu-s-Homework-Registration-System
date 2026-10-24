@@ -1,7 +1,9 @@
 /**
  * 背景主题（V4 FR-48 / ADR-24）：6 套预设，只换 --bg-gradient / --brand / --brand-soft 三组变量。
  * 不改 --surface / --text-* / 语义色 → 卡片仍是白底，对比度天然满足 FR-48.6；
- * night 主题也只换页面背景与主色，不做全暗色（FR-48.4）。
+ * night 主题也只换页面背景与主色，不做全暗色（FR-48.4），另给 --text-on-bg 浅色文字（FR-48.6-b）。
+ * v2.3.1：plain（纯白）主色改为中性石墨 #4A4A57——沿用粉色会让按钮/chip 仍是一片樱粉，
+ * 「纯白」只剩背景白，用户反馈「不起作用」。CSS 侧 tokens.css 同值同步。
  */
 
 export type ThemeKey = 'pink' | 'mint' | 'sky' | 'sand' | 'night' | 'plain';
@@ -20,7 +22,7 @@ export const THEMES: ThemeMeta[] = [
   { key: 'sky', name: '天青', bg: '#EAF3FD', brand: '#4A7BC8' },
   { key: 'sand', name: '米杏', bg: '#FDF7EC', brand: '#C08A3E' },
   { key: 'night', name: '夜空', bg: '#2A2340', brand: '#8E7CD8' },
-  { key: 'plain', name: '纯白', bg: '#FFFFFF', brand: '#FF6FA5' },
+  { key: 'plain', name: '纯白', bg: '#FFFFFF', brand: '#4A4A57' },
 ];
 
 export const DEFAULT_THEME: ThemeKey = 'pink';

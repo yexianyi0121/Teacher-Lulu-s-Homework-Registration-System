@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { closeJump, closeModal, resetApp, waitPoster } from './v3-fixtures';
+import { closeJump, closeModal, pickTemplate, resetApp, waitPoster } from './v3-fixtures';
 
 /**
  * E2E-39 / E2E-40（V4 FR-50 / FR-51 / ADR-26）——手机端形态与数据安全。
@@ -80,10 +80,25 @@ for (const vp of VIEWPORTS) {
       await expect(remind).toHaveCount(0);
     });
 
-    await test.step('底部操作条 4 项可点（报表 / 单条海报 / 当日汇总 / 本周汇总）', async () => {
+    await test.step('底部操作条真正固定贴底：初始即贴视口底，滚 400px 后仍贴底（FR-50.3）', async () => {
       const bar = page.locator('.output-bar');
       await expect(bar.locator('.pill')).toHaveCount(4);
+      // 真断言：量 boundingBox 比对视口底边——验证「在不在用户眼前」，
+      // 而不是「DOM 里有没有」。v2.3.0 的旧断言只数 .pill 个数（页面任何位置都命中），
+      // 且 click() 会自动滚动到元素，属于「断言与要求不对应」的假绿。
+      // 用 poll 而非单次：键盘板收起时条有 .18s 过渡动画，量早了会量到中间态。
+      const gapToBottom = async () => {
+        const b = await bar.boundingBox();
+        return b ? Math.abs(b.y + b.height - vp.height) : 999;
+      };
+      await expect.poll(gapToBottom, { timeout: 3000 }).toBeLessThan(4);   // 初始即贴底（fixed 而非 sticky）
+      await page.mouse.wheel(0, 400);
+      await page.waitForTimeout(150);
+      await expect.poll(gapToBottom, { timeout: 3000 }).toBeLessThan(4);   // 滚到学生 30+ 号仍贴底
+    });
 
+    await test.step('底部操作条 4 项可点（报表 / 单条海报 / 当日汇总 / 本周汇总）', async () => {
+      const bar = page.locator('.output-bar');
       await bar.getByRole('button', { name: '报表生成' }).click();
       await expect(page.locator('.modal')).toBeVisible();
       await closeModal(page);
@@ -105,6 +120,23 @@ for (const vp of VIEWPORTS) {
   });
 }
 
+test('E2E-39b 手机键盘等级行按方案档数全出：7 档混合表下 D 也有按钮（v2.3.1 P3-2）', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await resetApp(page);
+  await page.getByTestId('install-hint').getByRole('button', { name: '知道了' }).click();
+  await closeJump(page);
+  await pickTemplate(page, 'custom');   // 自定义 = mixed + 7 档 grades
+
+  await page.locator('[data-no="1"]').click();
+  const kp = page.getByTestId('mobile-keypad');
+  await expect(kp).toBeVisible();
+  const gradeKeys = kp.locator('.mk-key--grade');
+  await expect(gradeKeys).toHaveCount(7);          // 7 档全出（旧代码 slice(0,6) 会吞掉 D）
+  await expect(gradeKeys.last()).toHaveText('D');
+  await kp.getByRole('button', { name: '等级 D' }).click();
+  await expect(page.locator('[data-no="1"]')).toContainText('D');
+});
+
 test('E2E-40 分享优先、下载回退：navigator.share 存在→调用；不存在→下载（A-95）', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await resetApp(page);
@@ -115,6 +147,9 @@ test('E2E-40 分享优先、下载回退：navigator.share 存在→调用；不
   await page.locator('[data-no="1"]').click();
   await page.keyboard.press('1');
   await expect(page.locator('[data-no="1"]')).toContainText('A+');
+  // 手机端点格子会弹键盘板（盖住底部操作条）——真实用户先「完成」收键盘再出图
+  await page.getByRole('button', { name: '完成' }).click();
+  await expect(page.getByTestId('mobile-keypad')).toHaveCount(0);
 
   await page.locator('.output-bar').getByRole('button', { name: '单条海报' }).click();
   await waitPoster(page, '学情海报预览');

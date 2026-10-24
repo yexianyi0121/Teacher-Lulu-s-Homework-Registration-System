@@ -256,6 +256,9 @@ export function SettingsModal() {
                     gradeEmoji: { ...s.settings.gradeEmoji, [g]: e.target.value },
                   })}
                 >
+                  {/* v2.3.1 用户意见 3：每个等级可单独不打表情（如只奖励高等级），
+                      空串 → cellDisplay 输出 undefined → 格子不渲染表情（tone.ts 天然支持） */}
+                  <option value="">不显示</option>
                   {EMOJI_CHOICES.map((x) => <option key={x} value={x}>{x}</option>)}
                 </select>
               </label>

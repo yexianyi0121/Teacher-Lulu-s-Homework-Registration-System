@@ -23,7 +23,9 @@ export function MobileKeypad({ no, onClose }: { no: number; onClose: () => void 
   const scheme = draft.scheme;
   const meaning = resolveDigitMeaning(selectDigitKeyMode(useStore.getState()), scheme, draft.templateId);
   const km = buildGradeKeyMap(scheme);
-  const grades = GRADE_ORDER.filter((g) => scheme.grades.includes(g)).slice(0, 6);
+  // V4.1 P3-2：等级行按方案实际档数全出（V4 起等级扩到 7 档 A+~D，
+  // 旧的 slice(0, 6) 会让 D 没有按钮——「看得见的缺失」）
+  const grades = GRADE_ORDER.filter((g) => scheme.grades.includes(g));
 
   // 格子切换时清空分数缓冲
   useEffect(() => setBuf(''), [no]);

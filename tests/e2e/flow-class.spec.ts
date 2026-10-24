@@ -16,10 +16,12 @@ test('flow-class：新建班级后数据互不污染（AC-25.1 / AC-46）', asyn
   await page.getByRole('button', { name: /新建班级/ }).click();
   await page.getByRole('button', { name: '完成' }).click();
 
-  await page.getByLabel('切换班级').selectOption({ label: '一年一班 · 50人' });
+  // v2.3.1 P3-1：人数已从 select option 移到独立 .class-count（窄屏会裁班级名），
+  // option 文本只放班级名；「· N人」由 select 右侧 span 展示（桌面/平板可见）
+  await page.getByLabel('切换班级').selectOption({ label: '一年一班' });
   await expect(page.locator('[data-no="1"]')).not.toContainText('A+');
 
-  await page.getByLabel('切换班级').selectOption({ label: '三年二班 · 50人' });
+  await page.getByLabel('切换班级').selectOption({ label: '三年二班' });
   await expect(page.locator('[data-no="1"]')).toContainText('A+');
 });
 

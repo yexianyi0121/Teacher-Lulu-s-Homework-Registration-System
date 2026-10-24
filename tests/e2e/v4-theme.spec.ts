@@ -45,8 +45,8 @@ test('E2E-37 6 套主题：切换生效、刷新保持、备份含 theme（A-92 
     const brands = new Set([...seen.values()].map((v) => v.brand));
     // plain 是纯白无渐变，与其余 5 套渐变不同；渐变值 5 种 + plain 的 #FFFFFF
     expect(grads.size).toBe(6);
-    // plain 与 pink 主色相同（规格如此），所以主色 5 种
-    expect(brands.size).toBe(5);
+    // v2.3.1：plain 主色已中性化为石墨灰 #4A4A57（不再沿用粉色），6 套主色全不同
+    expect(brands.size).toBe(6);
   });
 
   await test.step('night 下卡片仍白底、网格高度不变', async () => {
@@ -73,6 +73,44 @@ test('E2E-37 6 套主题：切换生效、刷新保持、备份含 theme（A-92 
     expect(state?.settings?.theme).toBe('night');
     expect(state?.version).toBe(4);
   });
+});
+
+/**
+ * E2E-37c（v2.3.1 P2-2 / FR-48.6-b）：night 主题下压在页面渐变背景上的文字
+ * （品牌名 / 参数标签 / 提示条 / 保存状态）对比度 ≥ 4.5:1。
+ * v2.3.0 只断言了「卡片白底」，漏了页面级文字——品牌名实测只有 1.20:1。
+ * 背景取夜渐变最亮端 #3A2F52：浅字对最亮端对比最低，是最严格口径。
+ */
+test('E2E-37c night 页面级文字对比度 ≥4.5:1（FR-48.6-b）', async ({ page }) => {
+  await resetApp(page);
+  await page.getByRole('button', { name: /设置/ }).first().click();
+  await page.locator('.theme-card[data-theme-key="night"]').click();
+  await page.locator('.modal-foot').getByRole('button', { name: '完成' }).click();
+  await expect(page.locator('[data-theme="night"]')).toBeAttached();
+
+  const ratios = await page.evaluate(() => {
+    const lum = (rgb: string) => {
+      const [r, g, b] = (rgb.match(/\d+/g) ?? ['0', '0', '0']).slice(0, 3).map(Number).map((v) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const bgLum = lum('rgb(58, 47, 82)');   // night 渐变最亮端
+    const out: Record<string, number> = {};
+    for (const sel of ['.brand-text', '.field-label', '.hint', '.save-indicator--btn']) {
+      const el = document.querySelector(sel) as HTMLElement | null;
+      if (!el) continue;
+      const fgLum = lum(getComputedStyle(el).color);
+      out[sel] = Number(((Math.max(fgLum, bgLum) + 0.05) / (Math.min(fgLum, bgLum) + 0.05)).toFixed(2));
+    }
+    return out;
+  });
+
+  expect(Object.keys(ratios)).toHaveLength(4);   // 四个元素都真实存在，没白测
+  for (const [sel, r] of Object.entries(ratios)) {
+    expect(r, `${sel} 对比度 ${r}:1`).toBeGreaterThanOrEqual(4.5);
+  }
 });
 
 test('E2E-37b 海报默认不跟随主题：night 下海报仍是白卡品牌粉（FR-48.3）', async ({ page }) => {

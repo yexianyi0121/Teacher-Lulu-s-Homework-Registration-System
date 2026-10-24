@@ -91,6 +91,10 @@ test('E2E-36b 375px 窄视口下四角仍不重叠（A-89）', async ({ page }) 
   expect(await overlaps(page, '[data-no="1"] .cell-no', '[data-no="1"] .cell-stamp')).toBe(false);
   expect(await overlaps(page, '[data-no="1"] .cell-stamp', '[data-no="1"] .cell-badge')).toBe(false);
   expect(await overlaps(page, '[data-no="1"] .cell-no', '[data-no="1"] .cell-badge')).toBe(false);
+  // v2.3.1 P3-3：补齐与 1366 口径相同的五对（原缺后两对）。
+  // 375 下 stamp 已缩到 11px 并内缩（global.css 767 块），1-3 位主值与印章不相交。
+  expect(await overlaps(page, '[data-no="1"] .cell-no', '[data-no="1"] .cell-value')).toBe(false);
+  expect(await overlaps(page, '[data-no="1"] .cell-stamp', '[data-no="1"] .cell-value')).toBe(false);
 });
 
 test('E2E-38 1366×768 不出现纵向滚动；输出带 4 按钮顺序固定（A-90 / A-91）', async ({ page }) => {
