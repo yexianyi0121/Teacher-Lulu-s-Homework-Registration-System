@@ -217,6 +217,8 @@ export interface PersistedStateV2 {
 
 /** V4 持久化根（设计 09 ADR-28；结构同 V3，settings 多 4 个字段） */
 export interface PersistedStateV4 {
+  /** 写入序号（FR-60）：多窗口互写保护靠它区分「磁盘这份是不是我写的」，同毫秒连写也能分辨 */
+  saveSeq?: number;
   version: 4;
   activeClassId: string;
   classes: ClassDoc[];

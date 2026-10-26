@@ -98,6 +98,17 @@ export function validateState(data: unknown): data is PersistedStateV4 {
   return true;
 }
 
+function diskSeq(): number {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return 0;
+    const o = JSON.parse(raw) as { saveSeq?: unknown };
+    return typeof o.saveSeq === 'number' && Number.isFinite(o.saveSeq) ? o.saveSeq : 0;
+  } catch {
+    return 0;
+  }
+}
+
 /** 序列化：截断历史到 200（V2 起不做草稿淘汰——L-2 不丢数据） */
 export function serialize(state: PersistedStateV4): PersistedStateV4 {
   return {
@@ -106,13 +117,50 @@ export function serialize(state: PersistedStateV4): PersistedStateV4 {
     // 防御：历史缺失不能把整个保存链路炸掉（写盘是最后一道防线，宁可截断不可抛）
     history: Array.isArray(state.history) ? state.history.slice(0, HISTORY_LIMIT) : [],
     lastSavedAt: Date.now(),
+    // 序号从磁盘当前值 +1：内存里的 state 可能没有这个字段，靠它取序号会永远停在 1
+    saveSeq: diskSeq() + 1,
   };
+}
+
+/**
+ * 磁盘上那份数据的「指纹」（D-02 / D-03）。
+ * 老师可能开着两个窗口（学校电脑 + 家里电脑、或两个标签页），两边的内存快照各自演化；
+ * 不加检查的话，「后写的那份整表覆盖先写的」，而且关窗/切窗时内存旧快照会无条件把磁盘改回去。
+ * 这里只读不写，供保存前比对。
+ */
+export function diskStamp(): string | null {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+  if (!raw) return null;
+  // 指纹取「写入序号 + 时间」：同一毫秒内连写两次时，单靠时间戳区分不出新旧，
+  // 会让冲突检测漏判（连点两下就发生）。raw 的长度与内容也一并计入，兜住老数据。
+  return fingerprint(raw);
+}
+
+function fingerprint(raw: string | null): string | null {
+  if (raw === null) return null;
+  try {
+    const o = JSON.parse(raw) as { saveSeq?: unknown; lastSavedAt?: unknown };
+    const seq = typeof o.saveSeq === 'number' ? o.saveSeq : 0;
+    const at = typeof o.lastSavedAt === 'number' ? o.lastSavedAt : 0;
+    return `s${seq}-t${at}-l${raw.length}`;
+  } catch {
+    return `l${raw.length}`;
+  }
 }
 
 export interface SaveResult {
   ok: boolean;
   /** 被覆盖保护拦截（调用方应进入只读 + 提示） */
   blocked?: boolean;
+  /** 磁盘已被别的窗口改过，本次写入被拒绝（D-02/D-03：调用方决定是覆盖还是让老师选） */
+  conflict?: boolean;
+  /** 写成功后磁盘指纹，调用方存下来作为下次比对的基线 */
+  stamp?: string;
   /** 写失败的具体原因（D-01）：空间不足 / 存储不可用。调用方据此给不同自救建议 */
   reason?: 'quota' | 'unavailable';
 }
@@ -121,7 +169,7 @@ export interface SaveResult {
  * 写盘（INV-24）：所有调用方只能走这里，不得直接 localStorage.setItem(STORAGE_KEY)。
  * 覆盖保护：内存空 + 磁盘非空 → 拒绝。
  */
-export function saveState(state: PersistedStateV4): SaveResult {
+export function saveState(state: PersistedStateV4, expectStamp: string | null = null): SaveResult {
   let prevRaw: string | null = null;
   try {
     prevRaw = localStorage.getItem(STORAGE_KEY);
@@ -134,13 +182,20 @@ export function saveState(state: PersistedStateV4): SaveResult {
     return { ok: false, blocked: true };
   }
 
+  // D-02/D-03：写前比对基线——磁盘若不是「我上次写的那份」，说明有别的窗口改过，
+  // 直接覆盖会静默抹掉那边的录入。此处拒绝并回报冲突，由调用方询问老师。
+  if (expectStamp !== null && diskStamp() !== expectStamp) {
+    return { ok: false, conflict: true };
+  }
+
   // 序列化放在 try 外面：如果 serialize 自己抛错（数据结构异常），
   // 不能伪装成「存储不可用」——那是两回事，误判会把老师引向错误的自救动作。
   const payload = JSON.stringify(serialize(state));
 
   try {
     localStorage.setItem(STORAGE_KEY, payload);
-    return { ok: true };
+    // stamp 直接用刚写下去的原文算，避免「返回值与磁盘实际内容不一致」
+    return { ok: true, stamp: fingerprint(payload) ?? undefined };
   } catch (e) {
     // 必须区分原因：QuotaExceededError 老师可以删历史自救，存储被禁用则只能换浏览器。
     // 旧版一律返回 {ok:false} 且界面只说「存储不可用」，等于把「写满了」误诊成「坏了」（D-01）。

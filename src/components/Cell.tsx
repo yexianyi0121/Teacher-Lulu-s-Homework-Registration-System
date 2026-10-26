@@ -26,6 +26,13 @@ function InlineEditor({ no, draft }: { no: number; draft: string }) {
   const submit = (value: string) => {
     if (submittedRef.current) return;
     submittedRef.current = true;
+    // I-06：编辑框预填的是格子里原来的内容。老师双击进去、什么都没改就按 Enter，
+    // 原来会把「A+」当成自定义文字提交，格子从等级变成文本、颜色变灰、掉出优秀率。
+    // 内容没变 = 老师只是想看看，直接原样退出，不做任何改写。
+    if (value === draft) {
+      setEditing(null);
+      return;
+    }
     commitText(no, value);
     setEditing(null);
   };

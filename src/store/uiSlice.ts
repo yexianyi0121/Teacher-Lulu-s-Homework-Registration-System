@@ -26,8 +26,14 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
       // 焦点离开时，旧格子上未提交的分数缓冲必须清掉：
       // 否则老师看到「1 号格显示 8」，实际那只是半截输入、并未录入（FR-39 补充）。
       const staleBuffer = s.buffer && (next === null || s.buffer.no !== next);
+      // I-02：老师「全选 3 格 → 点 5 号 → 按 1」期望只改 5 号，
+      // 但原来点格子不清选区：1/2/3 的高亮还亮着，老师会以为「批量没生效」。
+      // 点某一格 = 明确「我只改这一格」，所以选区必须同时退出。
+      const hadSelection = s.selection.size > 0;
       set({
         focusedNo: next,
+        selection: hadSelection ? new Set<number>() : s.selection,
+        selectionAnchor: hadSelection ? null : s.selectionAnchor,
         ...(staleBuffer ? { buffer: null, cellError: null } : {}),
       });
     },

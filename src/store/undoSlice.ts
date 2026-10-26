@@ -8,7 +8,7 @@ type UndoSlice = Pick<AppState, 'pushUndo' | 'undo' | 'redo'>;
 /** 快照式撤销（设计 04 §5.1）：一次批量操作 = 一条 patch */
 export function createUndoSlice(set: StoreSet, get: StoreGet): UndoSlice {
   return {
-    pushUndo(label: string, before: Entries, after: Entries, pointsBefore?: number) {
+    pushUndo(label: string, before: Entries, after: Entries, pointsBefore?: number, touchNo?: number) {
       const s = get();
       const patch: UndoPatch = {
         label,
@@ -16,7 +16,9 @@ export function createUndoSlice(set: StoreSet, get: StoreGet): UndoSlice {
         before: cloneEntries(before),
         after: cloneEntries(after),
         pointsBefore: pointsBefore ?? s.pointLedger.length,
-        focusBefore: s.focusedNo,
+        // I-01：撤销后要把焦点放回「这次改的那一格」。原来存的是操作前的焦点，
+        // 撤销后焦点被搬到上一格的邻居，老师接着按的数字就记到了别人身上。
+        focusBefore: touchNo ?? s.focusedNo,
       };
       set({ undoStack: [...s.undoStack, patch].slice(-UNDO_DEPTH), redoStack: [] });
     },

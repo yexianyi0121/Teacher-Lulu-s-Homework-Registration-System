@@ -1,13 +1,19 @@
 import { useEffect } from 'react';
 import { useStore } from '../store';
-import { isBooted, saveState, takeSnapshot } from '../infra/storage';
+import { diskStamp, isBooted, saveState, takeSnapshot } from '../infra/storage';
 import { SNAPSHOT_INTERVAL } from '../domain/constants';
 
 /** 自动保存（V3 §3.8）：300ms 防抖 + 30s 快照 + 离开页面前 flush + 覆盖保护 */
 export function useAutoSave() {
   useEffect(() => {
+    // 基线：把「我启动时磁盘的样子」当作自己写过的样子（本窗口还没写过盘）
+    const bootStamp = diskStamp();
     let timer: number | null = null;
     let lastSnapshot = Date.now();
+    // 我上一次成功写盘时磁盘长什么样（null = 还没写过，此刻不比对）
+    let myStamp: string | null = bootStamp;
+    // 已向老师报告过冲突，避免每次自动保存都重复弹
+    let conflictReported = false;
 
     const flush = () => {
       // 启动闸门：replaceState 之前一律不写盘，避免「空态覆盖」（FR-44 的首要嫌疑）
@@ -15,10 +21,24 @@ export function useAutoSave() {
       const s = useStore.getState();
       if (s.readOnly) return;
 
-      const result = saveState(s.exportState());
+      const result = saveState(s.exportState(), myStamp);
       if (result.ok) {
+        myStamp = result.stamp ?? null;
+        conflictReported = false;
         useStore.getState().markSaved(Date.now());
         if (useStore.getState().storageDegraded) useStore.getState().setStorageDegraded(false);
+        return;
+      }
+      if (result.conflict) {
+        // D-02/D-03：磁盘被别的窗口改过。绝不静默覆盖——先让老师知道，再让她选。
+        if (!conflictReported) {
+          conflictReported = true;
+          useStore.getState().showToast(
+            '另一个窗口也在改这份数据，为避免覆盖，这个窗口已停止保存。请先关闭其他窗口后刷新本页',
+            'error',
+            12000,
+          );
+        }
         return;
       }
       if (result.blocked) {
@@ -59,8 +79,16 @@ export function useAutoSave() {
       if (document.visibilityState === 'hidden') onHide();
     };
     const onStorage = (e: StorageEvent) => {
-      if (e.key && e.key.startsWith('xq.')) {
-        useStore.getState().showToast('检测到另一个标签页修改了数据，建议刷新避免覆盖', 'warn');
+      if (!e.key || !e.key.startsWith('xq.')) return;
+      // 别的窗口刚写完：把本窗口的基线更新为那个值，这样后续保存能检测到「磁盘变了」
+      myStamp = diskStamp();
+      if (!conflictReported) {
+        conflictReported = true;
+        useStore.getState().showToast(
+          '检测到另一个窗口修改了数据。为避免互相覆盖，本窗口已停止保存，请刷新后继续',
+          'error',
+          12000,
+        );
       }
     };
 

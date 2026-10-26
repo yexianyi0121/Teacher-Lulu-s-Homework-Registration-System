@@ -182,7 +182,7 @@ export interface AppState {
   applyVoiceCommands: (commands: VoiceCommand[]) => void;
 
   // 撤销
-  pushUndo: (label: string, before: Entries, after: Entries, pointsBefore?: number) => void;
+  pushUndo: (label: string, before: Entries, after: Entries, pointsBefore?: number, touchNo?: number) => void;
   undo: () => void;
   redo: () => void;
 

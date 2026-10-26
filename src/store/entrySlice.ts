@@ -25,6 +25,18 @@ export function normalizeEntry(e: Entry, scheme: ScoringScheme): Entry {
   void scheme;
   const next: Entry = { ...e, value: e.value ? { ...e.value } : null, makeup: e.makeup ? { ...e.makeup } : null };
 
+  // I-04：录值时如果原来是「缺交/请假」，不能悄悄抹掉那条状态——
+  // 那等于「录个 A+ 就把缺交记录凭空消掉」，老师事后完全看不出这孩子曾经缺交。
+  // 改为留下补交痕迹：缺交 + 后来有成绩 = 补交。
+  if ((next.status === 'missing' || next.status === 'leave') && next.value) {
+    if (!next.makeup) {
+      next.makeup = {
+        at: Date.now(),
+        note: next.status === 'missing' ? '录入成绩时自动记为补交' : '请假后录入成绩，记为补交',
+      };
+    }
+  }
+
   if (next.status === 'leave' || next.status === 'missing') {
     next.value = null;
     next.pass = false;
@@ -94,7 +106,8 @@ export function createEntrySlice(set: StoreSet, get: StoreGet): EntrySlice {
     }
 
     const updated: RecordDoc = { ...rec, entries: nextEntries, updatedAt: now };
-    s.pushUndo(label, before, nextEntries, s.pointLedger.length);
+    // I-01：把「这次实际改动的最后一格」记进撤销补丁，撤销后焦点就停在那格
+    s.pushUndo(label, before, nextEntries, s.pointLedger.length, changedNos[changedNos.length - 1]);
     set({
       records: { ...s.records, [rec.key]: updated },
       draft: updated,
