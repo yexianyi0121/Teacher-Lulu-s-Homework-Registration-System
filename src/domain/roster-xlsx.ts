@@ -84,8 +84,12 @@ export function studentsFromRows(rows: unknown[][]): { students: Student[]; warn
 
   for (let i = 0; i < Math.min(grid.length, 10); i += 1) {
     const r = grid[i];
-    const nameIdx = r.findIndex((c) => NAME_HEADER.test(c));
-    const noIdx = r.findIndex((c) => NO_HEADER.test(c));
+    // 表头单元格一定是「短标签」（姓名/学号/序号/学生姓名…）。
+    // 「2026级19班 学生姓名 登记表」这种整句标题也含「学生姓名」，
+    // 但它不是表头 —— 否则整张表会塌成 1 人（R-03）。
+    const isHeaderCell = (c: string) => c.length <= 8 && !TITLE_LIKE.test(c);
+    const nameIdx = r.findIndex((c) => isHeaderCell(c) && NAME_HEADER.test(c));
+    const noIdx = r.findIndex((c) => isHeaderCell(c) && NO_HEADER.test(c));
     if (nameIdx >= 0 || noIdx >= 0) {
       headerRow = i;
       nameCol = nameIdx;

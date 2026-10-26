@@ -3,6 +3,7 @@ import { useStore, currentClass } from '../../store';
 import { decodeCsv, looksLikeNonText, nonTextFileHint, parseRosterText } from '../../domain/roster-import';
 import { studentsFromRows } from '../../domain/roster-xlsx';
 import * as XLSX from 'xlsx';
+import type { Student } from '../../domain/types';
 import { Modal } from '../ui/Modal';
 import { Pill } from '../ui/controls';
 
@@ -19,6 +20,11 @@ import { Pill } from '../ui/controls';
  */
 
 type Source = 'paste' | 'csv' | 'xlsx';
+
+/** 当前班级已有的姓名列表（按学号顺序） */
+function floorNames(cls: { students: Student[] } | undefined): string[] {
+  return (cls?.students ?? []).map((st) => (st.name ?? '').trim());
+}
 
 export function ImportRosterModal() {
   const setModal = useStore((s) => s.setModal);
@@ -56,20 +62,43 @@ export function ImportRosterModal() {
   const apply = () => {
     if (fatal || !students.length) return;
     const next = students.length;
-    if (cls && next !== cls.count) {
-      openConfirm({
-        title: '导入名单会改变人数',
-        message: `当前 ${cls.count} 人，导入后 ${next} 人。少出的学号数据不会被删除（只是隐藏），确定继续？`,
-        confirmText: '导入',
-        onConfirm: () => {
-          importRoster(students);
-          close();
-        },
-      });
+    const cur = cls?.count ?? 0;
+    // 名单是否真的变了：同名同姓同序号视为没变（重复导入同一份名单不该弹框）
+    const oldNames = floorNames(cls);
+    const newNames = students.map((st) => (st.name ?? '').trim());
+    const changed = next !== cur || newNames.some((nm, i) => nm !== (oldNames[i] ?? ''));
+
+    const doImport = () => {
+      // FR-56-6：导入前留底，让「设置 → 回退到导入前」真的能救回来。
+      try {
+        localStorage.setItem(`xq.preimport.${Date.now()}`, JSON.stringify(useStore.getState().exportState()));
+      } catch {
+        // 空间不足时仍然允许导入——误导入可以靠导出的 JSON 找回
+      }
+      importRoster(students);
+      close();
+      useStore.getState().showToast(
+        `已导入 ${next} 人名单${changed ? '，可在【设置 → 回退到导入前】恢复' : ''}`,
+        'ok',
+      );
+    };
+
+    if (!changed) {
+      doImport();
       return;
     }
-    importRoster(students);
-    close();
+
+    openConfirm({
+      title: '导入名单会替换全部学生姓名',
+      message:
+        `当前 ${cur} 人，导入后 ${next} 人。` +
+        '\n\n⚠️ 已登记的成绩、盖章、积分会按【学号】保留给新名单上同号的学生。' +
+        (next === cur ? '\n如果这是新学期的另一批学生，他们的成绩会被挂到这些学生名下。' : '') +
+        '\n\n导入前的数据会自动留底，可在【设置 → 回退到导入前】恢复。',
+      confirmText: '确认替换名单',
+      danger: true,
+      onConfirm: doImport,
+    });
   };
 
   const onFile = async (f: File) => {
@@ -89,9 +118,11 @@ export function ImportRosterModal() {
           setFileError('这个 Excel 里没有任何工作表。请确认文件没有损坏。');
           return;
         }
-        // 优先挑「读到学生最多」的那张表：老师的名单不一定在第一张
+        // 优先挑「读到学生最多」的那张表：老师的名单不一定在第一张。
+        // 但要记住每张表读到几个人 —— 选错时至少要让老师知道别的表也有名单。
         let best: { name: string; rows: unknown[][] } | null = null;
         let bestCount = -1;
+        const others: string[] = [];
         for (const name of wb.SheetNames) {
           const rows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[name], {
             header: 1,
@@ -100,18 +131,28 @@ export function ImportRosterModal() {
           });
           const got = studentsFromRows(rows as unknown[][]).students.length;
           if (got > bestCount) {
+            if (bestCount > 0 && best) others.push(`「${best.name}」${bestCount} 人`);
             bestCount = got;
             best = { name, rows: rows as unknown[][] };
+          } else if (got > 0) {
+            others.push(`「${name}」${got} 人`);
           }
         }
         if (!best || bestCount <= 0) {
           setFileError(
-            '这个 Excel 里没有读到学生名单。系统会找「学号」「姓名」这样的表头，'
-            + '请确认表格里至少有一列写着学生姓名。',
+            '这个 Excel 里没有读到学生名单。系统会找「学号」「姓名」「序号」「名字」这样的表头或列，'
+            + '请确认表格里至少有一列写着学生姓名；如果名字混在别的文字里，'
+            + '也可以直接用「粘贴名单」的方式导入。',
           );
           return;
         }
         const parsed = studentsFromRows(best.rows);
+        if (others.length) {
+          parsed.warnings.push(
+            `这个文件里还有 ${others.length} 张表也像名单（${others.join('、')}），`
+            + `当前读的是「${best.name}」。如果选错了，请把它单独存成一个 Excel 再导入。`,
+          );
+        }
         setXlsx({
           students: parsed.students,
           warnings: parsed.warnings,

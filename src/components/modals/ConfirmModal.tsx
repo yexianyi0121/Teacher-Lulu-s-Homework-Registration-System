@@ -38,7 +38,9 @@ export function ConfirmModal() {
         </>
       }
     >
-      <p style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text-1)' }}>{req.message}</p>
+      <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text-1)', whiteSpace: 'pre-wrap' }}>
+        {req.message}
+      </div>
       {req.requireText ? (
         <div className="field" style={{ marginTop: 14 }}>
           <label className="field-label" htmlFor="confirm-typed">
