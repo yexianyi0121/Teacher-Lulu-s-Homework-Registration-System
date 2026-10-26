@@ -64,6 +64,10 @@ export interface PassRule {
   gradePass: GradeLetter[];
   /** 默认 true：听写「全对/错0」自动算过关 */
   dictationAutoPass: boolean;
+  /** v2.6.2 FR-71.3：缺交是否算过关（默认 false；旧数据缺字段按 false 处理） */
+  missingPass?: boolean;
+  /** v2.6.2 FR-71.3：请假是否算过关（默认 false；旧数据缺字段按 false 处理） */
+  leavePass?: boolean;
 }
 
 /** 汇总目标（取代 V2 的 posterMode，V3 设计 06 §3.6） */

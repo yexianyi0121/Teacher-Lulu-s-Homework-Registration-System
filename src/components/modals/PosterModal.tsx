@@ -145,7 +145,7 @@ export function PosterModal({
       {target.mode === 'single' ? (
         <div className="field" style={{ marginBottom: 10 }}>
           <label className="field-label" htmlFor="poster-comment">
-            评价语（显示在海报页脚）
+            评价语（只影响这张单条海报）
           </label>
           <textarea
             id="poster-comment"
@@ -178,6 +178,17 @@ export function PosterModal({
                   >
                     {sec.comment ? '改评价语' : '写评价语'}
                   </button>
+                  {/* v2.6.2 FR-71.4：按表清理评价语（以前只能把文字删空，不知道到底存没存） */}
+                  {sec.comment ? (
+                    <button
+                      type="button"
+                      className="chip chip--ghost"
+                      aria-label={`删除 ${sec.content || sec.sheetName} 的评价语`}
+                      onClick={() => { setSheetComment(sec.key, ''); setOpenComment(null); showToast('已删除这张表的评价语', 'ok'); onRegenerate(); }}
+                    >
+                      删除评价语
+                    </button>
+                  ) : null}
                 </div>
                 {openComment === sec.key ? (
                   <>
@@ -187,9 +198,9 @@ export function PosterModal({
                       value={sec.comment}
                       placeholder="例：这一遍默写整体不错，错字请抄三遍。"
                       onChange={(e) => setSheetComment(sec.key, e.target.value)}
-                      onBlur={() => onRegenerate()}
+                      onBlur={() => { onRegenerate(); showToast('已保存这张表的评价语', 'ok'); }}
                     />
-                    <div className="field-hint">{sec.comment.length}/{COMMENT_MAX} 字 · 失焦后自动重新生成</div>
+                    <div className="field-hint">{sec.comment.length}/{COMMENT_MAX} 字 · 失焦后自动保存并重新生成</div>
                   </>
                 ) : sec.comment ? (
                   <div className="sheet-comment-text">{sec.comment}</div>

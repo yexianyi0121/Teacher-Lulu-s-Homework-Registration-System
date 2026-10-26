@@ -230,6 +230,23 @@ export function SettingsModal() {
             label="听写全对自动过关"
           />
         </div>
+        {/* v2.6.2 FR-71.3：缺交 / 请假也要能选——以前写死「不过关」，老师想把请假视为不拖后腿时没办法。 */}
+        <div className="switch-row">
+          <span>缺交算过关</span>
+          <Toggle
+            checked={s.settings.passRule.missingPass ?? false}
+            onChange={(v) => setPassRule({ missingPass: v })}
+            label="缺交算过关"
+          />
+        </div>
+        <div className="switch-row">
+          <span>请假算过关</span>
+          <Toggle
+            checked={s.settings.passRule.leavePass ?? false}
+            onChange={(v) => setPassRule({ leavePass: v })}
+            label="请假算过关"
+          />
+        </div>
         <div className="field-hint">改规则只重算 ✅ / 名单 / 达标率，不改任何已录入的值。</div>
       </section>
 

@@ -178,6 +178,8 @@ export interface AppState {
   /** v2.5.10 FR-66.2：按记录 key 写某张表的评价语（汇总图里逐表编辑） */
   setSheetComment: (key: string, v: string) => void;
   setDigitKey: (mode: DigitKeyMode) => void;
+  /** v2.6.2 FR-71.2：删除一整张登记表（records + history 同清） */
+  deleteRecord: (key: string) => void;
   resetScheme: () => void;
   commitToHistory: () => void;
   clearCurrentRecord: () => void;

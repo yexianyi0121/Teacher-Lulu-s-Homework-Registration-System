@@ -6,6 +6,20 @@
 > **只写「做了什么、为什么、验收到什么程度」**，不贴用户操作步骤与反馈原话。
 > 每次改动的细节（根因、代码位置、验收编号）见 `docs/` 里对应的需求说明书或修复日志。
 
+## [2.6.2] - 2026-10-27
+
+### 修复 Fixed
+
+- 修复 「选择登记表」把随手打字的空表也列成选项：只列真正录过的表，当前正在编辑的表始终保留（FR-71.1）。
+- 修复 登记表删不掉：参数行新增「删除此表」并二次确认，删除后从选择器、当日汇总与历史里一起消失（FR-71.2）。
+- 修复 缺交 / 请假一律按不过关处理：设置页新增「缺交算过关」「请假算过关」两个开关，默认关闭（FR-71.3）。
+- 修复 汇总图里每张表的评价语没有删除入口：按表提供「删除评价语」按钮，删除后立即重新生成（FR-71.4）。
+
+### 文档 Docs
+
+- 新增 `docs/27-修复日志-v2.6.2.md`（根因、代码位置与验收编号）。
+- 版本号升至 **2.6.2**，`dist/` 已重建。
+
 ## [2.6.1] - 2026-10-26
 
 ### 修复 Fixed
@@ -274,7 +288,8 @@ V1 基线：16 条 FR，作业/测验成绩登记、界面规格、口径、样�
 
 ---
 
-[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.1...HEAD
+[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.2...HEAD
+[2.6.2]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.1...v2.6.2
 [2.6.1]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.5.10...v2.6.0
 [2.5.10]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.5.9...v2.5.10

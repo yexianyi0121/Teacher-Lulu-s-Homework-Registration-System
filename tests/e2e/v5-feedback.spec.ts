@@ -192,3 +192,117 @@ test('FR-68.1 提示条把启用等级的键位做成色块，B- 也能一眼看
   const clipped = await hint.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
   expect(clipped).toBe(false);
 });
+
+test('FR-71.1 作业内容随手打出来的空表不进「选择登记表」（A-148）', async ({ page }) => {
+  await resetApp(page);
+  await closeJump(page);
+  await pickTemplate(page, 'homework');
+
+  await page.getByLabel('作业内容').fill('默写');
+  await typeCell(page, 1, ['1']);
+  await expect(page.locator('[data-no="1"]')).toContainText('A+');
+
+  // 在作业内容里随手打字：选择器只列「真正录过的表」+ 当前正在编辑的表（默认值），
+  // 不再把每一版草稿都变成一条永久选项。
+  await page.getByLabel('作业内容').fill('默写1');
+  await page.getByLabel('作业内容').fill('默写12');
+  await page.getByLabel('作业内容').fill('默写1');
+  const opts = await page.getByLabel('选择登记表').locator('option').evaluateAll((os) => os.map((o) => (o.textContent ?? '').trim()));
+  // 只有「录过的默写」+「正在编辑的默写1」，不会每打一个字就多一条永久选项
+  expect(opts.length).toBe(2);
+  expect(opts).toContain('默写 · 1 人');
+  expect(opts).toContain('默写1 · 当前');
+
+  // 回到真正录过的表，数据还在
+  await page.getByLabel('选择登记表').selectOption({ label: '默写 · 1 人' });
+  await expect(page.locator('[data-no="1"]')).toContainText('A+');
+});
+
+test('FR-71.2 删除整张登记表：确认后从选择器与汇总里消失（A-149）', async ({ page }) => {
+  await resetApp(page);
+  await closeJump(page);
+  await pickTemplate(page, 'homework');
+
+  await page.getByLabel('作业内容').fill('默写');
+  await typeCell(page, 1, ['1']);
+  await page.getByLabel('作业内容').fill('作文');
+  await typeCell(page, 2, ['2']);
+  await expect(page.getByLabel('选择登记表')).toBeVisible();
+
+  // 当前在「作文」这张表上：删掉它
+  await page.getByRole('button', { name: '删除此表' }).click();
+  const dlg = page.getByRole('dialog', { name: '删除登记表' });
+  await expect(dlg).toBeVisible();
+  await dlg.getByRole('button', { name: '删除' }).click();
+
+  // 删完回到剩下的那张表；只剩一张表时选择器自动收起（不添乱）
+  await expect(page.getByLabel('作业内容')).toHaveValue('默写');
+  await expect(page.getByLabel('选择登记表')).toHaveCount(0);
+  await expect(page.locator('[data-no="1"]')).toContainText('A+');
+  await expect(page.locator('[data-no="2"]')).not.toContainText('A');
+
+  // 当日汇总里也只剩一张表
+  await page.locator('.output-bar button[aria-label="当日汇总"]').click();
+  const names = await sheetCommentNames(page);
+  expect(names.length).toBe(1);
+  expect(names[0]).toContain('默写');
+  await closeModal(page);
+});
+
+test('FR-71.3 缺交 / 请假可选择是否算过关（A-150）', async ({ page }) => {
+  await resetApp(page);
+  await closeJump(page);
+  await pickTemplate(page, 'homework');
+
+  await typeCell(page, 1, ['1']);        // A+
+  await page.locator('[data-no="2"]').click();
+  await page.keyboard.press('l');
+  await expect(page.locator('[data-no="2"]')).toContainText('假');
+
+  // 默认：请假不算过关（绿色不出现）
+  await page.locator('.input-bar button[aria-label="更多"]').click();
+  await page.locator('.more-menu').getByText('设置').click();
+  const toggle = page.getByLabel('请假算过关');
+  await expect(toggle).not.toBeChecked();
+  await toggle.check();
+  await closeModal(page);
+
+  // 请假格现在算过关（带✅）
+  const cell = page.locator('[data-no="2"]');
+  await expect(cell).toContainText('假');
+  await expect(cell.locator('.cell-badge')).toBeVisible();
+});
+
+test('FR-71.4 汇总里每张表的评价语可以独立删除（A-151）', async ({ page }) => {
+  await resetApp(page);
+  await closeJump(page);
+  await pickTemplate(page, 'homework');
+
+  await page.getByLabel('作业内容').fill('默写');
+  await typeCell(page, 1, ['1']);
+  await page.getByLabel('作业内容').fill('作文');
+  await typeCell(page, 2, ['2']);
+
+  await page.locator('.output-bar button[aria-label="当日汇总"]').click();
+  const first = page.locator('.sheet-comment').filter({ has: page.locator('.sheet-comment-name', { hasText: '默写' }) });
+  await first.locator('button.chip').first().click();
+  const box = first.locator('textarea');
+  await box.fill('默写全对的同学请继续保持。');
+  await box.blur();
+  // 评价语已落到这条记录上（textarea 仍展开着，折叠后才显示文字版）
+  await expect(box).toHaveValue('默写全对的同学请继续保持。');
+  await page.waitForTimeout(300);
+  await first.locator('button.chip').first().click();   // 折叠
+  await expect(page.locator('.sheet-comment-text').filter({ hasText: '默写全对的同学请继续保持。' })).toHaveCount(1);
+
+  // 删除这张表的评价语
+  await page.locator('.sheet-comment').filter({ has: page.locator('.sheet-comment-name', { hasText: '默写' }) })
+    .getByRole('button', { name: /删除 .* 的评价语/ }).click();
+  await expect(page.locator('.sheet-comment-text').filter({ hasText: '默写全对的同学请继续保持。' })).toHaveCount(0);
+  await closeModal(page);
+
+  // 重新打开：真的没了（localStorage 往返）
+  await page.locator('.output-bar button[aria-label="当日汇总"]').click();
+  await expect(page.locator('.sheet-comment-text').filter({ hasText: '默写全对的同学请继续保持。' })).toHaveCount(0);
+  await closeModal(page);
+});

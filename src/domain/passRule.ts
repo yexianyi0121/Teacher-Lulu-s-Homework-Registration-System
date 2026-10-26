@@ -16,7 +16,10 @@ export const DEFAULT_PASS_RULE: PassRule = {
 
 export function isPassed(e: Entry | undefined, s: ScoringScheme, rule: PassRule): boolean {
   if (!e) return false;
-  if (e.status !== 'normal') return false;                 // 缺交/请假 → 不过关
+  // v2.6.2 FR-71.3：缺交 / 请假是否算过关由老师自己选（默认不算，与 V2 起一直如此）。
+  // 旧数据没有 missingPass / leavePass 字段，undefined → false，行为不变。
+  if (e.status === 'missing') return !!rule.missingPass;
+  if (e.status === 'leave') return !!rule.leavePass;
   if (e.pass || e.value?.kind === 'pass') return true;      // 手打 √（含 V1 迁移的 {kind:'pass'}）
 
   const p = percentOf(e, s);

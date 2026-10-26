@@ -18,6 +18,7 @@ import { weekStartOf } from '../domain/date';
 import type { DigitKeyMode } from '../domain/digitKey';
 import type { AppState } from './store-types';
 import { currentClass } from './index';
+import { hasEntries } from './initial';
 
 const countOf = (s: AppState) => currentClass(s)?.count ?? 0;
 
@@ -155,7 +156,9 @@ export function selectPosterBySheet(s: AppState, key: string) {
   });
 }
 
-/** 当天已登记的全部表（FR-64.1：按记录 key 去重——同模板的多张表必须都出现） */
+/** 当天已登记的全部表（FR-64.1：按记录 key 去重——同模板的多张表必须都出现）
+ * v2.6.2 FR-71.1：只列「已登记」的表——在作业内容里随手打字，结果每打一个字就在选择器里多出一项空表，而使用者真正要看的是他真瞬间录过的表。
+ * 当前草稿总是保留（不管有没有登记），才能在选择器里根据作业内容切来切去。 */
 export function selectSheetsOfDay(s: AppState) {
   const seen = new Map<string, { key: string; sheetId: string; content: string; templateId: string; entered: number }>();
   const add = (r: { key: string; sheetId: string; content: string; templateId: string; entries: Entries }) => {
@@ -168,8 +171,12 @@ export function selectSheetsOfDay(s: AppState) {
       });
     }
   };
-  for (const h of s.history) if (h.classId === s.activeClassId && h.date === s.draft.date) add(h);
-  for (const r of Object.values(s.records)) if (r.classId === s.activeClassId && r.date === s.draft.date) add(r);
+  for (const h of s.history) if (h.classId === s.activeClassId && h.date === s.draft.date && hasEntries(h.entries)) add(h);
+  for (const r of Object.values(s.records)) {
+    if (r.classId !== s.activeClassId || r.date !== s.draft.date) continue;
+    if (r.key !== s.draft.key && !hasEntries(r.entries)) continue;
+    add(r);
+  }
   return [...seen.values()];
 }
 

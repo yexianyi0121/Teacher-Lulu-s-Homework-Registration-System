@@ -171,6 +171,10 @@ pre {
 }
 .pill--danger:hover { background: var(--red-bg); }
 
+/* v2.6.2 FR-71.2：参数行里的「删除此表」（ghost + danger 复合，快速清理作业内容随手打出来的空表） */
+.pill--ghost.pill--danger { color: var(--red); border-color: var(--red-line); }
+.pill--ghost.pill--danger:hover:not(:disabled) { background: var(--red-bg); color: var(--red); }
+
 .pill .spinner {
   width: 13px;
   height: 13px;
@@ -1590,6 +1594,7 @@ pre {
 /* ============ V2 新增 ============ */
 
 .params { align-items: center; gap: 10px; }
+.params .pill { height: var(--btn-h); padding: 0 var(--pill-pad-x); font-size: var(--fs-base); flex: none; }
 .params-field { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .params-field .field-label { white-space: nowrap; }
 .params-grow { flex: 1 1 220px; min-width: 0; }
@@ -1687,6 +1692,10 @@ pre {
 .sheet-comment-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sheet-comment-name { font-size: 13px; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sheet-comment .chip { min-width: 0; padding: 2px 8px; font-size: 12px; flex: none; }
+
+/* v2.6.2 FR-71.4：「删除评价语」用幂色（不是主操作，不报错） */
+.sheet-comment .chip--ghost { color: var(--text-3); border-color: var(--line); }
+.sheet-comment .chip--ghost:hover { color: var(--red); border-color: var(--red-line); background: var(--red-bg); }
 .sheet-comment textarea { margin-top: 6px; }
 .sheet-comment-text { margin-top: 4px; font-size: 13px; color: #3D3346; line-height: 1.5; }
 

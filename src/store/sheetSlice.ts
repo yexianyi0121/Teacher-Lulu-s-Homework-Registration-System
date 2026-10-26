@@ -10,7 +10,7 @@ type SheetSlice = Pick<
   AppState,
   | 'switchTemplate' | 'switchSheet' | 'setDate' | 'setContent' | 'switchRecord'
   | 'setScheme' | 'resetScheme' | 'setComment' | 'setSheetComment' | 'commitToHistory' | 'clearCurrentRecord'
-  | 'deleteHistory' | 'clearHistory' | 'setDigitKey'
+  | 'deleteHistory' | 'clearHistory' | 'setDigitKey' | 'deleteRecord'
 >;
 
 function upsert(history: HistoryEntry[], entry: HistoryEntry): HistoryEntry[] {
@@ -157,6 +157,42 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
       const s = get();
       set({ history: s.history.filter((h) => h.key !== key) });
       s.showToast('已删除该条历史记录', 'ok');
+    },
+
+    /** v2.6.2 FR-71.2：删除一整张登记表（作业内容随手打出来的空表、录错的表） */
+    deleteRecord(key) {
+      const s = get();
+      const target = s.records[key] ?? s.history.find((h) => h.key === key) ?? s.draft;
+      const records = { ...s.records };
+      delete records[key];
+      const history = s.history.filter((h) => h.key !== key);
+      // 删当前表时不走 switchRecord：它会把当前草稿再写回 records（删了又回来），
+      // 而且会触发 commitIfDirty 把这张表推进历史，“删除”就失败了。
+      if (key !== s.draft.key) {
+        set({ records, history });
+      } else {
+        // 回到同模板当天最近一条记录（不筛有没有内容，否则空表也可以当落点）；没有就留一张新的空表
+        const hit = Object.values(records)
+          .filter((r) => r.classId === s.activeClassId && r.date === s.draft.date && r.templateId === s.draft.templateId)
+          .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+        const draft = hit
+          ? { ...hit, templateId: s.draft.templateId }
+          : createRecord({ classId: s.activeClassId, date: s.draft.date, content: '', templateId: s.draft.templateId, scheme: s.draft.scheme });
+        set({
+          records: { ...records, [draft.key]: draft },
+          history,
+          activeKey: draft.key,
+          draft,
+          focusedNo: 1,
+          selection: new Set<number>(),
+          selectionAnchor: null,
+          editing: null,
+          buffer: null,
+          compareId: null,
+          filterNotPassed: false,
+        });
+      }
+      s.showToast(`已删除「${target.content || '未命名'}」这张表`, 'ok', 5000);
     },
 
     clearHistory() {
