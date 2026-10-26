@@ -137,7 +137,10 @@ test('E2E-38 1366×768 不出现纵向滚动；输出带 4 按钮顺序固定（
   });
 
   await test.step('快捷键仍可用：Ctrl+Enter 报表 / Ctrl+J 海报', async () => {
-    await page.locator('.cell').first().click();
+    // v2.5.7：空表会被拦截（U-01/U-02），本步测的是「快捷键通路」，先录一个值。
+    await page.locator('[data-no="1"]').click();
+    await page.keyboard.press('1');
+    await page.locator('[data-no="1"]').click();
     await page.keyboard.press('Control+Enter');
     await expect(page.getByTestId('report-text')).toBeVisible();
     await page.keyboard.press('Escape');

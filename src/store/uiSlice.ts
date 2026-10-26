@@ -128,12 +128,17 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
     showToast(text, tone = 'ok', ms) {
       // U-05：固定 2600ms 且谁都能顶掉谁 —— 实测「已清空本条记录，可 Ctrl+Z 恢复」
       // 会被 3 秒后的「该备份了」提醒直接顶掉，老师根本没看见「可以撤销」。
-      // 规则：① 带「可撤销/可继续操作」的信息给更长寿命；② warn/error 比 ok 优先级高，
-      // 低优先级提示不能覆盖仍在显示的高优先级提示。
+      // 规则：① 带「可撤销/可继续操作」的信息给更长寿命（见调用方传 ms）；
+      //       ② **新操作产生的提示一律顶掉旧的**，除了两种例外。
+      //
+      // v2.5.7 修正（两次）：曾经写成「低优先级不能覆盖仍在显示的高优先级提示」，
+      // 结果先敲了 9（warn「本表没有该等级键」）再按 ` 切分数（ok「数字键已切到」），
+      // 新提示被 4 秒前那条 warn 吞掉 —— chip 明明变了，老师却以为「按了没反应」。
+      // 提示是「刚刚发生了什么」的反馈，过时的那条不该继续占着位置。
+      // 唯一例外：error（数据没存上这类）不被 ok 顶掉，免得老师错过事故提示。
       toastSeq += 1;
       const cur = get().toast;
-      const rank = (t: string) => (t === 'error' ? 2 : t === 'warn' ? 1 : 0);
-      if (cur && rank(cur.tone) > rank(tone)) return;
+      if (cur && cur.tone === 'error' && tone !== 'error') return;
       const life = ms ?? (tone === 'error' ? 5000 : tone === 'warn' ? 4000 : 2600);
       set({ toast: { id: toastSeq, text, tone } });
       if (toastTimer) clearTimeout(toastTimer);

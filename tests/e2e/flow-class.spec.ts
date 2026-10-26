@@ -36,6 +36,11 @@ test('flow-class：报表带当前班级名（AC-47）', async ({ page }) => {
   await page.getByLabel('班级名', { exact: true }).blur();
   await page.getByRole('button', { name: '完成' }).click();
 
+  // v2.5.7：空表按 Ctrl+Enter 会被拦截（U-01/U-02，防止把「全员未提交」的报表发到群里），
+  // 这里必须先录一个值，否则测的就不是「报表带班级名」而是空表拦截。
+  await page.locator('[data-no="1"]').click();
+  await page.keyboard.press('1');
+
   await page.keyboard.press('Control+Enter');
   await expect(page.getByTestId('report-text')).toContainText('🏫 班级：一年一班');
 });

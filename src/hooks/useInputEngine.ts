@@ -179,8 +179,14 @@ export function useInputEngine() {
       // 原来只挡了输入框，结果在「清空本条记录」确认框里下意识按 Enter，
       // 框没关、1 号格的成绩却被改成了「过关」——这是最典型的误操作。
       if (s.confirmRequest || s.modal) {
-        // 只放行 Esc（弹窗自己处理关闭）与 Tab（无障碍焦点移动）
-        if (e.key !== 'Escape' && e.key !== 'Tab') return;
+        // Esc 关弹窗；Tab 留给无障碍焦点移动，其余一律吞掉。
+        // v2.5.7 修正：原来写成「放行 Esc 然后 return」，等于把 Esc 也让开了却没执行关闭，
+        // 结果弹窗按 Esc 关不掉（E2E-38b 现场）。现在显式关闭。
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          if (s.confirmRequest) s.closeConfirm();
+          else s.setModal(null);
+        }
         return;
       }
       const mod = e.ctrlKey || e.metaKey;

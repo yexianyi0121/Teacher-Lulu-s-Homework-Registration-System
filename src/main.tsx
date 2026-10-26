@@ -64,3 +64,5 @@ async function bootstrap() {
 }
 
 void bootstrap();
+// DEBUG-TMP
+if (typeof window !== 'undefined') (window as any).__xq = useStore;

@@ -38,6 +38,30 @@ export function InputBar({
 
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  // v2.5.7：浮层改为 fixed + 锚点坐标。原来用 absolute + bottom:100% 向上弹出，
+  // 但 .input-bar 为了缩放兜底设了 overflow-x:auto（CSS 规范会把 overflow-y 也算成 auto），
+  // 于是向上溢出的浮层被整个裁掉 —— 看得见、点不到（elementFromPoint 命中的是「作业内容」输入框）。
+  const [menuPos, setMenuPos] = useState<{ right: number; bottom: number } | null>(null);
+
+  useEffect(() => {
+    if (!moreOpen) {
+      setMenuPos(null);
+      return;
+    }
+    const place = () => {
+      const el = moreRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setMenuPos({ right: Math.round(window.innerWidth - r.right), bottom: Math.round(window.innerHeight - r.top + 6) });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [moreOpen]);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -148,8 +172,12 @@ export function InputBar({
         >
           ⋯
         </Pill>
-        {moreOpen ? (
-          <div className="more-menu" role="menu">
+        {moreOpen && menuPos ? (
+          <div
+            className="more-menu"
+            role="menu"
+            style={{ position: 'fixed', top: 'auto', right: `${menuPos.right}px`, bottom: `${menuPos.bottom}px` }}
+          >
             <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setModal('points'); }}>
               ⭐ 积分
             </button>

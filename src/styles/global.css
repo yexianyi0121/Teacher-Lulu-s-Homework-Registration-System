@@ -105,6 +105,10 @@ pre {
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
+  /* v2.5.7：参数行（含「作业内容」输入框）必须让位于录入带的浮层。
+     否则 z-index:30 的 ⋯ 菜单向上弹出时会被输入框盖住，elementFromPoint 命中 INPUT，点击全被吃掉。 */
+  position: relative;
+  z-index: 1;
 }
 
 /* ============ V4 三段式（ADR-25）：输出带 / 录入带 / 提示条 ============
@@ -132,6 +136,12 @@ pre {
   gap: 6px;
   margin-bottom: 4px;
   min-width: 0;
+  /* v2.5.7 事故：⋯ 更多浮层 z-index:30 却点不动 —— 它向上弹出，落在 .params 输入行的位置上，
+     而 .input-bar 在 DOM 里排在 .params 之后、二者又都是 z-index:auto，
+     于是「后来的输入框」绘制在浮层上面，把点击全吃掉了（elementFromPoint 命中 INPUT 作业内容）。
+     给录入带建立层叠上下文抬到参数行之上，浮层才能真正浮起来。 */
+  position: relative;
+  z-index: 20;
 }
 .input-bar .input-grow { flex: 1 1 auto; min-width: 0; }
 /* FR-49.3：清空（写入）与更新修改（存储）之间 12px 分隔，且与输出带视觉隔离 */
