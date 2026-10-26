@@ -93,6 +93,8 @@ export interface AppState {
   weekParts: WeekPart[] | null;
   storageDegraded: boolean;
   readOnly: boolean;
+  /** 只读原因（FR-54）：决定横幅文案与可用的救援入口；null = 非只读 */
+  readOnlyReason: 'MIGRATE_FAILED' | 'UNKNOWN_STATE' | 'NEWER_VERSION' | 'BLOCKED_OVERWRITE' | null;
   lastSavedAt: number | null;
   pulsingNo: number | null;
   flashNo: number | null;
@@ -132,7 +134,7 @@ export interface AppState {
   setBlockedOverwrite: (v: boolean) => void;
   setWeekParts: (parts: WeekPart[] | null) => void;
   setStorageDegraded: (v: boolean) => void;
-  setReadOnly: (v: boolean) => void;
+  setReadOnly: (v: boolean, reason?: AppState['readOnlyReason']) => void;
   markSaved: (at: number) => void;
   setPulsingNo: (no: number | null) => void;
   setFlashNo: (no: number | null) => void;

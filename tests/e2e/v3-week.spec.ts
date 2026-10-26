@@ -1,11 +1,24 @@
 import { expect, test } from '@playwright/test';
 import { capturePosterText, closeJump, closeModal, pickTemplate, resetApp, setDate, typeCell, waitPoster } from './v3-fixtures';
 
-function iso(offsetDays: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
+/**
+ * 取「本周」内的 count 天（与系统同口径：周一为一周之始）。
+ * 从本周一往后取，保证这 count 天一定落在同一周里；
+ * 这样「7 - count 天无登记」的断言在任何一天都成立。
+ */
+function currentWeekDays(count: number): string[] {
+  const now = new Date();
+  const dow = now.getDay() || 7;            // 周日 = 0 → 视作 7
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (dow - 1));
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const out: string[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    out.push(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+  }
+  return out;
 }
 
 /**
@@ -19,7 +32,11 @@ test('E2E-31 本周汇总：三天数据按日拼接，空日写「当日无登�
   await closeJump(page);
   await pickTemplate(page, 'homework');
 
-  const days = [iso(0), iso(-1), iso(-2)];
+  // 断言「7 天里 4 天没登记 → 4 个当日无登记」的前提是：这三天必须同属一周。
+  // 直接取 iso(0)/iso(-1)/iso(-2) 的话，每逢周一（或周二）这三天会跨周，
+  // 本周汇总里就只剩 1~2 张登记、空日变 5~6 个，用例必然红。
+  // 正确做法是锚定到「本周」内的三天：本周一之后的连续三天（跨周则退回到本周内可取的三天）。
+  const days = currentWeekDays(3);
   for (const date of days) {
     await setDate(page, date);
     for (const no of [1, 2, 3]) await typeCell(page, no, ['2']);

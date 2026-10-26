@@ -75,6 +75,7 @@ export const useStore = create<AppState>()((set, get) => ({
   weekParts: null,
   storageDegraded: false,
   readOnly: false,
+  readOnlyReason: null,
   lastSavedAt: null,
   pulsingNo: null,
   flashNo: null,
@@ -127,6 +128,9 @@ export const useStore = create<AppState>()((set, get) => ({
       undoStack: [],
       redoStack: [],
       filterNotPassed: false,
+      readOnly: false,
+      readOnlyReason: null,
+      blockedOverwrite: false,
       modal: null,
       confirmRequest: null,
     });

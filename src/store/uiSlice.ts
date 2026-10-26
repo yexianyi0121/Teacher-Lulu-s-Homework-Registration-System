@@ -155,8 +155,8 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
       set({ storageDegraded: v });
     },
 
-    setReadOnly(v) {
-      set({ readOnly: v });
+    setReadOnly(v, reason = null) {
+      set({ readOnly: v, readOnlyReason: v ? reason : null });
     },
 
     markSaved(at) {

@@ -10,7 +10,7 @@ import { useInputEngine } from './hooks/useInputEngine';
 import { useAutoSave } from './hooks/useAutoSave';
 import { useVoice } from './hooks/useVoice';
 import { rasterizeWithRetry } from './infra/rasterize';
-import { exportAllBlob, markBackupDone } from './infra/backup';
+import { exportAllBlob, exportRawBackup, markBackupDone, readRawStateText } from './infra/backup';
 import { downloadBlob } from './infra/download';
 import { Header } from './components/Header';
 import { ParamsBar } from './components/ParamsBar';
@@ -66,6 +66,7 @@ export function App() {
   const storageDegraded = useStore((s) => s.storageDegraded);
   const setStorageDegraded = useStore((s) => s.setStorageDegraded);
   const readOnly = useStore((s) => s.readOnly);
+  const readOnlyReason = useStore((s) => s.readOnlyReason);
   const voiceInterim = useStore((s) => s.voiceInterim);
   const filterNotPassed = useStore((s) => s.filterNotPassed);
   const posterTarget = useStore((s) => s.posterTarget);
@@ -214,6 +215,14 @@ export function App() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
+  // FR-54.2：只读横幅必须说清「到底为什么」，三种原因给三种说法与出路
+  const readOnlyText =
+    readOnlyReason === 'NEWER_VERSION'
+      ? '⚠️ 这台设备里的数据是更新版本的系统写的，当前版本读不了。请升级到最新版再打开。原始数据没有被覆盖，可以先下载留底。'
+      : readOnlyReason === 'BLOCKED_OVERWRITE'
+        ? '⚠️ 检测到内存数据是空的，已阻止覆盖，避免把你的登记数据清掉。请先导出备份，再决定如何处理。'
+        : '⚠️ 数据读取失败，系统暂时进入只读模式：能看，但改动不会保存。原始数据没有被覆盖。建议先下载原始数据，再点击「清空并重来」，之后用【设置 → 导入恢复】把备份导回来。';
+
   return (
     // data-keypad：手机端键盘板打开时，底部固定条让位（否则键盘盖住操作条，
     // 录完数据点不到「出图」——v2.3.1 修 P2-1 时暴露的真实 UX 问题）
@@ -244,8 +253,8 @@ export function App() {
         ) : null}
 
         {readOnly ? (
-          <div className="warn-bar" role="alert">
-            ⚠️ 数据升级失败，当前为只读模式（不会覆盖你的原始数据）
+          <div className="warn-bar warn-bar--readonly" role="alert">
+            <span className="warn-bar__text">{readOnlyText}</span>
             <button
               type="button"
               onClick={() => {
@@ -255,7 +264,41 @@ export function App() {
                 st.markExported();
               }}
             >
-              导出备份
+              导出当前数据
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const raw = readRawStateText();
+                if (!raw) {
+                  useStore.getState().showToast('没有读到原始数据，可能已被清空', 'warn');
+                  return;
+                }
+                downloadBlob(exportRawBackup(raw), `学情原始数据-${todayISO()}.json`);
+              }}
+            >
+              下载原始数据
+            </button>
+            <button
+              type="button"
+              className="warn-bar__danger"
+              onClick={() => {
+                const st = useStore.getState();
+                st.openConfirm({
+                  title: '重来一次？',
+                  message:
+                    '这会清空本机浏览器里的全部数据（班级、登记、历史、积分、设置），之后系统恢复正常可写。'
+                    + '如果上面已经导出过备份，可以用【设置 → 导入恢复】再导回来。确定重来吗？',
+                  confirmText: '清空并重来',
+                  danger: true,
+                  onConfirm: () => {
+                    st.resetAll();
+                    st.showToast('已清空，系统恢复正常，可以重新开始了', 'ok');
+                  },
+                });
+              }}
+            >
+              清空并重来
             </button>
           </div>
         ) : null}

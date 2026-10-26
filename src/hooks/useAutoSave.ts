@@ -23,7 +23,7 @@ export function useAutoSave() {
       }
       if (result.blocked) {
         useStore.getState().setBlockedOverwrite(true);
-        useStore.getState().setReadOnly(true);
+        useStore.getState().setReadOnly(true, 'BLOCKED_OVERWRITE');
         useStore.getState().showToast('检测到数据为空，已阻止覆盖', 'error');
         return;
       }

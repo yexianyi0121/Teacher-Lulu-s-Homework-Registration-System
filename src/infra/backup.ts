@@ -65,6 +65,30 @@ export function importAll(text: string): ImportResult {
   return { ok: false, reason: '无法识别的数据版本' };
 }
 
+/**
+ * 「导出坏数据原文」（FR-54.3）：只读状态下横幅上的第二个出口。
+ * 主存内容解析失败时，老师至少要能把原始文本拿走，才有办法找人修。
+ */
+export function exportRawBackup(raw: string): Blob {
+  const envelope = {
+    app: '学情登记分析系统',
+    kind: 'RAW_UNRECOVERABLE',
+    exportedAt: new Date().toISOString(),
+    note: '这是无法解析的原始存储内容，不是可用备份。保留它是为了以后能尝试修复。',
+    raw,
+  };
+  return new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' });
+}
+
+/** 读取主存原文（只读救援用；不解析、不校验） */
+export function readRawStateText(): string | null {
+  try {
+    return localStorage.getItem('xq.state.v4');
+  } catch {
+    return null;
+  }
+}
+
 export function readEnvMark(): EnvMark | null {
   try {
     const raw = localStorage.getItem(ENV_MARK_KEY);

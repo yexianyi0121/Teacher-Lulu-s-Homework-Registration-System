@@ -48,7 +48,7 @@ async function bootstrap() {
         : result.error === 'MIGRATE_FAILED'
           ? '数据升级失败，已备份原始数据，可下载备份后联系维护者'
           : '数据结构无法识别，已进入只读模式，建议先下载备份';
-    useStore.getState().setReadOnly(true);
+    useStore.getState().setReadOnly(true, result.error);
     window.setTimeout(() => useStore.getState().showToast(msg, 'error'), 300);
     markBooted();   // 只读态允许渲染，但 flush 会因 readOnly 直接返回
   } else {

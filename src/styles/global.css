@@ -1762,3 +1762,73 @@ pre {
 }
 
 .warn-bar--env { background: #FFF7E0; color: #8A6410; }
+
+/* ---------- FR-54：只读救援横幅 ---------- */
+.warn-bar--readonly {
+  flex-wrap: wrap;
+  gap: 10px;
+  background: #FFF0EE;
+  border-color: #F3B9B2;
+  color: #8C3A31;
+}
+
+.warn-bar--readonly .warn-bar__text {
+  flex: 1 1 320px;
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.warn-bar--readonly button {
+  margin-left: 0;
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #E9A79E;
+  background: #fff;
+  color: #8C3A31;
+  font-size: 12px;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.warn-bar--readonly button:hover {
+  background: #FDE7E3;
+}
+
+.warn-bar--readonly .warn-bar__danger {
+  border-color: #D9584A;
+  background: #D9584A;
+  color: #fff;
+}
+
+.warn-bar--readonly .warn-bar__danger:hover {
+  background: #C2483B;
+}
+
+/* ---------- FR-54.1：名单导入的文件级错误 ---------- */
+.file-error {
+  border: 1px solid #F3B9B2;
+  background: #FFF0EE;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  color: #8C3A31;
+}
+
+.file-error__title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.file-error__body {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.file-error__hint {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #A85F56;
+}
