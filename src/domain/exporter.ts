@@ -122,7 +122,7 @@ export function buildSummaryCsv(args: SummaryArgs): string {
   const row = [
     args.className,
     args.rangeLabel,
-    new Set(args.records.map((r) => r.sheetId)).size,
+    new Set(args.records.map((r) => r.key)).size, // FR-64.6：按记录 key 统计登记表数——同模板多表共享 sheetId，按 sheetId 会合并成 1
     args.records.length,
     args.n,
     args.totalPoints,
