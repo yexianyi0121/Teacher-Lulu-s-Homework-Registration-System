@@ -1832,3 +1832,15 @@ pre {
   line-height: 1.6;
   color: #A85F56;
 }
+
+/* ---------- FR-55：xlsx / CSV 导入成功提示 ---------- */
+.file-ok {
+  border: 1px solid #A8D8B9;
+  background: #F0FAF3;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  color: #256B44;
+  font-size: 13px;
+  line-height: 1.6;
+}

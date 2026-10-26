@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { MANUAL, searchManual } from '../../src/domain/manual';
 
-describe('manual：19 章与检索（AC-29.1 / AC-29.2）', () => {
-  it('共 19 章', () => {
-    expect(MANUAL).toHaveLength(19);
+describe('manual：20 章与检索（AC-29.1 / AC-29.2）', () => {
+  it('共 20 章', () => {
+    expect(MANUAL).toHaveLength(20);
   });
 
   it('每章都有标题与至少 2 条步骤', () => {
@@ -26,6 +26,14 @@ describe('manual：19 章与检索（AC-29.1 / AC-29.2）', () => {
       expect(sec.title.length).toBeGreaterThan(0);
       expect(sec.steps?.length ?? 0).toBeGreaterThanOrEqual(2);
     }
+  });
+
+  it('v2.5.3 新增「导入学生名单」章节（FR-55）', () => {
+    const sec = MANUAL.find((s) => s.id === 'roster')!;
+    expect(sec).toBeTruthy();
+    expect(sec.title).toContain('名单');
+    expect(sec.steps?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect((sec.tips ?? []).join('')).toContain('工作表');
   });
 
   it('V4 三节齐全：数字键语义 / 背景主题 / 手机端（设计 09 §2 手册要求）', () => {
@@ -73,7 +81,7 @@ describe('manual：19 章与检索（AC-29.1 / AC-29.2）', () => {
   });
 
   it('空搜索返回全部，无匹配返回空数组', () => {
-    expect(searchManual('')).toHaveLength(19);
+    expect(searchManual('')).toHaveLength(20);
     expect(searchManual('不存在的关键词xyz')).toHaveLength(0);
   });
 
