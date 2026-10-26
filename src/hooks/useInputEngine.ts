@@ -79,7 +79,13 @@ export function useInputEngine() {
       }
       s.commitValue(buf.no, { kind: 'score', score: res.value });
       s.setBuffer(null);
-      if (advance) maybeAdvance(buf.no);
+      if (advance) {
+        maybeAdvance(buf.no);
+      } else {
+        // 方向键/Tab 触发的「隐式提交」：老师很可能本想输 95 却按到了方向键。
+        // 不吞掉值（丢数据更糟），但必须让她看见真正存进去的是什么。
+        s.showToast(`${buf.no} 号已记为 ${res.value} 分（输入未按回车）`, 'warn');
+      }
     };
 
     /** 分数缓冲：非法字符不进入缓冲区（FR-39） */

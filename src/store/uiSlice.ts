@@ -22,7 +22,14 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
     setFocusedNo(no) {
       const s = get();
       const count = s.classes.find((c) => c.id === s.activeClassId)?.count ?? 0;
-      set({ focusedNo: no === null ? null : Math.min(Math.max(1, no), count) });
+      const next = no === null ? null : Math.min(Math.max(1, no), count);
+      // 焦点离开时，旧格子上未提交的分数缓冲必须清掉：
+      // 否则老师看到「1 号格显示 8」，实际那只是半截输入、并未录入（FR-39 补充）。
+      const staleBuffer = s.buffer && (next === null || s.buffer.no !== next);
+      set({
+        focusedNo: next,
+        ...(staleBuffer ? { buffer: null, cellError: null } : {}),
+      });
     },
 
     moveFocus(delta) {
@@ -34,7 +41,14 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
         if (delta > 0 && from === count) s.showToast('已完成最后一格 ✓', 'ok');
         return;
       }
-      set({ focusedNo: next, selection: new Set<number>(), selectionAnchor: null });
+      // 同上：方向键挪走时也丢弃旧格的半截输入
+      const staleBuffer = s.buffer && s.buffer.no !== next;
+      set({
+        focusedNo: next,
+        selection: new Set<number>(),
+        selectionAnchor: null,
+        ...(staleBuffer ? { buffer: null, cellError: null } : {}),
+      });
     },
 
     setSelection(nos) {

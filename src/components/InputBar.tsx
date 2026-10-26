@@ -34,6 +34,7 @@ export function InputBar({
   const setModal = useStore((s) => s.setModal);
   const toggleSelectAll = useStore((s) => s.toggleSelectAll);
   const focusedNo = useStore((s) => s.focusedNo);
+  const selectionSize = useStore((s) => s.selection.size);
 
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
@@ -108,8 +109,13 @@ export function InputBar({
       <Pill variant="ghost" onClick={() => act((no) => setStatus(no, 'leave'))} title="请假（L）">
         🏖️ 请假
       </Pill>
-      <Pill variant="ghost" onClick={toggleSelectAll} title="全选已有内容的格子">
-        ☑️ 全选
+      {/* 多选态必须可见：老师要知道「现在按按钮会作用于 N 格」以及怎么退出（FR-48 补充） */}
+      <Pill
+        variant={selectionSize > 0 ? 'active' : 'ghost'}
+        onClick={toggleSelectAll}
+        title={selectionSize > 0 ? '退出多选（或按 Esc）' : '全选已有内容的格子'}
+      >
+        {selectionSize > 0 ? `☑️ 已选 ${selectionSize} 格 · 退出` : '☑️ 全选'}
       </Pill>
 
       <span className="input-grow" />
