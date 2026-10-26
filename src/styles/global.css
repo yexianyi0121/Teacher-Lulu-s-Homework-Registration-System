@@ -596,12 +596,55 @@ pre {
   --no-inset-left: 5px;
 }
 
-.cell[data-variant="poster"] .cell-value { font-size: 24px; }
-.cell[data-variant="poster"] .cell-value[data-grade="CROSS"] { font-size: 22px; }
-.cell[data-variant="poster"][data-len="3"] .cell-value { font-size: 16px; }
+/* v2.5.8 用户反馈「单张海报里图标重叠、显示过小」，两轮才调对：
+   · 第一轮只放大格子与印章，结果主值仍旧**整格居中**，而状态角标（✓/标/缺/假）在右下角，
+     于是 `A+` 的 `+`、`×` 的右半边直接压在角标上 —— 还是挤。
+   · 真正的解法是**把格子分成上下两条带**：
+       上带：左上学号 / 右上印章
+       下带：主值居中 / 右下角标
+     主值只在下带里居中，物理上就碰不到印章与角标。 */
+.cell[data-variant="poster"] {
+  height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  /* 下带的高度 = 主值行高，角标贴在这条带的右下角 */
+  padding: 0 0 8px;
+}
+.cell[data-variant="poster"] .cell-value {
+  font-size: 22px;
+  padding: 0;
+  line-height: 1;
+  /* 横向左右各留出角标宽度，保证长文本也压不到右下角标 */
+  max-width: calc(100% - 26px);
+  white-space: nowrap;
+}
+.cell[data-variant="poster"] .cell-value[data-grade="CROSS"] { font-size: 20px; }
+.cell[data-variant="poster"][data-len="3"] .cell-value { font-size: 15px; }
 .cell[data-variant="poster"][data-len="4"] .cell-value { font-size: 13px; }
-.cell[data-variant="poster"][data-len="5"] .cell-value { font-size: 12px; }
+.cell[data-variant="poster"][data-len="5"] .cell-value { font-size: 11px; }
 .cell[data-variant="poster"][data-len="6"] .cell-value { font-size: 10px; }
+.cell[data-variant="poster"] .cell-stamp {
+  font-size: 15px;
+  --stamp-inset-top: 2px;
+  --stamp-inset-right: 4px;
+}
+.cell[data-variant="poster"] .cell-no {
+  font-size: 11px;
+  --no-inset-top: 3px;
+  --no-inset-left: 5px;
+}
+.cell[data-variant="poster"] .cell-badge {
+  --badge-size: 13px;
+  --badge-font: 9px;
+  --badge-inset-bottom: 3px;
+  --badge-inset-right: 3px;
+}
+.cell[data-variant="poster"] .cell-emoji { font-size: .7em; }
+/* 「假」这类整格状态，主值本身就是状态名，再挂一个「假」角标是重复信息，去掉 */
+.cell[data-variant="poster"][data-status="leave"] .cell-badge,
+.cell[data-variant="poster"][data-status="missing"] .cell-badge { display: none; }
 
 /* ---------- 统计条 ---------- */
 .stats {
@@ -763,6 +806,10 @@ pre {
 
 .modal[data-size="lg"] { width: min(760px, 100%); }
 .modal[data-size="xl"] { width: min(960px, 100%); }
+/* v2.5.8 用户反馈「海报预览显示过小」：海报原生宽 1080，
+   塞进 960 的弹窗再扣掉内边距只剩 ~0.5 倍，格子糊成一片。
+   给海报弹窗单独一档，接近 1:1，所见即所得。 */
+.modal[data-size="poster"] { width: min(1240px, 100%); max-height: min(92vh, 1100px); }
 
 .modal-head {
   display: flex;
@@ -1552,10 +1599,66 @@ pre {
 .summary-title { font-size: 20px; display: flex; align-items: baseline; gap: 8px; }
 .summary-content { color: var(--text-2); font-size: 16px; }
 .summary-stat { color: var(--text-2); font-size: 15px; font-variant-numeric: tabular-nums; }
+/* v2.5.8 用户反馈「汇总截图里图标重叠、显示过小」：
+   原来是 `repeat(10, 32px)` 定死宽度 —— 10 列只有 380px，而卡片宽 1080px，
+   整块缩在左边、右边一大片空白，格子却只有 32px。
+   32×24 的格里要塞下「学号 + 主值 + 表情 + 右上印章 + 右下角标 + 补交小字」，
+   物理上就不可能不重叠（8px 的学号直接压在 11px 的主值上）。
+   改成**弹性 10 列**：格子宽度跟着卡片走，一屏能放满，字号随之按比例放大。 */
 .summary-grid {
-  display: grid; grid-template-columns: repeat(10, var(--mini-cell-w, 32px));
-  gap: var(--mini-gap, 6px);
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 10px;
 }
+
+/* 汇总格按新尺寸重排四角分区（尺寸来自容器宽度，不用写死像素）
+   v2.5.8 与海报格同一套分区：上带（学号/印章）+ 下带（主值居中/右下角标），
+   主值不再整格居中，才不会压到右下角的 ✓ 或「缺」「假」小角标。 */
+.summary-grid .cell[data-variant="mini"] {
+  height: 52px;
+  border-radius: 8px;
+  border-width: 1.5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 0 6px;
+}
+.summary-grid .cell[data-variant="mini"] .cell-no {
+  font-size: 10px;
+  top: 2px;
+  left: 4px;
+}
+.summary-grid .cell[data-variant="mini"] .cell-value {
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  max-width: calc(100% - 24px);
+  white-space: nowrap;
+}
+.summary-grid .cell[data-variant="mini"][data-kind="text"] .cell-value { font-size: 13px; }
+.summary-grid .cell[data-variant="mini"] .cell-stamp {
+  font-size: 12px;
+  --stamp-inset-top: 2px;
+  --stamp-inset-right: 4px;
+}
+.summary-grid .cell[data-variant="mini"] .cell-badge {
+  --badge-size: 13px;
+  --badge-font: 9px;
+  --badge-inset-bottom: 3px;
+  --badge-inset-right: 3px;
+}
+/* 补交小字是「交」/「缺」，原来和主值叠在一起；汇总格里让它贴底居中、主值上移 */
+.summary-grid .cell[data-variant="mini"] .cell-sub {
+  display: block;
+  bottom: 1px;
+  font-size: 9px;
+  line-height: 1;
+}
+.summary-grid .cell[data-variant="mini"] .cell-emoji { display: none; }
+/* 整格状态（假 / 缺交）的主值已经是状态名，右下角再挂同名小角标是重复信息 */
+.summary-grid .cell[data-variant="mini"][data-status="leave"] .cell-badge,
+.summary-grid .cell[data-variant="mini"][data-status="missing"] .cell-badge { display: none; }
 
 /* 手册（设计 §6.9） */
 .manual { display: grid; grid-template-columns: 220px 1fr; gap: 16px; max-height: 66vh; }

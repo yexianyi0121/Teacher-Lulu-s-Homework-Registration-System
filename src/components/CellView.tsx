@@ -55,6 +55,9 @@ export function CellView({
       data-selected={selected ? '1' : undefined}
       data-match={matched ? '1' : undefined}
       data-error={error ? '1' : undefined}
+      // v2.5.8：`[data-len="3"]`… 那组字号规则此前从未生效 —— 属性根本没渲染出来，
+      // 于是「假」「缺交」这种多字文本只能按 24px 撑破格子。补上。
+      data-len={text ? Math.min(6, Array.from(text).length) : undefined}
       title={title}
       aria-label={`${no}号 ${full || text || '空'}${badge ? ` · ${BADGE_TEXT[badge]}` : ''}`}
     >

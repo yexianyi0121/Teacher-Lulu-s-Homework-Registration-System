@@ -38,7 +38,11 @@ export function PosterModal({
   const setModal = useStore((s) => s.setModal);
   const showToast = useStore((s) => s.showToast);
   const date = useStore((s) => s.draft.date);
-  const comment = useStore((s) => s.draft.comment ?? s.settings.defaultComment);
+  // v2.5.8：这里原来直接写 `s.draft.comment ?? s.settings.defaultComment`。
+  // `defaultComment` 在 Settings 里是**可选**字段（老数据 / 手改过的备份 / 迁移中间态都可能缺），
+  // 两个都为 undefined 时 `comment` 就是 undefined，下面 `comment.length` 直接把整个应用打崩成白屏。
+  // 弹窗组件不该因为一个可选字段缺失就崩，兜底成空串。
+  const comment = useStore((s) => s.draft.comment ?? s.settings.defaultComment) ?? '';
   const setComment = useStore((s) => s.setComment);
   const sheets = useStore(selectSheetsOfDay);
 
@@ -78,7 +82,7 @@ export function PosterModal({
   return (
     <Modal
       title={TITLES[target.mode]}
-      size="xl"
+      size="poster"
       onClose={close}
       footer={
         <>

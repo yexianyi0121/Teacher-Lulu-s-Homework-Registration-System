@@ -6,7 +6,7 @@ export interface ModalProps {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
-  size?: 'md' | 'lg' | 'xl';
+  size?: 'md' | 'lg' | 'xl' | 'poster';
 }
 
 export function Modal({ title, onClose, children, footer, size = 'md' }: ModalProps) {
