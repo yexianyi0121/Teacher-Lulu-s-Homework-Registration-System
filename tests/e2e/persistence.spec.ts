@@ -68,9 +68,9 @@ test('persistence：v1 数据自动迁移后可继续使用（AC-60 / M-1~M-3）
   await page.goto('/');
   await page.waitForSelector('.cell');
 
-  // A+ 原样保留；√ → 过关；× → 缺交
+  // A+ 原样保留；输入 √ → 过关，显示 ✓（FR-65）；× → 缺交
   await expect(page.locator('[data-no="1"]')).toContainText('A+');
-  await expect(page.locator('[data-no="2"]')).toContainText('√');
+  await expect(page.locator('[data-no="2"]')).toContainText('✓');
   await expect(page.locator('[data-no="3"]')).toHaveAttribute('data-status', 'missing');
   await expect(page.locator('.cell')).toHaveCount(3);
 

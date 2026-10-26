@@ -21,7 +21,7 @@ export function PosterRaster({
   const readyRef = useRef(onReady);
   readyRef.current = onReady;
 
-  const poster = useStore((s) => selectPosterBySheet(s, target.mode === 'single' ? target.sheetId : s.draft.sheetId));
+  const poster = useStore((s) => selectPosterBySheet(s, target.mode === 'single' ? target.key : s.draft.key));
   const summary = useStore(selectSummary);
   const week = useStore((s) => selectWeek(s, target.mode === 'week' ? target.weekStart : undefined));
   // FR-48.3：海报默认不跟随背景主题（发家长群要稳定的白卡 + 品牌粉）；
@@ -31,7 +31,7 @@ export function PosterRaster({
   const pageCount = target.mode === 'week' ? week.pages.length : 1;
 
   const signature = useMemo(
-    () => `${target.mode}|${target.mode === 'single' ? target.sheetId : ''}|${pageCount}|${week.subtitle}`,
+    () => `${target.mode}|${target.mode === 'single' ? target.key : ''}|${pageCount}|${week.subtitle}`,
     [target, pageCount, week.subtitle],
   );
 

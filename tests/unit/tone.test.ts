@@ -4,17 +4,17 @@ import { GRADE_ORDER, DEFAULT_GRADE_EMOJI } from '../../src/domain/constants';
 import { DEFAULT_PASS_RULE } from '../../src/domain/passRule';
 import { e, g, makeScheme, score, text } from '../fixtures';
 
-/** V3 显示：两套色系（等级七档 / 分数四档）+ 三态角标 + 表情 */
+/** V3 显示：两套色系（等级八档，v2.5.9 新增 B- / 分数四档）+ 三态角标 + 表情 */
 
 const check = makeScheme('check');
 const grade = makeScheme('grade');
 const scoreScheme = makeScheme('score');
 const opts = { passRule: DEFAULT_PASS_RULE, showEmoji: true, gradeEmoji: DEFAULT_GRADE_EMOJI };
 
-describe('GRADE_TONE：七档两两可辨（AC-37.1 / INV-17）', () => {
+describe('GRADE_TONE：八档两两可辨（AC-37.1 / INV-17 / v2.5.9 B-）', () => {
   it('底色 + 边框色 + 边框样式 组合唯一', () => {
     const keys = GRADE_ORDER.map((x) => `${GRADE_TONE[x].bg}|${GRADE_TONE[x].line}|${GRADE_TONE[x].borderStyle}`);
-    expect(new Set(keys).size).toBe(7);
+    expect(new Set(keys).size).toBe(8);
   });
 
   it('A- 是黄绿（#8FBF6F），不再是 V2 的琥珀', () => {
@@ -38,15 +38,15 @@ describe('cellDisplay：状态位与角标', () => {
     expect(d).toMatchObject({ text: '×', kind: 'missing', badge: 'madeup', subText: '补交' });
   });
 
-  it('手工过关 → 主值 √（不是自动 ✅）', () => {
+  it('手工过关 → 主值 ✓（不是自动 ✅；FR-65：U+2713）', () => {
     const d = cellDisplay(e(null, { pass: true }), check, opts);
-    expect(d).toMatchObject({ text: '√', kind: 'pass', tone: 'green' });
+    expect(d).toMatchObject({ text: '✓', kind: 'pass', tone: 'green' });
     expect(d.badge).toBeUndefined();
   });
 });
 
 describe('cellDisplay：听写「全对」不重复显示 √（AC-32.1）', () => {
-  it('全对 → 主值「全对」+ ✅ 角标（自动过关），无 √ 字符', () => {
+  it('全对 → 主值「全对」+ ✅ 角标（自动过关），显示层无 √ 字符（输入仍接受 √）', () => {
     const d = cellDisplay(e(text('全对')), check, opts);
     expect(d.text).toBe('全对');
     expect(d.text).not.toContain('√');

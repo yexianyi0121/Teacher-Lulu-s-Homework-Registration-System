@@ -6,7 +6,7 @@ import { GRADE_PERCENT } from './types';
  * 纯函数：键位 → 值、文本 → 听写判定、值 → 展示字符串。
  */
 
-/** 等级字母的直接映射（A/B/C/D + 修饰符得到的 A+ / A- / B+） */
+/** 等级字母的直接映射（A/B/C/D + 修饰符得到的 A+ / A- / B+ / B-） */
 export const GRADE_LETTERS: GradeLetter[] = ['A+', 'A', 'A-', 'B+', 'B', 'C', 'D'];
 
 /**
@@ -66,7 +66,7 @@ export function formatValue(v: CellValue | null, scheme: ScoringScheme): string 
     case 'text':
       return v.text;
     case 'pass':
-      return '√';
+      return '✓';
   }
 }
 

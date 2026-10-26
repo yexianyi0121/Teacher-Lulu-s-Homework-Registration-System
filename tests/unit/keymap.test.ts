@@ -14,10 +14,11 @@ describe('buildGradeKeyMap：键位随启用等级左到右绑定', () => {
     expect(describeKeyMap(km)).toBe('1 A+ 2 A 3 A- 4 B+');
   });
 
-  it('全 7 档 → 1..7', () => {
-    const km = buildGradeKeyMap(makeScheme('grade', { grades: ['A+', 'A', 'A-', 'B+', 'B', 'C', 'D'] }));
-    expect(Object.keys(km)).toHaveLength(7);
-    expect(km['7']).toBe('D');
+  it('全 8 档 → 1..8（v2.5.9 B-）', () => {
+    const km = buildGradeKeyMap(makeScheme('grade', { grades: ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C', 'D'] }));
+    expect(Object.keys(km)).toHaveLength(8);
+    expect(km['7']).toBe('C');
+    expect(km['8']).toBe('D');
   });
 
   it('只启用 B+ → 1 B+（不按原档位硬编码）', () => {

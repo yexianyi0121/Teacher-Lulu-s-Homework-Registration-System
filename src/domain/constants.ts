@@ -52,10 +52,10 @@ export const SHEET_TEMPLATES: Record<SheetTemplateId, SheetTemplate> = {
 
 export const TEMPLATE_LIST: SheetTemplateId[] = ['dictation', 'homework', 'quality', 'custom'];
 
-export const GRADE_ORDER: GradeLetter[] = ['A+', 'A', 'A-', 'B+', 'B', 'C', 'D'];
+export const GRADE_ORDER: GradeLetter[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C', 'D'];
 
-/** 默认等级集（PRD §2.2：常规作业默认 A+/A/A-/B/C/D；其余默认全 7 档） */
-const HOMEWORK_GRADES: GradeLetter[] = ['A+', 'A', 'A-', 'B', 'C', 'D'];
+/** 默认等级集（PRD §2.2 原案；v2.5.9：用户要求增加 B- → 常规作业默认含 B-，其余默认全 8 档） */
+const HOMEWORK_GRADES: GradeLetter[] = ['A+', 'A', 'A-', 'B', 'B-', 'C', 'D'];
 
 /** 模板默认方案（PRD FR-17 表格） */
 export const DEFAULT_SCHEMES: Record<SheetTemplateId, ScoringScheme> = {
@@ -245,13 +245,13 @@ export const SNAPSHOT_INTERVAL = 30_000;
 /** 评价语上限（V3 FR-35） */
 export const COMMENT_MAX = 60;
 
-/** 七档默认表情（V3 D-8） */
+/** 八档默认表情（V3 D-8；v2.5.9 增 B-） */
 export const DEFAULT_GRADE_EMOJI: Record<GradeLetter, string> = {
   'A+': '😄',
   'A': '🙂',
   'A-': '🙂',
   'B+': '😐',
-  'B': '😐',
+  'B': '😐', 'B-': '🙁',
   'C': '🙁',
   'D': '😟',
 };

@@ -89,7 +89,7 @@ export function PosterModal({
           <Pill variant="ghost" onClick={close}>关闭</Pill>
           <Pill
             variant={target.mode === 'single' ? 'ghost' : 'ghost'}
-            onClick={() => onSwitch({ mode: 'single', sheetId: useStore.getState().draft.sheetId })}
+            onClick={() => onSwitch({ mode: 'single', key: useStore.getState().draft.key })}
             disabled={target.mode === 'single'}
           >
             单条
@@ -120,11 +120,11 @@ export function PosterModal({
           <label className="field-label" htmlFor="poster-sheet">选择登记表</label>
           <select
             id="poster-sheet"
-            value={target.sheetId}
-            onChange={(e) => onSwitch({ mode: 'single', sheetId: e.target.value })}
+            value={target.key}
+            onChange={(e) => onSwitch({ mode: 'single', key: e.target.value })}
           >
             {sheets.map((s) => (
-              <option key={s.sheetId} value={s.sheetId}>
+              <option key={s.key} value={s.key}>
                 {SHEET_TEMPLATES[s.templateId as keyof typeof SHEET_TEMPLATES]?.name ?? s.templateId}
                 {s.content ? ` · ${s.content}` : ''} · {s.entered} 人
               </option>

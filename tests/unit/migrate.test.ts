@@ -132,7 +132,7 @@ describe('migrate：v1 → v2（设计 §4.6.4 M-1 ~ M-8）', () => {
     const hw = out.records.find((r) => r.templateId === 'homework')!;
     const dict = out.records.find((r) => r.templateId === 'dictation')!;
     expect(hw.scheme.kind).toBe('grade');
-    expect(hw.scheme.grades).toEqual(['A+', 'A', 'A-', 'B', 'C', 'D']);
+    expect(hw.scheme.grades).toEqual(['A+', 'A', 'A-', 'B', 'B-', 'C', 'D']); // v2.5.9：迁移后跟新默认档（B- 加入）
     expect(dict.scheme.kind).toBe('check');
   });
 

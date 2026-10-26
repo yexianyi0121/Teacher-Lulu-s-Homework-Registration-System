@@ -32,7 +32,9 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
 
   return {
     switchTemplate(templateId) {
-      get().switchRecord({ sheetId: DEFAULT_SHEET_ID[templateId], templateId });
+      // FR-64.3（v2.5.9 问题3）：当天该模板已有登记时切回来落到最近的记录，不新建空表。
+      const hit = Object.values(get().records).filter((r) => r.classId === get().activeClassId && r.date === get().draft.date && r.templateId === templateId).sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      get().switchRecord(hit ? { content: hit.content, sheetId: hit.sheetId, templateId } : { sheetId: DEFAULT_SHEET_ID[templateId], templateId });
     },
 
     switchSheet(sheetId, templateId) {

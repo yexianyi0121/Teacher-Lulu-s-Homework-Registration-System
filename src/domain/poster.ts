@@ -182,7 +182,7 @@ export function sectionStatLine(s: DaySheetSnapshot, n: number, rule: PassRule):
     for (const e of Object.values(s.entries)) {
       if (e.value?.kind === 'grade') counts.set(e.value.grade, (counts.get(e.value.grade) ?? 0) + 1);
     }
-    const order = ['A+', 'A', 'A-', 'B+', 'B', 'C', 'D'];
+    const order = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C', 'D'];
     const parts = order.filter((g) => counts.get(g)).map((g) => `${g} ${counts.get(g)}`);
     return [...parts.slice(0, 4), `未交 ${m.notSubmitted}`].join(' · ') + makeupSuffix;
   }

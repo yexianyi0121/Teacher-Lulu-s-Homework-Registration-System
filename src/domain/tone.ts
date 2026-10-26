@@ -9,7 +9,7 @@ import { DEFAULT_PASS_RULE } from './passRule';
  * 单元格显示（V3 设计 06 §3.2）—— 纯函数。
  *
  * 两套色系并存（L-6）：
- *   - 等级格子：主色由 `grade` 驱动（CSS `data-grade` → GRADE_TONE 七档），`tone` 只留给图表；
+ *   - 等级格子：主色由 `grade` 驱动（CSS `data-grade` → GRADE_TONE 八档），`tone` 只留给图表；
  *   - 分数格子：由 `tone`（四档百分比色）驱动。
  * UI 不允许自己判断「是否过关」，一律走 passRule.isPassed()。
  */
@@ -26,7 +26,7 @@ export const GRADE_TONE: Record<GradeLetter, GradeTone> = {
   'A': { bg: '#EDF8F1', line: '#5FA97C', fg: '#3E8A5E', borderStyle: 'solid' },
   'A-': { bg: '#F3FAEA', line: '#8FBF6F', fg: '#6E9B4C', borderStyle: 'solid' },
   'B+': { bg: '#FEF9E4', line: '#E3B93F', fg: '#A9851F', borderStyle: 'solid' },
-  'B': { bg: '#FDF2E3', line: '#E89A4A', fg: '#B4701F', borderStyle: 'dashed' },
+  'B': { bg: '#FDF2E3', line: '#E89A4A', fg: '#B4701F', borderStyle: 'dashed' }, 'B-': { bg: '#F7EAE1', line: '#D1873F', fg: '#8F6319', borderStyle: 'dashed' },
   'C': { bg: '#FDEDE6', line: '#E0704F', fg: '#B24A2C', borderStyle: 'dashed' },
   'D': { bg: '#FCE8E6', line: '#D1453B', fg: '#A32A22', borderStyle: 'dotted' },
 };
@@ -82,10 +82,10 @@ export function cellDisplay(entry: Entry | undefined, s: ScoringScheme, opts: Di
     };
   }
 
-  // 手工过关：主值 √（自动过关不抢占主值，用右上角 ✅）
+  // 手工过关：主值 ✓（U+2713，v2.5.9：跨平台一致；U+221A「√」在 Mac 上就是根号。输入侧仍接受 √）
   if (isManualPass(entry)) {
     return {
-      text: '√', kind: 'pass', tone: 'green',
+      text: '✓', kind: 'pass', tone: 'green',
       badge: makeupBadge, subText: makeupText, full: '已过关',
     };
   }
@@ -117,8 +117,8 @@ export function cellDisplay(entry: Entry | undefined, s: ScoringScheme, opts: Di
 
   if (v.kind === 'text') {
     return {
-      text: v.text, kind: 'text', tone: textTone(v.text),
-      badge, subText: makeupText, full: v.text,
+      text: v.text === '√' ? '✓' : v.text, kind: 'text', tone: textTone(v.text),
+      badge, subText: makeupText, full: v.text === '√' ? '✓' : v.text,
     };
   }
 

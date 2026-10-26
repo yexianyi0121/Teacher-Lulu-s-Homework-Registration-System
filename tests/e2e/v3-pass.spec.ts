@@ -8,13 +8,13 @@ import { capturePosterText, closeJump, closeModal, pickTemplate, resetApp, typeC
 test('E2E-29 过关规则：白名单改动重算 ✅ 与筛选，已录值不变', async ({ page }) => {
   await resetApp(page);
   await closeJump(page);
-  await pickTemplate(page, 'homework'); // 等级制，键位 1=A+ 2=A 3=A- 4=B 5=C 6=D
+  await pickTemplate(page, 'homework'); // 等级制，键位 1=A+ 2=A 3=A- 4=B 5=B- 6=C 7=D（v2.5.9 B- 加入默认档）
 
   await test.step('录入 A / A- / C / D', async () => {
     await typeCell(page, 1, ['2']); // A
     await typeCell(page, 2, ['3']); // A-
-    await typeCell(page, 3, ['5']); // C
-    await typeCell(page, 4, ['6']); // D
+    await typeCell(page, 3, ['6']); // C（键位 6，B- 占用 5）
+    await typeCell(page, 4, ['7']); // D（键位 7）
     await expect(page.locator('[data-no="1"]')).toContainText('A');
     await expect(page.locator('[data-no="2"]')).toContainText('A-');
     await expect(page.locator('[data-no="3"]')).toContainText('C');

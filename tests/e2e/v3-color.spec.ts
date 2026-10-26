@@ -3,25 +3,25 @@ import { cellStyle, closeJump, pickTemplate, resetApp, typeCell } from './v3-fix
 
 /**
  * E2E-30 两套色系分开（L-6 / 设计 06 §4.2）
- *   - 等级格子：七档 GRADE_TONE，颜色由 data-grade 决定；
+ *   - 等级格子：八档 GRADE_TONE（v2.5.9 新增 B-），颜色由 data-grade 决定；
  *   - 分数格子：四档百分比色，颜色由 data-tone 决定。
  * 断言用 getComputedStyle 取真实渲染值，不看 class 名。
  */
-test('E2E-30 等级七档：每档背景/文字/边框都不相同（同 tone 也不同色）', async ({ page }) => {
+test('E2E-30 等级八档：每档背景/文字/边框都不相同（同 tone 也不同色）', async ({ page }) => {
   await resetApp(page);
   await closeJump(page);
   await pickTemplate(page, 'homework'); // 等级制（默认 6 档）
 
-  // 打开 B+，凑齐七档（键位随之变成 1..7 = A+..D）
+  // 打开 B+，凑齐八档（键位随之变成 1..8 = A+..D；B- 已在默认开启）
   await page.getByRole('button', { name: /本表设置/ }).click();
   const dlg = page.getByRole('dialog', { name: '本表评分方案' });
   await expect(dlg).toBeVisible();
   await dlg.getByRole('button', { name: 'B+', exact: true }).click();
   await dlg.getByRole('button', { name: '完成' }).click();
 
-  for (let i = 1; i <= 7; i++) await typeCell(page, i, [String(i)]);
+  for (let i = 1; i <= 8; i++) await typeCell(page, i, [String(i)]);
 
-  const grades = ['A+', 'A', 'A-', 'B+', 'B', 'C', 'D'];
+  const grades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C', 'D'];
   const bgs: string[] = [];
   const fgs: string[] = [];
   const borders: string[] = [];
@@ -36,11 +36,12 @@ test('E2E-30 等级七档：每档背景/文字/边框都不相同（同 tone �
     borders.push(st.border);
   }
 
-  expect(new Set(bgs).size).toBe(7);      // 七档背景互不相同
-  expect(new Set(fgs).size).toBe(7);      // 文字色也互不相同
+  expect(new Set(bgs).size).toBe(8);      // 八档背景互不相同
+  expect(new Set(fgs).size).toBe(8);      // 文字色也互不相同
   expect(borders[0].startsWith('solid')).toBe(true);
   expect(borders[4].startsWith('dashed')).toBe(true);
-  expect(borders[6].startsWith('dotted')).toBe(true);
+  expect(borders[5].startsWith('dashed')).toBe(true); // B-（v2.5.9）
+  expect(borders[7].startsWith('dotted')).toBe(true); // D（v2.5.9：八档后 D 的 index 从 6 → 7）
 
   // 逐档写死 HEX 对应的 rgb（GRADE_TONE 是 CSS 的唯一来源，改色必须改这里）
   expect(bgs).toEqual([
@@ -49,6 +50,7 @@ test('E2E-30 等级七档：每档背景/文字/边框都不相同（同 tone �
     'rgb(243, 250, 234)', // A- #F3FAEA
     'rgb(254, 249, 228)', // B+ #FEF9E4
     'rgb(253, 242, 227)', // B  #FDF2E3
+    'rgb(247, 234, 225)', // B- #F7EAE1（v2.5.9）
     'rgb(253, 237, 230)', // C  #FDEDE6
     'rgb(252, 232, 230)', // D  #FCE8E6
   ]);
@@ -87,7 +89,7 @@ test('E2E-30 分数四档：绿/蓝/琥珀/红，背景互不相同且与等级�
     'rgb(253, 236, 234)', // --red-bg   #FDECEA
   ]);
 
-  // 等级格子拿的是 GRADE_TONE 七档色，与四档百分比色完全分开（L-6）
+  // 等级格子拿的是 GRADE_TONE 八档色，与四档百分比色完全分开（L-6）
   await pickTemplate(page, 'homework');
   await typeCell(page, 10, ['2']); // A
   const cell = page.locator('[data-no="10"]');

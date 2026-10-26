@@ -11,7 +11,7 @@ import { gtePct } from './round';
  * 所以禁止只用 tierOf 判名单。
  */
 
-const RANK: Record<GradeLetter, number> = { 'A+': 7, 'A': 6, 'A-': 5, 'B+': 4, 'B': 3, 'C': 2, 'D': 1 };
+const RANK: Record<GradeLetter, number> = { 'A+': 8, 'A': 7, 'A-': 6, 'B+': 5, 'B': 4, 'B-': 3, 'C': 2, 'D': 1 };
 
 /**
  * 这个值在当前方案下「算不算数」。
@@ -35,7 +35,7 @@ function inHonor(e: Entries[string], s: ScoringScheme, honorIncludesA: boolean):
   // PRD-V2 §2.3.1：字母秩 ≥ A（A+/A）进光荣榜；开关打开后 A-（秩 5）也进。
   // 注意这与 V1 的「A 档不入名单」不同——PRD-V2 明确改了口径（其自述样例 B 光荣榜为 A+12+A8=20 人），
   // 设计 §12.4 的 R-2（21 人）属旧值，按「PRD 行为优先」取本条。
-  if (v.kind === 'grade') return RANK[v.grade] >= (honorIncludesA ? 5 : 6);
+  if (v.kind === 'grade') return RANK[v.grade] >= (honorIncludesA ? RANK['A-'] : RANK['A']); // 基准取字母秩本身（v2.5.9：B- 插入后阈值随 RANK 自动保持「≥A」语义）
   if (v.kind === 'score') {
     const p = percentOf(e, s);
     return p !== null && gtePct(p, s.excellentRate);
@@ -48,7 +48,7 @@ function inNeedsFix(e: Entries[string], s: ScoringScheme, honorIncludesA: boolea
   const v = e.value;
   if (!v || inHonor(e, s, honorIncludesA)) return false;
   if (!valueFitsScheme(v, s)) return false;
-  if (v.kind === 'grade') return RANK[v.grade] <= 5;   // A- 及以下；A 与 A+ 是荣誉/中立档
+  if (v.kind === 'grade') return RANK[v.grade] <= RANK['A-'];   // A- 及以下；A 与 A+ 是荣誉/中立档（基准取秩本身，v2.5.9）
   if (v.kind === 'pass') return false;          // 已过关，已由规则 4 抢走
   if (v.kind === 'text') return s.kind === 'check';
   const p = percentOf(e, s);

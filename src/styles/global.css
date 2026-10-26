@@ -1708,6 +1708,7 @@ pre {
 .cell[data-kind="grade"][data-grade="A-"] { background: #F3FAEA; border: 2px solid #8FBF6F; color: #6E9B4C; }
 .cell[data-kind="grade"][data-grade="B+"] { background: #FEF9E4; border: 2px solid #E3B93F; color: #A9851F; }
 .cell[data-kind="grade"][data-grade="B"]  { background: #FDF2E3; border: 2px dashed #E89A4A; color: #B4701F; }
+.cell[data-kind="grade"][data-grade="B-"] { background: #F7EAE1; border: 2px dashed #D1873F; color: #8F6319; } /* v2.5.9：与 GRADE_TONE['B-'] 同源（FR-64） */
 .cell[data-kind="grade"][data-grade="C"]  { background: #FDEDE6; border: 2px dashed #E0704F; color: #B24A2C; }
 .cell[data-kind="grade"][data-grade="D"]  { background: #FCE8E6; border: 2px dotted #D1453B; color: #A32A22; }
 

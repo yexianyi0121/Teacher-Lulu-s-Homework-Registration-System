@@ -99,7 +99,7 @@ export function MobileKeypad({ no, onClose }: { no: number; onClose: () => void 
           </button>
         ))}
         {meaning === 'score' ? (
-          <button type="button" className="mk-key mk-key--ok" onClick={submitScore} aria-label="提交分数">✔</button>
+          <button type="button" className="mk-key mk-key--ok" onClick={submitScore} aria-label="提交分数">✓</button>
         ) : (
           <button
             type="button"
@@ -138,7 +138,7 @@ export function MobileKeypad({ no, onClose }: { no: number; onClose: () => void 
       </div>
 
       <div className="mk-hint">
-        {meaning === 'grade' ? '点数字 = 等级，点等级钮也可直接录' : meaning === 'score' ? '输入分数后点 ✔ 提交' : '0 = 全对，1–9 = 错几'}
+        {meaning === 'grade' ? '点数字 = 等级，点等级钮也可直接录' : meaning === 'score' ? '输入分数后点 ✓ 提交' : '0 = 全对，1–9 = 错几'}
         {settings.secondsJump ? ' · 秒跳开' : ''}
       </div>
     </div>

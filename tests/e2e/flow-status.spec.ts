@@ -15,7 +15,7 @@ test('flow-status：过关 / 请假 / 缺交 / 只看未过关（FR-21 / FR-22 /
   for (const no of [1, 2, 3]) {
     await page.locator(`[data-no="${no}"]`).click();
     await page.keyboard.press('Enter');
-    await expect(page.locator(`[data-no="${no}"]`)).toContainText('√');
+    await expect(page.locator(`[data-no="${no}"]`)).toContainText('✓'); // FR-65：显示层统一 U+2713
   }
 
   // 4 号请假、5 号缺交

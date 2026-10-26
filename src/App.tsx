@@ -37,6 +37,12 @@ import { ManualModal } from './components/modals/ManualModal';
 import { Toast } from './components/ui/Toast';
 
 /** 当前这张表（当天 + 当前模板 + 当前内容）是否已经有任何录入（U-01/U-02） */
+// FR-64.4（U-02）：单条海报的目标是任意当天记录（records / history / 当前草稿），按 key 解析。
+function hasAnyInSheet(st: ReturnType<typeof useStore.getState>, key: string): boolean {
+  const rec = st.records[key] ?? st.history.find((h) => h.key === key) ?? st.draft;
+  return hasEntries(rec.entries);
+}
+
 function hasAnyInCurrentSheet(st: ReturnType<typeof useStore.getState>): boolean {
   const rec = st.records[st.draft.key] ?? st.draft;
   return hasEntries(rec.entries);
@@ -153,11 +159,11 @@ export function App() {
 
     // INV-23：单条目标必须存在且属于当天，否则回退当日汇总
     if (next.mode === 'single') {
-      const sheetId = next.sheetId;
-      const exists = selectSheetsOfDay(st).some((x) => x.sheetId === sheetId);
+      const key = next.key;
+      const exists = selectSheetsOfDay(st).some((x) => x.key === key);
       if (!exists) next = { mode: 'daily' };
     }
-    if (next.mode === 'single' && !hasAnyInCurrentSheet(st)) {
+    if (next.mode === 'single' && !hasAnyInSheet(st, next.key)) {
       // U-02：空表单条海报会退化成「今日海报·全班暂未提交」，不是老师要的东西
       st.showToast('这张表还没有录入任何内容，先录几个再生成海报', 'warn');
       return;
@@ -221,7 +227,7 @@ export function App() {
       }
       st.setModal('report');
     };
-    const onPoster = () => handlePoster({ mode: 'single', sheetId: useStore.getState().draft.sheetId });
+    const onPoster = () => handlePoster({ mode: 'single', key: useStore.getState().draft.key });
     window.addEventListener('xq:report', onReport);
     window.addEventListener('xq:poster', onPoster);
     return () => {
@@ -364,7 +370,7 @@ export function App() {
         <OutputBar
           busy={busy}
           onReport={() => setModal('report')}
-          onPoster={() => handlePoster({ mode: 'single', sheetId: draft.sheetId }, 'poster')}
+          onPoster={() => handlePoster({ mode: 'single', key: draft.key }, 'poster')}
           onSummary={() => handlePoster({ mode: 'daily' }, 'daily')}
           onWeek={() => handlePoster({ mode: 'week', weekStart: weekStartOf(draft.date) }, 'week')}
         />

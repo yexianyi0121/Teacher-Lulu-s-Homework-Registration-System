@@ -30,7 +30,7 @@ function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-const GRADES = new Set(['A+', 'A', 'A-', 'B+', 'B', 'C', 'D']);
+const GRADES = new Set(['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C', 'D']);
 const STAMPS = new Set(['none', 'corrected', 'excellent']);
 const STATUSES = new Set(['normal', 'missing', 'leave']);
 const TEMPLATES = new Set(['homework', 'dictation', 'quality', 'custom']);

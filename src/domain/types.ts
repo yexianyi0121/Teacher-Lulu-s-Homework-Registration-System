@@ -1,16 +1,16 @@
 // V2 数据模型（设计 04 §4.1，【必须】逐字照抄；两处放宽见注释）
-// 与 V1 的差异：值/状态/过关/补交四维正交；等级 7 档；方案决定值域；多班级；积分账本。
+// 与 V1 的差异：值/状态/过关/补交四维正交；等级 8 档（v2.5.9：新增 B-）；方案决定值域；多班级；积分账本。
 
 import type { DigitKeyMode } from './digitKey';
 import type { ThemeKey } from './theme';
 
 // ---------- 取值 ----------
-export type GradeLetter = 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'C' | 'D';
+export type GradeLetter = 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C' | 'D';
 
 /** 折算百分。唯一准据，禁止在别处出现等级→百分的映射表（设计 §4.1 / ADR-13） */
 export const GRADE_PERCENT: Record<GradeLetter, number> = {
   'A+': 100, 'A': 95, 'A-': 90,
-  'B+': 85,  'B': 80,
+  'B+': 85,  'B': 80,  'B-': 75,
   'C': 70,
   'D': 55,
 };
@@ -68,7 +68,7 @@ export interface PassRule {
 
 /** 汇总目标（取代 V2 的 posterMode，V3 设计 06 §3.6） */
 export type PosterTarget =
-  | { mode: 'single'; sheetId: string }
+  | { mode: 'single'; key: string }
   | { mode: 'daily' }
   | { mode: 'week'; weekStart: string };
 

@@ -12,7 +12,7 @@ import { gradeAllowed } from '../grading';
 export const ACTIONS = [
   '全对', '错1', '错2', '错3', '错4', '错5', '错6', '错7', '错8', '错9',
   '过关', '不过关', '缺交', '请假', '补交', '已更正', '优秀',
-  'A+', 'A', 'A-', 'B+', 'B', 'C', 'D',
+  'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C', 'D',
   '清空', '撤销',
 ] as const;
 
@@ -44,7 +44,7 @@ export interface ParseCtx {
   focusNo?: number | null;
 }
 
-const GRADES = ['A+', 'A', 'A-', 'B+', 'B', 'C', 'D'] as const;
+const GRADES = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C', 'D'] as const;
 
 function matchAction(text: string): { action: Action; conf: 'exact' | 'fuzzy' } | null {
   const t = text.trim();

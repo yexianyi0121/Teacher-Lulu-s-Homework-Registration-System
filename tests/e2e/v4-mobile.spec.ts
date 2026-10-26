@@ -120,18 +120,18 @@ for (const vp of VIEWPORTS) {
   });
 }
 
-test('E2E-39b 手机键盘等级行按方案档数全出：7 档混合表下 D 也有按钮（v2.3.1 P3-2）', async ({ page }) => {
+test('E2E-39b 手机键盘等级行按方案档数全出：8 档混合表下 D 也有按钮（v2.3.1 P3-2 / v2.5.9 B-）', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await resetApp(page);
   await page.getByTestId('install-hint').getByRole('button', { name: '知道了' }).click();
   await closeJump(page);
-  await pickTemplate(page, 'custom');   // 自定义 = mixed + 7 档 grades
+  await pickTemplate(page, 'custom');   // 自定义 = mixed + 8 档 grades（v2.5.9）
 
   await page.locator('[data-no="1"]').click();
   const kp = page.getByTestId('mobile-keypad');
   await expect(kp).toBeVisible();
   const gradeKeys = kp.locator('.mk-key--grade');
-  await expect(gradeKeys).toHaveCount(7);          // 7 档全出（旧代码 slice(0,6) 会吞掉 D）
+  await expect(gradeKeys).toHaveCount(8);          // 8 档全出（旧代码 slice(0,6) 会吞掉 D）
   await expect(gradeKeys.last()).toHaveText('D');
   await kp.getByRole('button', { name: '等级 D' }).click();
   await expect(page.locator('[data-no="1"]')).toContainText('D');

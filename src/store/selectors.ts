@@ -129,14 +129,14 @@ export function selectPosterModel(s: AppState) {
   });
 }
 
-/** 单条海报：按 sheetId 取当天某张表（records 优先，其次 history），找不到回落当前草稿 */
-export function selectPosterBySheet(s: AppState, sheetId: string) {
+/** 单条海报（FR-64.2）：按记录 key 取当天某张表——同模板多张表共享 sheetId，sheetId 区分不开；records 优先，其次 history */
+export function selectPosterBySheet(s: AppState, key: string) {
   const cls = currentClass(s);
   const fromRecords = Object.values(s.records).find(
-    (r) => r.classId === s.activeClassId && r.date === s.draft.date && r.sheetId === sheetId,
+    (r) => r.key === key,
   );
   const rec = fromRecords
-    ?? s.history.find((h) => h.classId === s.activeClassId && h.date === s.draft.date && h.sheetId === sheetId)
+    ?? s.history.find((h) => h.key === key)
     ?? s.draft;
 
   return buildPosterModel({
@@ -155,12 +155,12 @@ export function selectPosterBySheet(s: AppState, sheetId: string) {
   });
 }
 
-/** 当天已登记的全部表（单条模式的选择器用它） */
+/** 当天已登记的全部表（FR-64.1：按记录 key 去重——同模板的多张表必须都出现） */
 export function selectSheetsOfDay(s: AppState) {
-  const seen = new Map<string, { sheetId: string; content: string; templateId: string; entered: number }>();
-  const add = (r: { sheetId: string; content: string; templateId: string; entries: Entries }) => {
-    if (!seen.has(r.sheetId)) {
-      seen.set(r.sheetId, {
+  const seen = new Map<string, { key: string; sheetId: string; content: string; templateId: string; entered: number }>();
+  const add = (r: { key: string; sheetId: string; content: string; templateId: string; entries: Entries }) => {
+    if (!seen.has(r.key)) {
+      seen.set(r.key, { key: r.key,
         sheetId: r.sheetId,
         content: r.content,
         templateId: r.templateId,
