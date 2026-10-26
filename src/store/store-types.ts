@@ -92,6 +92,13 @@ export interface AppState {
   blockedOverwrite: boolean;
   weekParts: WeekPart[] | null;
   storageDegraded: boolean;
+  /**
+   * 存储写失败的**具体原因**（D-01：写满静默丢数据）。
+   *   'quota'       —— 空间不足（QuotaExceededError），最常见：历史/快照/隔离副本越积越多
+   *   'unavailable' —— 浏览器禁用了存储（隐私模式 / file:// 下的极端配置）
+   * 为 null 表示当前写入正常。界面据此给不同的自救建议，且**不随「知道了」消失**。
+   */
+  storageErrorReason: 'quota' | 'unavailable' | null;
   readOnly: boolean;
   /** 只读原因（FR-54）：决定横幅文案与可用的救援入口；null = 非只读 */
   readOnlyReason: 'MIGRATE_FAILED' | 'UNKNOWN_STATE' | 'NEWER_VERSION' | 'BLOCKED_OVERWRITE' | null;
@@ -123,7 +130,7 @@ export interface AppState {
   setModal: (modal: ModalKind | null) => void;
   openConfirm: (req: ConfirmRequest) => void;
   closeConfirm: () => void;
-  showToast: (text: string, tone?: ToastTone) => void;
+  showToast: (text: string, tone?: 'ok' | 'warn' | 'error', ms?: number) => void;
   clearToast: () => void;
   setPoster: (url: string | null, blob?: Blob | null) => void;
   setPosterPages: (pages: PosterPage[]) => void;
@@ -133,7 +140,7 @@ export interface AppState {
   setEnvMismatch: (v: boolean) => void;
   setBlockedOverwrite: (v: boolean) => void;
   setWeekParts: (parts: WeekPart[] | null) => void;
-  setStorageDegraded: (v: boolean) => void;
+  setStorageDegraded: (v: boolean, reason?: 'quota' | 'unavailable' | null) => void;
   setReadOnly: (v: boolean, reason?: AppState['readOnlyReason']) => void;
   markSaved: (at: number) => void;
   setPulsingNo: (no: number | null) => void;

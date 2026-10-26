@@ -27,7 +27,7 @@ export function useAutoSave() {
         useStore.getState().showToast('检测到数据为空，已阻止覆盖', 'error');
         return;
       }
-      useStore.getState().setStorageDegraded(true);
+      useStore.getState().setStorageDegraded(true, result.reason ?? 'unavailable');
     };
 
     const unsubscribe = useStore.subscribe((s, prev) => {

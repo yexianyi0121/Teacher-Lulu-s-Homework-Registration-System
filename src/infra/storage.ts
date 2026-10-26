@@ -103,7 +103,8 @@ export function serialize(state: PersistedStateV4): PersistedStateV4 {
   return {
     ...state,
     version: CURRENT_VERSION,
-    history: state.history.slice(0, HISTORY_LIMIT),
+    // 防御：历史缺失不能把整个保存链路炸掉（写盘是最后一道防线，宁可截断不可抛）
+    history: Array.isArray(state.history) ? state.history.slice(0, HISTORY_LIMIT) : [],
     lastSavedAt: Date.now(),
   };
 }
@@ -112,6 +113,8 @@ export interface SaveResult {
   ok: boolean;
   /** 被覆盖保护拦截（调用方应进入只读 + 提示） */
   blocked?: boolean;
+  /** 写失败的具体原因（D-01）：空间不足 / 存储不可用。调用方据此给不同自救建议 */
+  reason?: 'quota' | 'unavailable';
 }
 
 /**
@@ -131,11 +134,22 @@ export function saveState(state: PersistedStateV4): SaveResult {
     return { ok: false, blocked: true };
   }
 
+  // 序列化放在 try 外面：如果 serialize 自己抛错（数据结构异常），
+  // 不能伪装成「存储不可用」——那是两回事，误判会把老师引向错误的自救动作。
+  const payload = JSON.stringify(serialize(state));
+
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(serialize(state)));
+    localStorage.setItem(STORAGE_KEY, payload);
     return { ok: true };
-  } catch {
-    return { ok: false };
+  } catch (e) {
+    // 必须区分原因：QuotaExceededError 老师可以删历史自救，存储被禁用则只能换浏览器。
+    // 旧版一律返回 {ok:false} 且界面只说「存储不可用」，等于把「写满了」误诊成「坏了」（D-01）。
+    const name = (e as { name?: string } | null)?.name ?? '';
+    const isQuota =
+      name === 'QuotaExceededError' ||
+      name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+      (typeof e === 'object' && e !== null && (e as { code?: number }).code === 22);
+    return { ok: false, reason: isQuota ? 'quota' : 'unavailable' };
   }
 }
 
@@ -165,11 +179,52 @@ function backupOnce(key: string, raw: string): void {
 }
 
 /** 损坏原文另存（不覆盖、不删除，供人工导出） */
+/** 隔离副本 / 导入前快照最多各留几条（D-14：它们只增不减，会吃满配额反过来造成 D-01） */
+const KEEP_QUARANTINE = 2;
+const KEEP_PREIMPORT = 2;
+
+/**
+ * 按前缀修剪旧的 localStorage 记录，只保留最近 keep 条。
+ * 时间戳是可排序的定长序列，按字符串排就是按时间排。
+ */
+function prunePrefix(prefix: string, keep: number): void {
+  try {
+    const keys = Object.keys(localStorage)
+      .filter((k) => k.startsWith(prefix))
+      .sort();
+    for (const k of keys.slice(0, Math.max(0, keys.length - keep))) {
+      localStorage.removeItem(k);
+    }
+  } catch {
+    // 修剪失败不影响主流程
+  }
+}
+
 function quarantine(kind: 'corrupt' | 'blocked', raw: string): void {
   try {
     localStorage.setItem(`xq.${kind}.${Date.now()}`, raw);
   } catch {
     // 存不下就放弃存证，不能因此阻断启动
+  }
+  prunePrefix(`xq.${kind}.`, KEEP_QUARANTINE);
+}
+
+/** 单调递增的毫秒时间戳：同一毫秒内连写两次不会撞键 */
+let lastStamp = 0;
+function nextStamp(): number {
+  const now = Date.now();
+  lastStamp = now > lastStamp ? now : lastStamp + 1;
+  return lastStamp;
+}
+
+/** 供导入名单等处复用：写入导入前快照并修剪旧快照 */
+export function savePreimportSnapshot(json: string): boolean {
+  try {
+    localStorage.setItem(`xq.preimport.${nextStamp()}`, json);
+    prunePrefix('xq.preimport.', KEEP_PREIMPORT);
+    return true;
+  } catch {
+    return false;
   }
 }
 

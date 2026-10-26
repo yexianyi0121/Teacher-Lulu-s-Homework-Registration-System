@@ -119,11 +119,19 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
       set({ confirmRequest: null });
     },
 
-    showToast(text, tone = 'ok') {
+    showToast(text, tone = 'ok', ms) {
+      // U-05：固定 2600ms 且谁都能顶掉谁 —— 实测「已清空本条记录，可 Ctrl+Z 恢复」
+      // 会被 3 秒后的「该备份了」提醒直接顶掉，老师根本没看见「可以撤销」。
+      // 规则：① 带「可撤销/可继续操作」的信息给更长寿命；② warn/error 比 ok 优先级高，
+      // 低优先级提示不能覆盖仍在显示的高优先级提示。
       toastSeq += 1;
+      const cur = get().toast;
+      const rank = (t: string) => (t === 'error' ? 2 : t === 'warn' ? 1 : 0);
+      if (cur && rank(cur.tone) > rank(tone)) return;
+      const life = ms ?? (tone === 'error' ? 5000 : tone === 'warn' ? 4000 : 2600);
       set({ toast: { id: toastSeq, text, tone } });
       if (toastTimer) clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => set({ toast: null }), 2600);
+      toastTimer = setTimeout(() => set({ toast: null }), life);
     },
 
     clearToast() {
@@ -165,8 +173,9 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
       set({ weekParts: parts });
     },
 
-    setStorageDegraded(v) {
-      set({ storageDegraded: v });
+    setStorageDegraded(v, reason = null) {
+      // 恢复也需要带上原因：成功写盘时调用方传 null，横幅随之消失
+      set({ storageDegraded: v, storageErrorReason: v ? (reason ?? 'unavailable') : null });
     },
 
     setReadOnly(v, reason = null) {

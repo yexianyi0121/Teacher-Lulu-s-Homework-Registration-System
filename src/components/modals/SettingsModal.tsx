@@ -493,12 +493,24 @@ export function SettingsModal() {
               ))}
             </ul>
             <div className="settings-actions" style={{ marginTop: 8 }}>
-              <Pill variant="ghost" onClick={() => s.openConfirm({
-                title: '清空历史记录',
-                message: '将删除全部历史记录（不影响当前录入），确定继续？',
-                danger: true,
-                onConfirm: s.clearHistory,
-              })}>
+              <Pill variant="ghost" onClick={() => {
+                // D-11：历史记录是「本周汇总」「成长曲线」的唯一数据源，点一下就没是灾难。
+                // 与「清空全部数据」对齐：要求手打「清空」，并说明会失去什么。
+                const n = s.history.length;
+                s.openConfirm({
+                  title: '清空历史记录',
+                  message:
+                    `将删除全部 ${n} 条历史记录。\n\n`
+                    + '· 当前正在录的这一条不会受影响；\n'
+                    + '· 但「本周汇总」「成长曲线」「月度/学期导出」会随之变空；\n'
+                    + '· 此操作不可撤销。\n\n'
+                    + '建议先「📦 导出全部数据」留一份备份。',
+                  confirmText: '确认清空',
+                  danger: true,
+                  requireText: '清空',
+                  onConfirm: s.clearHistory,
+                });
+              }}>
                 清空历史记录
               </Pill>
             </div>

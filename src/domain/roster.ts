@@ -1,4 +1,4 @@
-import type { Entries, GradeLetter, RosterGroups, ScoringScheme } from './types';
+import type { CellValue, Entries, GradeLetter, RosterGroups, ScoringScheme } from './types';
 import { percentOf } from './scoring';
 import { gtePct } from './round';
 
@@ -13,10 +13,25 @@ import { gtePct } from './round';
 
 const RANK: Record<GradeLetter, number> = { 'A+': 7, 'A': 6, 'A-': 5, 'B+': 4, 'B': 3, 'C': 2, 'D': 1 };
 
+/**
+ * 这个值在当前方案下「算不算数」。
+ * U-03：老师把表切成「纯分数制」后，存量里的 A+/A 仍然留在格子里，
+ * 旧逻辑按字母秩把它们送进光荣榜 —— 她改的是分数制，看到的却是等级还在榜上，口径自相矛盾。
+ * 规则：方案只接受分数（kind==='score'）时，等级值不参与判定；反之亦然（分数制切回等级制时同理）。
+ * 这类值既不进光荣榜也不进需更正，属于「与本表口径不符」，由界面给出提示。
+ */
+export function valueFitsScheme(v: CellValue, s: ScoringScheme): boolean {
+  if (s.kind === 'score') return v.kind === 'score';
+  if (s.kind === 'grade') return v.kind === 'grade';
+  // mixed / check / text：多种值都能共存，都算数
+  return true;
+}
+
 /** 入光荣榜？（等级看字母秩，分数看百分，文本永不入榜） */
 function inHonor(e: Entries[string], s: ScoringScheme, honorIncludesA: boolean): boolean {
   const v = e.value;
   if (!v) return false;
+  if (!valueFitsScheme(v, s)) return false;
   // PRD-V2 §2.3.1：字母秩 ≥ A（A+/A）进光荣榜；开关打开后 A-（秩 5）也进。
   // 注意这与 V1 的「A 档不入名单」不同——PRD-V2 明确改了口径（其自述样例 B 光荣榜为 A+12+A8=20 人），
   // 设计 §12.4 的 R-2（21 人）属旧值，按「PRD 行为优先」取本条。
@@ -32,6 +47,7 @@ function inHonor(e: Entries[string], s: ScoringScheme, honorIncludesA: boolean):
 function inNeedsFix(e: Entries[string], s: ScoringScheme, honorIncludesA: boolean): boolean {
   const v = e.value;
   if (!v || inHonor(e, s, honorIncludesA)) return false;
+  if (!valueFitsScheme(v, s)) return false;
   if (v.kind === 'grade') return RANK[v.grade] <= 5;   // A- 及以下；A 与 A+ 是荣誉/中立档
   if (v.kind === 'pass') return false;          // 已过关，已由规则 4 抢走
   if (v.kind === 'text') return s.kind === 'check';

@@ -45,6 +45,8 @@ export function createUndoSlice(set: StoreSet, get: StoreGet): UndoSlice {
         editing: null,
         buffer: null,
       });
+      // U-07：撤销原本静默完成，老师分不清「撤了」还是「没反应」。
+      s.showToast(`已撤销：${patch.label}`, 'ok', 3600);
     },
 
     redo() {

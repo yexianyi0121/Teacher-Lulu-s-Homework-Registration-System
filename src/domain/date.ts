@@ -39,12 +39,16 @@ export function monthOf(date: string): string {
   return date.slice(0, 7);
 }
 
-/** 'YYYYMMDD-HHmm'，用于备份文件名 */
+/**
+ * 'YYYYMMDD-HHmmss'，用于备份文件名。
+ * 精确到秒（D-07）：只到分钟时，老师一分钟内连导两次会得到同名文件，
+ * 系统下载目录里后一份直接把前一份顶掉，等于「备份被备份弄丢了」。
+ */
 export function stampForFile(now: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return (
     `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
-    `-${pad(now.getHours())}${pad(now.getMinutes())}`
+    `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
   );
 }
 

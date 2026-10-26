@@ -36,6 +36,12 @@ import { ExportModal } from './components/modals/ExportModal';
 import { ManualModal } from './components/modals/ManualModal';
 import { Toast } from './components/ui/Toast';
 
+/** 当前这张表（当天 + 当前模板 + 当前内容）是否已经有任何录入（U-01/U-02） */
+function hasAnyInCurrentSheet(st: ReturnType<typeof useStore.getState>): boolean {
+  const rec = st.records[st.draft.key] ?? st.draft;
+  return hasEntries(rec.entries);
+}
+
 function hasAnyToday(st: ReturnType<typeof useStore.getState>): boolean {
   // 注意：records 里也会存「刚切过去还没录」的空记录，必须按内容判定，
   // 否则翻到任何一天都会生成一张空图（FR-24 / FR-43 的「今日/本周暂无登记」永不触发）。
@@ -64,7 +70,7 @@ export function App() {
   const modal = useStore((s) => s.modal);
   const setModal = useStore((s) => s.setModal);
   const storageDegraded = useStore((s) => s.storageDegraded);
-  const setStorageDegraded = useStore((s) => s.setStorageDegraded);
+  const storageErrorReason = useStore((s) => s.storageErrorReason);
   const readOnly = useStore((s) => s.readOnly);
   const readOnlyReason = useStore((s) => s.readOnlyReason);
   const voiceInterim = useStore((s) => s.voiceInterim);
@@ -151,6 +157,11 @@ export function App() {
       const exists = selectSheetsOfDay(st).some((x) => x.sheetId === sheetId);
       if (!exists) next = { mode: 'daily' };
     }
+    if (next.mode === 'single' && !hasAnyInCurrentSheet(st)) {
+      // U-02：空表单条海报会退化成「今日海报·全班暂未提交」，不是老师要的东西
+      st.showToast('这张表还没有录入任何内容，先录几个再生成海报', 'warn');
+      return;
+    }
     if (next.mode === 'daily' && !hasAnyToday(st)) {
       st.showToast('今日暂无登记', 'warn');
       return;
@@ -200,7 +211,16 @@ export function App() {
 
   // 快捷键事件（Ctrl+Enter / Ctrl+J）
   useEffect(() => {
-    const onReport = () => useStore.getState().setModal('report');
+    const onReport = () => {
+      const st = useStore.getState();
+      // U-01：空表生成报表会输出「暂未提交：1号…50号」全员，老师一键发到群里就是事故。
+      // 与「当日汇总/本周汇总」对齐：先拦截，并告诉老师怎么继续。
+      if (!hasAnyInCurrentSheet(st)) {
+        st.showToast('这张表还没有录入任何内容，先录几个再生成报表', 'warn');
+        return;
+      }
+      st.setModal('report');
+    };
     const onPoster = () => handlePoster({ mode: 'single', sheetId: useStore.getState().draft.sheetId });
     window.addEventListener('xq:report', onReport);
     window.addEventListener('xq:poster', onPoster);
@@ -258,13 +278,23 @@ export function App() {
             <button
               type="button"
               onClick={() => {
+                // D-04：只读态往往正是「数据读不出来」的时候，此时内存里的 state 是空的，
+                // 原来的「导出当前数据」会下载一份 5.7KB、records=0 的空备份 ——
+                // 老师以为得救了，实际交出的是空的。只读态必须优先导出**磁盘上的原始数据**。
+                const raw = readRawStateText();
                 const st = useStore.getState();
-                downloadBlob(exportAllBlob(st.exportState()), `学情备份-${todayISO()}.json`);
+                if (raw) {
+                  downloadBlob(exportRawBackup(raw), `学情原始数据-${todayISO()}.json`);
+                  st.showToast('已导出磁盘上的原始数据（不是空的），请保管好这个文件', 'ok');
+                } else {
+                  downloadBlob(exportAllBlob(st.exportState()), `学情备份-${todayISO()}.json`);
+                  st.showToast('磁盘上没有读到原始数据，已导出当前内存里的内容', 'warn');
+                }
                 markBackupDone();
                 st.markExported();
               }}
             >
-              导出当前数据
+              导出原始数据
             </button>
             <button
               type="button"
@@ -304,9 +334,24 @@ export function App() {
         ) : null}
 
         {storageDegraded ? (
-          <div className="warn-bar" role="alert">
-            ⚠️ 浏览器存储不可用，刷新后数据会丢失，建议先导出备份
-            <button type="button" onClick={() => setStorageDegraded(false)}>知道了</button>
+          // D-01：写盘失败绝不能只弹一条可「知道了」的横幅 —— 老师关掉后以为没事，
+          // 实际后续每次录入都没落盘，第二天打开丢一整天数据。
+          // 因此这里：① 说清「具体哪些东西没存上」② 按原因给不同的自救动作 ③ 不提供关闭按钮，
+          // 只有真正写成功（flush 里 res.reason 消失）才自动消失。
+          <div className="warn-bar" role="alert" style={{ background: '#FDECEC', color: '#B23B3B', borderColor: '#F3B4B4' }}>
+            {storageErrorReason === 'quota'
+              ? '⚠️ 浏览器存储空间满了，刚才做的修改没有存上（关掉页面就会丢）。请立刻「📦 导出全部数据」，再到「设置 → 历史记录」删掉旧的，然后刷新页面。'
+              : '⚠️ 浏览器存储不可用，修改没有存上（关掉页面就会丢）。请立刻导出备份，并换用 Chrome / Edge 打开本页面。'}
+            <button
+              type="button"
+              onClick={() => {
+                // 不再能一键关掉；这里只跳去导出，不改变失败状态
+                useStore.setState({ modal: 'settings' });
+                useStore.getState().showToast('请点「📦 导出全部数据」保存一份到本地', 'warn');
+              }}
+            >
+              📦 去导出备份
+            </button>
           </div>
         ) : null}
 

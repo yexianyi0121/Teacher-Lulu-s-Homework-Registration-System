@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useStore } from '../../store';
 import { selectReport } from '../../store/selectors';
 import { copyText } from '../../infra/clipboard';
@@ -13,9 +14,25 @@ export function ReportModal() {
 
   const close = () => setModal(null);
 
+  const preRef = useRef<HTMLPreElement>(null);
+
   const handleCopy = async () => {
     const ok = await copyText(report);
-    showToast(ok ? '已复制，去微信群粘贴吧 ✓' : '复制失败，请手动选中复制', ok ? 'ok' : 'warn');
+    if (ok) {
+      showToast('已复制，去微信群粘贴吧 ✓', 'ok');
+      return;
+    }
+    // U-04：复制失败时只说「请手动选中复制」，老师还得自己拖选一大段。
+    // 直接把整段文案选中，她按 Ctrl+C 就行。
+    const el = preRef.current;
+    if (el) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+    showToast('自动复制被浏览器拦住了，已帮你全选，按 Ctrl+C 即可', 'warn', 5000);
   };
 
   return (
@@ -33,7 +50,7 @@ export function ReportModal() {
         </>
       }
     >
-      <pre className="report-pre" data-testid="report-text">{report}</pre>
+      <pre className="report-pre" data-testid="report-text" ref={preRef} tabIndex={-1}>{report}</pre>
     </Modal>
   );
 }

@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useStore, currentClass } from '../../store';
+import { savePreimportSnapshot } from '../../infra/storage';
 import { decodeCsv, looksLikeNonText, nonTextFileHint, parseRosterText } from '../../domain/roster-import';
 import { studentsFromRows } from '../../domain/roster-xlsx';
 import * as XLSX from 'xlsx';
@@ -36,6 +37,8 @@ export function ImportRosterModal() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [source, setSource] = useState<Source>('paste');
+  /** 大文件解析期间置 true：SheetJS 同步解析会阻塞主线程，先让「正在读取」画出来（R-10） */
+  const [parsing, setParsing] = useState(false);
   /** xlsx 专用：来自文件解析的学生（不经过 textarea） */
   const [xlsx, setXlsx] = useState<{
     students: { no: number; name?: string }[];
@@ -69,12 +72,9 @@ export function ImportRosterModal() {
     const changed = next !== cur || newNames.some((nm, i) => nm !== (oldNames[i] ?? ''));
 
     const doImport = () => {
-      // FR-56-6：导入前留底，让「设置 → 回退到导入前」真的能救回来。
-      try {
-        localStorage.setItem(`xq.preimport.${Date.now()}`, JSON.stringify(useStore.getState().exportState()));
-      } catch {
-        // 空间不足时仍然允许导入——误导入可以靠导出的 JSON 找回
-      }
+      // FR-57.3：导入前留底，让「设置 → 回退到导入前」真的能救回来。
+      // 用 infra 提供的函数（会顺带修剪旧快照，避免越积越多吃满配额 —— D-14）。
+      savePreimportSnapshot(JSON.stringify(useStore.getState().exportState()));
       importRoster(students);
       close();
       useStore.getState().showToast(
@@ -106,8 +106,22 @@ export function ImportRosterModal() {
     reset();
     setFileName(f.name);
 
+    // 1000 行左右的表解析要 1 秒以上，期间主线程被占满，界面会像卡死。
+    // 先置 parsing 并让出两个宏任务，把「正在读取」渲染出来再开干。
+    setParsing(true);
+    await new Promise((r) => setTimeout(r, 0));
+    try {
+      await onFileInner(f, ext);
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const onFileInner = async (f: File, ext: string) => {
+
     // ---- Excel ----
-    if (ext === 'xlsx' || ext === 'xls') {
+    // .et 是 WPS 表格的扩展名，文件内容仍是 xls/xlsx 容器 —— 老师多用 WPS（R-14）
+    if (ext === 'xlsx' || ext === 'xls' || ext === 'et') {
       try {
         const buf = await f.arrayBuffer();
         // 静态打包（不走动态 import）：dist 的入口脚本会被 inline-dist 内联进 HTML，
@@ -211,6 +225,12 @@ export function ImportRosterModal() {
         </div>
       ) : null}
 
+      {parsing ? (
+        <div className="file-ok" role="status" aria-live="polite">
+          ⏳ 正在读取「{fileName}」，文件很大时需要一两秒…
+        </div>
+      ) : null}
+
       {xlsx ? (
         <div className="file-ok">
           ✅ 已从「{xlsx.sheetName}」读取到 <strong>{xlsx.students.length}</strong> 人
@@ -220,12 +240,12 @@ export function ImportRosterModal() {
 
       <div className="settings-actions">
         <Pill variant="ghost" onClick={() => fileRef.current?.click()}>
-          📂 选择文件（Excel / CSV / TXT）
+          📂 选择文件（Excel / WPS / CSV / TXT）
         </Pill>
         <input
           ref={fileRef}
           type="file"
-          accept=".xlsx,.xls,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/plain,text/csv"
+          accept=".xlsx,.xls,.et,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/plain,text/csv"
           aria-label="选择名单文件"
           className="sr-only"
           onChange={async (e) => {

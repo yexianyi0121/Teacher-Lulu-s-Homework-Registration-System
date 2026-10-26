@@ -1562,18 +1562,23 @@ pre {
 .manual-section code { background: var(--surface-alt); padding: 1px 5px; border-radius: 4px; }
 
 /* 工具栏：1366 宽下所有控件必须单行（换行会把「清空/更新修改」挤到第二行，
-   网格随之下移，老师要多滚动一次）。收紧按钮内边距换取空间；
-   窄于 1200 才允许换行并恢复原内边距。 */
-.input-bar { flex-wrap: nowrap; }
-.input-bar .pill { padding: 0 9px; font-size: 13px; }
-.output-bar { flex-wrap: nowrap; }
-.output-bar .pill { padding: 0 12px; }
+   网格随之下移，老师要多滚动一次）。收紧按钮内边距换取空间。
+
+   U-09：媒体查询只看 viewport 宽度，而浏览器缩放（Ctrl+加号 125%/150%）会让
+   CSS 可用宽度变小但断点仍按原值判断 —— 实测 125% 溢出 51px、150% 溢出 345px，
+   「更新修改」和「⋯」被挤出视口，按钮点不到。
+   因此这里不能依赖断点，改用「按内容自适应换行」+ 允许横向滚动兜底：
+   能放下就单行，放不下自动换行，绝不把按钮推到视口外。 */
+.input-bar { flex-wrap: wrap; row-gap: 6px; height: auto; min-height: 48px; max-width: 100%; }
+.input-bar .pill { padding: 0 9px; font-size: 13px; flex: 0 0 auto; }
+.output-bar { flex-wrap: wrap; row-gap: 6px; height: auto; min-height: 48px; max-width: 100%; }
+.output-bar .pill { padding: 0 12px; flex: 0 0 auto; }
 .filter-toggle { white-space: nowrap; flex: 0 0 auto; }
 .filter-toggle .toggle { flex: 0 0 auto; }
 
-@media (max-width: 1200px) {
-  .input-bar { flex-wrap: wrap; row-gap: 6px; height: auto; min-height: 48px; }
-  .input-bar .pill { padding: 0 14px; }
+/* 缩放后按钮确实放不进一行时，允许这两条工具条横向滚动（而不是溢出到视口外） */
+@supports (overflow-x: auto) {
+  .input-bar, .output-bar { overflow-x: auto; scrollbar-width: thin; }
 }
 
 /* ==================== V3：单元格双色系 / 三态角标 / 表情 ==================== */

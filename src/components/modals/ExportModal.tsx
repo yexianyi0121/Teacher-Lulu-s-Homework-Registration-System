@@ -72,6 +72,12 @@ export function ExportModal() {
     const file = { detail: '登记明细.csv', points: '月度积分.csv', summary: '汇总.csv' } as const;
     downloadCsv(map[kind], `${safeName(cls.name)}_${file[kind]}`);
     s.markExported();
+    // U-06：这两个按钮原本点完毫无反馈，老师不知道到底导没导成
+    const rows = map[kind].split('\n').filter((x) => x.trim()).length - 1;
+    s.showToast(
+      rows > 0 ? `已导出${file[kind]}（${rows} 行）` : `${file[kind]}没有数据（已导出表头）`,
+      rows > 0 ? 'ok' : 'warn',
+    );
   };
 
   return (

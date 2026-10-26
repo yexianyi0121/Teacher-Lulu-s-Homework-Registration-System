@@ -136,7 +136,8 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
       const updated = { ...rec, entries: {} as Entries, updatedAt: Date.now() };
       s.pushUndo('清空当前记录', before, {}, s.pointLedger.length);
       set({ records: { ...s.records, [rec.key]: updated }, draft: updated, buffer: null });
-      s.showToast('已清空本条记录，可 Ctrl+Z 恢复', 'ok');
+      // 5 秒：这条信息老师必须看见，否则会以为「清空后救不回来了」（U-05）
+      s.showToast('已清空本条记录，可 Ctrl+Z 恢复', 'ok', 5000);
     },
 
     deleteHistory(key) {

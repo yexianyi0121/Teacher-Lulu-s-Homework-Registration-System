@@ -74,6 +74,7 @@ export const useStore = create<AppState>()((set, get) => ({
   blockedOverwrite: false,
   weekParts: null,
   storageDegraded: false,
+  storageErrorReason: null,
   readOnly: false,
   readOnlyReason: null,
   lastSavedAt: null,
