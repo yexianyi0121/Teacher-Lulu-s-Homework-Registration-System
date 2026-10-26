@@ -6,12 +6,13 @@ import { GRADE_PERCENT } from './types';
  * 纯函数：键位 → 值、文本 → 听写判定、值 → 展示字符串。
  */
 
-/** 等级字母的直接映射（A/B/C/D + 修饰符得到的 A+ / A- / B+ / B-） */
-export const GRADE_LETTERS: GradeLetter[] = ['A+', 'A', 'A-', 'B+', 'B', 'C', 'D'];
+/** 等级字母的直接映射（A/B/C/D + 修饰符得到的 A+ / A- / B+ / B-）
+ * v2.6.1 FR-70.3：补上 'B-'（v2.5.9 加 B- 时漏了这里）。 */
+export const GRADE_LETTERS: GradeLetter[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C', 'D'];
 
 /**
  * 基础字母 + 修饰符 → 合法等级（PRD FR-17：`A`→`A-` 用 `-` 修饰）。
- * 只有 A+/A-/B+ 三种带修饰的档位存在；`C+`/`D-` 等返回 null。
+ * 带修饰的只有 A+/A-/B+/B- 四种（与 GRADE_ORDER 一致）；`C+`/`D-` 等返回 null。
  */
 export function applyGradeModifier(base: string, mod: '+' | '-' | null): GradeLetter | null {
   const b = base.toUpperCase();

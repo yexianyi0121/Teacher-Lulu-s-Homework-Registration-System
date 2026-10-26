@@ -13,6 +13,7 @@ export function SchemeModal() {
   const setScheme = useStore((s) => s.setScheme);
   const resetScheme = useStore((s) => s.resetScheme);
   const entries = useStore((s) => s.draft.entries);
+  const showToast = useStore((s) => s.showToast);
   const setModal = useStore((s) => s.setModal);
 
   const close = () => setModal(null);
@@ -99,6 +100,13 @@ export function SchemeModal() {
               max={100}
               value={pct(scheme[key])}
               onChange={(e) => {
+                // v2.6.1 FR-70.2：及格% 下限 5%。老师曾把它误设成 7%，导致 7 分以上全判过关。
+                const MIN_PASS = 5;
+                const raw = Number(e.target.value);
+                if (key === 'passRate' && Number.isFinite(raw) && raw < MIN_PASS) {
+                  showToast(`及格% 不能低于 ${MIN_PASS}%，否则几乎人人过关`, 'warn');
+                  return;
+                }
                 const v = Math.min(100, Math.max(0, Number(e.target.value) || 0)) / 100;
                 const next = { ...scheme, [key]: v };
                 // 夹取关系：0 ≤ 及格 ≤ 良好 ≤ 优秀 ≤ 100
@@ -109,6 +117,9 @@ export function SchemeModal() {
             />
           </div>
         ))}
+      </div>
+      <div className="field-hint">
+        及格% 是「低于它就算未过关」的线，最低 5%；等级值达到及格线时，混合判定也会算过关（见设置 → 过关规则）。
       </div>
 
       <div className="field">

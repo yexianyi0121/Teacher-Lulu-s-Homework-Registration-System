@@ -271,6 +271,24 @@ pre {
 .hint .digit-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .hint .hint-text { overflow: hidden; text-overflow: ellipsis; }
 
+/* v2.6.1 FR-70.5：本表未启用的等级入口。旧表常只勾 5/6 档，老师找不到 B-；
+   点它直接打开「本表设置→可用等级」，不用自己找菜单。 */
+.hint .hint-missing {
+  flex: none;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px dashed var(--brand);
+  background: transparent;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.hint .hint-missing:hover { background: var(--brand-soft); }
+
 /* v2.5.10 FR-68.1：等级按键小片（每片 = “按键 → 等级”）。
    老师反馈开启 A-/B- 后提示语里看不出哪个键是哪桩；这组片放在提示文字左侧，
    颜色跟等级配色一致（与格子、海报同一形象），看片就知道按哪个数字键。 */
@@ -1382,7 +1400,11 @@ pre {
   line-height: 34px;
 }
 .mk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+/* v2.6.1 FR-70.4：等级行最多 8 档（含 B-），375px 屏必须全部可见可点——
+   允许换行，每键按 flex 收缩，不再横向挤出屏幕。 */
 .mk-row { display: flex; gap: 8px; }
+.mk-row:has(.mk-key--grade) { flex-wrap: wrap; }
+.mk-key--grade { flex: 1 1 calc((100% - 28px) / 4); min-width: 40px; }
 .mk-key {
   min-height: 48px;
   padding: 0 4px;

@@ -39,7 +39,10 @@ export function HintBar({
     : buildHint(templateId, scheme, km, meaning);
   // v2.5.10 FR-68.1：方案启用等级时，把“按键=等级”化一组小片显示出来。
   // 原来只有一行可能被截断的纯文字，老师看不出 1–8 到底分别对应哪一桩。
+  // v2.6.1 FR-70.5：本表未启用的等级（旧表常只勾 5/6 档）在提示条给出入口，
+  // 否则老师找不到 B- 在哪一键、也想不到要去「本表设置」勾选。
   const pairs = meaning === 'grade' && scheme.grades.some((g) => GRADE_ORDER.includes(g)) ? keyMapPairs(km) : [];
+  const missing = GRADE_ORDER.filter((g) => !scheme.grades.includes(g));
 
   return (
     <div className="hint" role="note">
@@ -64,6 +67,16 @@ export function HintBar({
             </span>
           ))}
         </span>
+      ) : null}
+      {missing.length ? (
+        <button
+          type="button"
+          className="hint-missing"
+          title="点此去本表的可用等级里勾选"
+          onClick={() => useStore.getState().setModal('scheme')}
+        >
+          未启用 {missing.join('/')}，点此添加
+        </button>
       ) : null}
       <span className="hint-text">{hint}</span>
     </div>

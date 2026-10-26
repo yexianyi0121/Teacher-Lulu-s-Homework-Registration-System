@@ -6,6 +6,20 @@
 > **只写「做了什么、为什么、验收到什么程度」**，不贴用户操作步骤与反馈原话。
 > 每次改动的细节（根因、代码位置、验收编号）见 `docs/` 里对应的需求说明书或修复日志。
 
+## [2.6.1] - 2026-10-26
+
+### 修复 Fixed
+
+- 修复 过关规则没说清混合判定会被本表及格线找回：设置里写明等级值达到及格线时同样算过关，并列出当前勾选的等级（FR-70.1）。
+- 修复 及格% 可以被改成个位数：本表设置的阈值输入框加下限（最低 5%）与提示，防止及格线过低导致几乎人人过关（FR-70.2）。
+- 修复 B- 在代码里有两处遗漏：`GRADE_LETTERS` 补上 B-；手机键盘等级行允许换行且每键可缩，375px 屏 8 档全都见得到、点得到（FR-70.3 / FR-70.4）。
+- 修复 本表未启用的等级没有入口：提示条多一个「未启用…，点此添加」，直达本表设置（FR-70.5）。
+
+### 文档 Docs
+
+- 新增 `docs/26-修复日志-v2.6.1.md`（根因、代码位置与验收编号）。
+- 版本号升至 **2.6.1**，`dist/` 已重建。
+
 ## [未发布] Unreleased
 
 - 文档仓库整理：V1 / V2 文档移入 `docs/archive/`；新增 `CHANGELOG.md`、`CONTRIBUTING.md`；
@@ -260,7 +274,8 @@ V1 基线：16 条 FR，作业/测验成绩登记、界面规格、口径、样�
 
 ---
 
-[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.5.10...HEAD
+[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.1...HEAD
+[2.6.1]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.5.10...v2.6.0
 [2.5.10]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.5.9...v2.5.10
 [2.5.9]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.5.8...v2.5.9

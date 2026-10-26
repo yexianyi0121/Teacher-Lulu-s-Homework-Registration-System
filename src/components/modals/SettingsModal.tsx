@@ -210,6 +210,16 @@ export function SettingsModal() {
                 </button>
               ))}
             </div>
+            {/* v2.6.1 FR-70.1：mixed（默认）下等级值会被百分兜底——达到本表及格线的等级
+                即使没勾也算过关，老师会误以为「没勾的 D 也自动过关」；这里把它写明白。 */}
+            <div className="field-hint">
+              {s.settings.passRule.kind === 'mixed'
+                ? '混合判定：分数达到本表及格线即过关；等级值达到及格线同样算过关，未勾的等级只在低于及格线时才判未过关。'
+                : '只按勾选的等级判过关，分数仍按本表及格线。'}
+            </div>
+            <div className="field-hint">
+              当前勾选：{s.settings.passRule.gradePass.length > 0 ? s.settings.passRule.gradePass.join(' / ') : '（未勾选任何等级）'}
+            </div>
           </div>
         ) : null}
         <div className="switch-row">
