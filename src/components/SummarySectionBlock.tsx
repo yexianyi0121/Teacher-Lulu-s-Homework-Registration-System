@@ -36,6 +36,8 @@ export function SummarySectionBlock({ section }: { section: SummarySection }) {
           />
         ))}
       </div>
+      {/* v2.5.10 FR-66.2：这张表自己的评价语（汇总图按作业内容逐表写） */}
+      {section.comment ? <div className="summary-section-comment">{section.comment}</div> : null}
     </section>
   );
 }

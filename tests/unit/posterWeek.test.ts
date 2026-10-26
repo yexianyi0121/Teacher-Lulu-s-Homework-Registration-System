@@ -85,6 +85,7 @@ describe('paginateWeek：分卷边界（D-9 / AC-81）', () => {
     const one = estimateWeekPart(parts[0]);
     const withSheet = estimateWeekPart({ ...parts[0], sheets: [{
       key: 'k', icon: '📊', sheetName: '质量监测', content: '', statLine: '', createdAt: 1,
+      comment: '',
       cells: Array.from({ length: 50 }, (_, i) => ({
         no: i + 1, text: '', kind: 'empty' as const, tone: 'empty' as const,
         stamp: 'none' as const, status: 'normal' as const, pass: false, makeup: false,

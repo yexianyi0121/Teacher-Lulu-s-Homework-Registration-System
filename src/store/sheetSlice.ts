@@ -9,7 +9,7 @@ import { recordKey } from '../utils/id';
 type SheetSlice = Pick<
   AppState,
   | 'switchTemplate' | 'switchSheet' | 'setDate' | 'setContent' | 'switchRecord'
-  | 'setScheme' | 'resetScheme' | 'setComment' | 'commitToHistory' | 'clearCurrentRecord'
+  | 'setScheme' | 'resetScheme' | 'setComment' | 'setSheetComment' | 'commitToHistory' | 'clearCurrentRecord'
   | 'deleteHistory' | 'clearHistory' | 'setDigitKey'
 >;
 
@@ -52,7 +52,18 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
     setComment(v) {
       const s = get();
       const rec = { ...s.draft, comment: v.slice(0, 60), updatedAt: Date.now() };
-      set({ draft: rec, records: { ...s.records, [rec.key]: s.records[rec.key] ? rec : rec } });
+      set({ draft: rec, records: { ...s.records, [rec.key]: rec } });
+    },
+
+    /** v2.5.10 FR-66.2：编辑其它记录（如汇总图里某张表）的评价语，不切换当前表 */
+    setSheetComment(key, v) {
+      const s = get();
+      const patch = v.slice(0, 60);
+      if (key === s.draft.key) { get().setComment(patch); return; }
+      const target = s.records[key];
+      if (!target) return;
+      const rec = { ...target, comment: patch, updatedAt: Date.now() };
+      set({ records: { ...s.records, [key]: rec } });
     },
 
     /** V4 FR-46.1：数字键语义按表持久，同时记为新表默认（settings.digitKey） */

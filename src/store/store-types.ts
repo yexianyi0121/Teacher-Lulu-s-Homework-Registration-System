@@ -175,6 +175,8 @@ export interface AppState {
   switchRecord: (patch: { date?: string; content?: string; sheetId?: string; templateId?: SheetTemplateId }) => void;
   setScheme: (patch: Partial<ScoringScheme>) => void;
   setComment: (v: string) => void;
+  /** v2.5.10 FR-66.2：按记录 key 写某张表的评价语（汇总图里逐表编辑） */
+  setSheetComment: (key: string, v: string) => void;
   setDigitKey: (mode: DigitKeyMode) => void;
   resetScheme: () => void;
   commitToHistory: () => void;

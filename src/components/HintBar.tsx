@@ -1,7 +1,8 @@
 import { useStore } from '../store';
 import { selectDigitKeyMode } from '../store/selectors';
 import { buildHint } from '../domain/hint';
-import { buildGradeKeyMap } from '../domain/keymap';
+import { buildGradeKeyMap, keyMapPairs } from '../domain/keymap';
+import { GRADE_ORDER } from '../domain/constants';
 import {
   digitKeyAmbiguous,
   nextDigitKeyModeFor,
@@ -32,9 +33,13 @@ export function HintBar({
   const setDigitKey = useStore((s) => s.setDigitKey);
   const meaning = resolveDigitMeaning(mode, scheme, templateId);
   const showChip = digitKeyAmbiguous(scheme);
+  const km = buildGradeKeyMap(scheme);
   const hint = filterNotPassed
     ? `👁 只看未过关：${notPassedCount ?? 0} 人 / 共 ${total ?? 0} 人（编号保持原学号）`
-    : buildHint(templateId, scheme, buildGradeKeyMap(scheme), meaning);
+    : buildHint(templateId, scheme, km, meaning);
+  // v2.5.10 FR-68.1：方案启用等级时，把“按键=等级”化一组小片显示出来。
+  // 原来只有一行可能被截断的纯文字，老师看不出 1–8 到底分别对应哪一桩。
+  const pairs = meaning === 'grade' && scheme.grades.some((g) => GRADE_ORDER.includes(g)) ? keyMapPairs(km) : [];
 
   return (
     <div className="hint" role="note">
@@ -49,6 +54,16 @@ export function HintBar({
         >
           ⌨ {describeDigitMeaning(meaning)}
         </button>
+      ) : null}
+      {pairs.length ? (
+        <span className="hint-grades" aria-label="等级按键">
+          {pairs.map((p) => (
+            <span className="hint-grade" key={p.key} data-grade={p.grade}>
+              <span className="hint-grade-key">{p.key}</span>
+              {p.grade}
+            </span>
+          ))}
+        </span>
       ) : null}
       <span className="hint-text">{hint}</span>
     </div>

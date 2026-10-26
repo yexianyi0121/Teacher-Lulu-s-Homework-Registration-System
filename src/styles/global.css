@@ -64,9 +64,20 @@ pre {
   padding: 24px;
 }
 
+/* v2.5.10 FR-69.1：屏幕适配。
+   以前固定 1440px 屏幕上左右各留一大条空白（1920 屏各 240px），
+   老师的原话是“为什么整个系统的界面仍然展示比较小、还没有根据屏幕适配”。
+   改法：内容宽度跟着视口走（最多 1920，超宽屏 2200），
+   格子与字号的分桩逐级放大见 tokens.css 的 1600/1920 两桩。 */
 .app-inner {
-  max-width: 1440px;
+  width: 100%;
+  max-width: 1920px;
   margin: 0 auto;
+}
+
+/* 超宽屏（>=2560）再放一桩，避免全屏展开时内容过宽 */
+@media (min-width: 2560px) {
+  .app-inner { max-width: 2200px; }
 }
 
 .header {
@@ -211,17 +222,21 @@ pre {
   margin-bottom: 8px;
 }
 
+/* v2.5.10 FR-68.1：提示条改为允许换行。
+   以前固定 28px 高 + overflow hidden，等级一多（启用 B-/A- 后八桩）
+   提示文字就被截断，老师根本看不到自己的等级。 */
 .hint {
-  height: 28px;
+  min-height: 28px;
+  height: auto;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 4px;
   gap: 8px;
   font-size: 13px;
   color: var(--text-2);
   margin-bottom: 4px;
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* V4.1 P2-2 / FR-48.6-b：night 主题下「压在页面渐变背景上」的文字必须用浅色。
@@ -255,6 +270,37 @@ pre {
 .hint .digit-chip:hover { filter: brightness(0.97); }
 .hint .digit-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .hint .hint-text { overflow: hidden; text-overflow: ellipsis; }
+
+/* v2.5.10 FR-68.1：等级按键小片（每片 = “按键 → 等级”）。
+   老师反馈开启 A-/B- 后提示语里看不出哪个键是哪桩；这组片放在提示文字左侧，
+   颜色跟等级配色一致（与格子、海报同一形象），看片就知道按哪个数字键。 */
+.hint .hint-grades { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.hint .hint-grade {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 6px;
+  border: 1.5px solid var(--grade-line, var(--line));
+  background: var(--grade-bg, var(--surface-alt));
+  color: var(--grade-fg, var(--text-1));
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+.hint .hint-grade-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .72);
+  border: 1px solid currentColor;
+  font-size: 11px;
+  font-weight: 700;
+}
 
 /* ---------- 通用控件 ---------- */
 .pill {
@@ -519,6 +565,9 @@ pre {
   font-size: 9px;
 }
 
+/* v2.5.10 FR-67.1：主值与表情各占一行。
+   以前表情直接跟在主值后面 inline，主值一长（A+、假、缺交…）
+   表情就被 max-width 压回来覆盖主值末尾——老师看到的就是“+ 被表情挤掉”。 */
 .cell-value {
   font-weight: 700;
   line-height: 1.05;
@@ -526,10 +575,15 @@ pre {
   padding: 0 4px;
   text-align: center;
   word-break: break-all;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
 }
 
-.cell[data-mode="homework"] .cell-value { font-size: 28px; }
-.cell[data-mode="quiz"] .cell-value { font-size: 26px; }
+/* v2.5.10 FR-67.1 清理：这两条 `[data-mode]` 规则从来没生效过
+   —— 全库搜过，没有任何组件渲染 data-mode，真实字号只来自 data-len 阶梯（下面四条）。
+   留着容易误导后续调字号，删。 */
 
 .cell[data-len="1"] .cell-value { font-size: 24px; }
 .cell[data-len="2"] .cell-value { font-size: 22px; }
@@ -641,7 +695,11 @@ pre {
   --badge-inset-bottom: 3px;
   --badge-inset-right: 3px;
 }
-.cell[data-variant="poster"] .cell-emoji { font-size: .7em; }
+/* v2.5.10 FR-67.1：海报里表情放在主值下面，不占主值的宽度；
+   主值字号随之降一级，给表情留出行高。 */
+.cell[data-variant="poster"] .cell-value { font-size: 20px; }
+.cell[data-variant="poster"] .cell-emoji { font-size: 14px; line-height: 1.1; }
+.cell[data-variant="poster"][data-len="1"] .cell-value { font-size: 22px; }
 /* 「假」这类整格状态，主值本身就是状态名，再挂一个「假」角标是重复信息，去掉 */
 .cell[data-variant="poster"][data-status="leave"] .cell-badge,
 .cell[data-variant="poster"][data-status="missing"] .cell-badge { display: none; }
@@ -1598,6 +1656,28 @@ pre {
 .summary-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
 .summary-title { font-size: 20px; display: flex; align-items: baseline; gap: 8px; }
 .summary-content { color: var(--text-2); font-size: 16px; }
+/* v2.5.10 FR-66.2：汇总图里每张表各写各的评价语
+   —— 编辑器（PosterModal 里）与图上每节展示（这里）各一套；
+   不再有“整张图只能写一条”的限制。 */
+.sheet-comments { display: flex; flex-direction: column; gap: 6px; }
+.sheet-comment { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--surface-alt); }
+.sheet-comment[data-open="1"] { border-color: var(--brand); }
+.sheet-comment-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sheet-comment-name { font-size: 13px; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-comment .chip { min-width: 0; padding: 2px 8px; font-size: 12px; flex: none; }
+.sheet-comment textarea { margin-top: 6px; }
+.sheet-comment-text { margin-top: 4px; font-size: 13px; color: #3D3346; line-height: 1.5; }
+
+/* 汇总图里每节（每张表）自己的评价语：贴在该节网格下方，颜色与单张海报页脚一致（v2.3.1 意见 4） */
+.summary-section-comment {
+  margin-top: 8px;
+  text-align: center;
+  color: #3D3346;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 .summary-stat { color: var(--text-2); font-size: 15px; font-variant-numeric: tabular-nums; }
 /* v2.5.8 用户反馈「汇总截图里图标重叠、显示过小」：
    原来是 `repeat(10, 32px)` 定死宽度 —— 10 列只有 380px，而卡片宽 1080px，
@@ -1615,7 +1695,7 @@ pre {
    v2.5.8 与海报格同一套分区：上带（学号/印章）+ 下带（主值居中/右下角标），
    主值不再整格居中，才不会压到右下角的 ✓ 或「缺」「假」小角标。 */
 .summary-grid .cell[data-variant="mini"] {
-  height: 52px;
+  height: 58px;
   border-radius: 8px;
   border-width: 1.5px;
   display: flex;
@@ -1655,7 +1735,10 @@ pre {
   font-size: 9px;
   line-height: 1;
 }
-.summary-grid .cell[data-variant="mini"] .cell-emoji { display: none; }
+/* v2.5.10 FR-67.1：汇总格原来直接 display:none，老师回“汇总里怎么不显示图标”。
+   现在表情在主值下方，按小格尺寸单独给字号。 */
+.summary-grid .cell[data-variant="mini"] .cell-emoji { font-size: 12px; line-height: 1; margin-top: 1px; }
+.summary-grid .cell[data-variant="mini"] .cell-value { font-size: 17px; }
 /* 整格状态（假 / 缺交）的主值已经是状态名，右下角再挂同名小角标是重复信息 */
 .summary-grid .cell[data-variant="mini"][data-status="leave"] .cell-badge,
 .summary-grid .cell[data-variant="mini"][data-status="missing"] .cell-badge { display: none; }
@@ -1712,6 +1795,17 @@ pre {
 .cell[data-kind="grade"][data-grade="C"]  { background: #FDEDE6; border: 2px dashed #E0704F; color: #B24A2C; }
 .cell[data-kind="grade"][data-grade="D"]  { background: #FCE8E6; border: 2px dotted #D1453B; color: #A32A22; }
 
+/* v2.5.10 FR-68.1：提示条里的等级小片要跟等级同色，
+   与格子、海报里的等级色完全一致（老师看颜色就能对上）。 */
+.hint .hint-grade[data-grade="A+"] { --grade-bg: #E8F5EC; --grade-line: #3F8F5F; --grade-fg: #2F7A4E; }
+.hint .hint-grade[data-grade="A"]  { --grade-bg: #EDF8F1; --grade-line: #5FA97C; --grade-fg: #3E8A5E; }
+.hint .hint-grade[data-grade="A-"] { --grade-bg: #F3FAEA; --grade-line: #8FBF6F; --grade-fg: #6E9B4C; }
+.hint .hint-grade[data-grade="B+"] { --grade-bg: #FEF9E4; --grade-line: #E3B93F; --grade-fg: #A9851F; }
+.hint .hint-grade[data-grade="B"]  { --grade-bg: #FDF2E3; --grade-line: #E89A4A; --grade-fg: #B4701F; }
+.hint .hint-grade[data-grade="B-"] { --grade-bg: #F7EAE1; --grade-line: #D1873F; --grade-fg: #8F6319; }
+.hint .hint-grade[data-grade="C"]  { --grade-bg: #FDEDE6; --grade-line: #E0704F; --grade-fg: #B24A2C; }
+.hint .hint-grade[data-grade="D"]  { --grade-bg: #FCE8E6; --grade-line: #D1453B; --grade-fg: #A32A22; }
+
 /* 三态：颜色 + 角标 + 辅助文字（INV-17 双通道） */
 .cell[data-badge="missing"] { background: var(--state-missing-bg); border: 1.5px dashed var(--state-missing-line); color: var(--state-missing-fg); }
 .cell[data-badge="leave"]   { background: var(--state-leave-bg);   border: 1.5px dotted #A48BC9; color: var(--state-leave-fg); }
@@ -1751,11 +1845,18 @@ pre {
   white-space: nowrap;
 }
 
-.cell-emoji { margin-left: 4px; font-size: .8em; }
+/* v2.5.10 FR-67.1：表情改为自己占一行（见 .cell-value 的 column flex），
+   不再 margin-left 跟主值拼在同一行；
+   尺寸按变体分屏，汇总格也不再隐藏（以前汇总里根本不显示表情）。 */
+.cell-emoji {
+  font-size: .8em;
+  line-height: 1;
+  flex: none;
+}
 
 .cell[data-variant="mini"] .cell-badge { --badge-size: 11px; --badge-font: 8px; --badge-inset-bottom: 1px; --badge-inset-right: 1px; }
 .cell[data-variant="mini"] .cell-sub { display: none; }
-.cell[data-variant="mini"] .cell-emoji { display: none; }
+.cell[data-variant="mini"] .cell-emoji { font-size: 12px; line-height: 1; }
 .cell[data-variant="mini"] .cell-stamp { font-size: 8px; --stamp-inset-top: 1px; --stamp-inset-right: 2px; }
 
 .cell-stamp {

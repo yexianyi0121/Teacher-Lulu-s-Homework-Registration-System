@@ -45,12 +45,12 @@ test('E2E-32 三视口密度：1280 / 1366 / 1920 令牌分层且不溢框', asy
     expect(t.overflowX).toBeLessThanOrEqual(0);
   });
 
-  await test.step('1920：宽松档（图标 24 / 字号 15 / 按钮 40 / 格子更高）', async () => {
+  await test.step('1920：宽松档（图标 26 / 字号 16 / 按钮 42 / 格子更高）', async () => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const t = await readTokens();
-    expect(t.icon).toBe('24px');
-    expect(t.fs).toBe('15px');
-    expect(t.btn).toBe('40px');
+    expect(t.icon).toBe('26px');
+    expect(t.fs).toBe('16px');
+    expect(t.btn).toBe('42px');
     expect(t.overflowX).toBeLessThanOrEqual(0);
     expect(t.cellH).toBeGreaterThan(0);
   });

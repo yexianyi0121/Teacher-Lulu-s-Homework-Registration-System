@@ -141,6 +141,8 @@ export interface SummarySection {
   icon: string;
   sheetName: string;
   content: string;
+  /** 本张表的评价语（v2.5.10：每张表各写各的，不再只有整图一条） */
+  comment: string;
   statLine: string;
   cells: PosterCell[];
   createdAt: number;
@@ -209,6 +211,8 @@ export function buildSummaryModel(args: {
     icon: s.icon,
     sheetName: s.sheetName,
     content: s.content,
+    // FR-66.2：每张表的评价语来自它自己的记录（空串表示这张表不写）
+    comment: (s.comment ?? '').trim(),
     statLine: sectionStatLine(s, n, display.passRule),
     cells: cellsOf(s.entries, s.scheme, n, display),
     createdAt: s.createdAt,

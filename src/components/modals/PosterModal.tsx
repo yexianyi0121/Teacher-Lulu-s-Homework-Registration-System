@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useStore } from '../../store';
-import { selectSheetsOfDay } from '../../store/selectors';
+import { selectSheetsOfDay, selectSummary, selectWeek } from '../../store/selectors';
 import type { PosterTarget } from '../../domain/types';
 import { addDaysISO } from '../../domain/date';
 import { COMMENT_MAX, SHEET_TEMPLATES } from '../../domain/constants';
@@ -44,7 +45,15 @@ export function PosterModal({
   // 弹窗组件不该因为一个可选字段缺失就崩，兜底成空串。
   const comment = useStore((s) => s.draft.comment ?? s.settings.defaultComment) ?? '';
   const setComment = useStore((s) => s.setComment);
+  const setSheetComment = useStore((s) => s.setSheetComment);
   const sheets = useStore(selectSheetsOfDay);
+  // v2.5.10 FR-66.2：汇总图里每张表各写各的评价语，不再只有整图一条
+  const summary = useStore(selectSummary);
+  const week = useStore(selectWeek);
+  const [openComment, setOpenComment] = useState<string | null>(null);
+  const sections = target.mode === 'daily' ? summary.sections
+    : target.mode === 'week' ? (week.pages[0] ?? []).flatMap((p) => p.sheets)
+      : [];
 
   const close = () => setModal(null);
   const weekStart = target.mode === 'week' ? target.weekStart : null;
@@ -133,21 +142,63 @@ export function PosterModal({
         </div>
       ) : null}
 
-      <div className="field" style={{ marginBottom: 10 }}>
-        <label className="field-label" htmlFor="poster-comment">
-          {target.mode === 'single' ? '评价语（显示在海报页脚）' : '评价语（显示在整张图页脚）'}
-        </label>
-        <textarea
-          id="poster-comment"
-          rows={2}
-          maxLength={COMMENT_MAX}
-          value={comment}
-          placeholder="例：本次听写整体不错，错得多的同学请把错字抄三遍。"
-          onChange={(e) => setComment(e.target.value)}
-          onBlur={() => onRegenerate()}
-        />
-        <div className="field-hint">{comment.length}/{COMMENT_MAX} 字 · 失焦后自动重新生成</div>
-      </div>
+      {target.mode === 'single' ? (
+        <div className="field" style={{ marginBottom: 10 }}>
+          <label className="field-label" htmlFor="poster-comment">
+            评价语（显示在海报页脚）
+          </label>
+          <textarea
+            id="poster-comment"
+            rows={2}
+            maxLength={COMMENT_MAX}
+            value={comment}
+            placeholder="例：本次听写整体不错，错得多的同学请把错字抄三遍。"
+            onChange={(e) => setComment(e.target.value)}
+            onBlur={() => onRegenerate()}
+          />
+          <div className="field-hint">{comment.length}/{COMMENT_MAX} 字 · 失焦后自动重新生成</div>
+        </div>
+      ) : sections.length ? (
+        /* v2.5.10 FR-66.2：汇总图按作业内容逐表写评价语
+           （原来整张图只能写一条，同一天多张表时不够用） */
+        <div className="field" style={{ marginBottom: 10 }}>
+          <span className="field-label">评价语（每张表各写各的，显示在该表页脚）</span>
+          <div className="sheet-comments">
+            {sections.map((sec) => (
+              <div className="sheet-comment" key={sec.key} data-open={openComment === sec.key ? '1' : undefined}>
+                <div className="sheet-comment-head">
+                  <span className="sheet-comment-name">
+                    {sec.icon} {sec.sheetName}{sec.content ? ` · ${sec.content}` : ''}
+                  </span>
+                  <button
+                    type="button"
+                    className="chip"
+                    aria-expanded={openComment === sec.key}
+                    onClick={() => setOpenComment(openComment === sec.key ? null : sec.key)}
+                  >
+                    {sec.comment ? '改评价语' : '写评价语'}
+                  </button>
+                </div>
+                {openComment === sec.key ? (
+                  <>
+                    <textarea
+                      rows={2}
+                      maxLength={COMMENT_MAX}
+                      value={sec.comment}
+                      placeholder="例：这一遍默写整体不错，错字请抄三遍。"
+                      onChange={(e) => setSheetComment(sec.key, e.target.value)}
+                      onBlur={() => onRegenerate()}
+                    />
+                    <div className="field-hint">{sec.comment.length}/{COMMENT_MAX} 字 · 失焦后自动重新生成</div>
+                  </>
+                ) : sec.comment ? (
+                  <div className="sheet-comment-text">{sec.comment}</div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {url ? (
         <img className="poster-preview" src={url} alt={ALTS[target.mode]} />

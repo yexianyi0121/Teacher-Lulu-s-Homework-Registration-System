@@ -64,9 +64,15 @@ export function CellView({
       <span className="cell-no" aria-hidden="true">{no}</span>
 
       {text ? (
+        // v2.5.10 FR-67.1：表情从“跟在主值后面 inline”改成它自己的一行，
+        // 不再会把 `A+` 的 `+` 压住（原来主值有 max-width 限制，表情被挤出去就相互压）。
         <span className="cell-value">
           {text}
-          {emoji ? <span className="cell-emoji" aria-hidden="true">{emoji}</span> : null}
+          {emoji ? (
+            <span className="cell-emoji" aria-hidden="true">
+              {emoji}
+            </span>
+          ) : null}
         </span>
       ) : null}
 

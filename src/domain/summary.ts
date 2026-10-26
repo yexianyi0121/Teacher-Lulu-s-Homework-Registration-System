@@ -14,6 +14,8 @@ export interface DaySheetSnapshot {
   sheetName: string;
   icon: string;
   content: string;
+  /** 本张表自己的评价语（v2.5.10：汇总图按表各写各的） */
+  comment?: string;
   scheme: ScoringScheme;
   entries: Entries;
   metrics: SessionMetrics;
@@ -41,6 +43,7 @@ export function snapshotDay(
       sheetName: SHEET_TEMPLATES[r.templateId].name,
       icon: SHEET_TEMPLATES[r.templateId].icon,
       content: r.content,
+      comment: r.comment,
       scheme: r.scheme,
       entries: r.entries,
       metrics: computeStats(r.entries, r.scheme, n, state.settings.honorIncludesA),

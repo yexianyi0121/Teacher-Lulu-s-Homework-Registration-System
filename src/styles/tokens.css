@@ -86,13 +86,36 @@
   }
 }
 
-@media (min-width: 1680px) {
+@media (min-width: 1600px) {
   :root {
     --icon-size: 24px;
-    --btn-h: 40px;
+    --btn-h: 38px;
     --fs-base: 15px;
-    --pill-pad-x: 16px;
-    --cell-h: 84px;
+    --pill-pad-x: 15px;
+    --cell-h: 88px;
+  }
+}
+
+/* v2.5.10 FR-69.1：屏幕适配。以前内容被 .app-inner 的 1440px 上限挡住，
+   1920 屏左右各留 240px 空白、格子永远偏小；现在内容跟着视口走（global.css），
+   这里再补两桩把格子与字号逐级放大，E2E-38（无横向溢出）由 8 列网格保证。 */
+@media (min-width: 1920px) {
+  :root {
+    --icon-size: 26px;
+    --btn-h: 42px;
+    --fs-base: 16px;
+    --pill-pad-x: 18px;
+    --cell-h: 104px;
+  }
+}
+
+@media (min-width: 2560px) {
+  :root {
+    --icon-size: 28px;
+    --btn-h: 46px;
+    --fs-base: 17px;
+    --pill-pad-x: 20px;
+    --cell-h: 124px;
   }
 }
 

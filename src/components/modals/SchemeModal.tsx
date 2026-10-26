@@ -1,5 +1,6 @@
 import { useStore } from '../../store';
 import { GRADE_ORDER, SCHEME_LABEL } from '../../domain/constants';
+import { buildGradeKeyMap, keyMapPairs } from '../../domain/keymap';
 import type { GradeLetter, SchemeKind } from '../../domain/types';
 import { Modal } from '../ui/Modal';
 import { Pill } from '../ui/controls';
@@ -18,6 +19,9 @@ export function SchemeModal() {
 
   const scores = Object.values(entries).filter((e) => e.value?.kind === 'score').length;
   const grades = Object.values(entries).filter((e) => e.value?.kind === 'grade').length;
+  // v2.5.10 FR-68.1：把当前启用等级的数字键位显示出来，
+  // 让老师勾完等级就知道“按哪个数字键录哪一桩”，不用回主界面猜。
+  const pairs = keyMapPairs(buildGradeKeyMap(scheme));
 
   const toggleGrade = (g: GradeLetter) => {
     const has = scheme.grades.includes(g);
@@ -122,6 +126,10 @@ export function SchemeModal() {
               {g}
             </button>
           ))}
+        </div>
+        <div className="field-hint">
+          勾选后按从左到右的顺序绑定数字键：
+          {pairs.map((p) => ` ${p.key}=${p.grade}`).join('')}
         </div>
       </div>
 

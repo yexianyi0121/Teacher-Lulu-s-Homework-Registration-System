@@ -1,12 +1,29 @@
 import { useStore } from '../store';
+import { selectSheetsOfDay } from '../store/selectors';
 import { SHEET_TEMPLATES, TEMPLATE_LIST } from '../domain/constants';
 import type { SheetTemplateId } from '../domain/types';
 
+/**
+ * 参数行（PRD FR-14）：登记类型 / 选择登记表 / 日期 / 作业内容。
+ * v2.5.10 用户反馈：同一天同一类型可以有多张表（作业内容不同），
+ * 此前主屏只显示当前这一张，之前的表「再也看不到」。
+ * 这里补一个选择器，只列当天该类型的表；切换 = switchRecord 落到既有记录。
+ */
 export function ParamsBar() {
   const draft = useStore((s) => s.draft);
   const switchTemplate = useStore((s) => s.switchTemplate);
   const setDate = useStore((s) => s.setDate);
   const setContent = useStore((s) => s.setContent);
+  const switchRecord = useStore((s) => s.switchRecord);
+  const sheets = useStore(selectSheetsOfDay).filter((s) => s.templateId === draft.templateId);
+  const multi = sheets.length > 1;
+
+  const pickSheet = (key: string) => {
+    const hit = sheets.find((s) => s.key === key);
+    if (!hit || hit.key === draft.key) return;
+    // 作业内容就是同模板多张表的区分点（sheetId 相同），带上它才能落回原记录
+    switchRecord({ content: hit.content, sheetId: hit.sheetId, templateId: hit.templateId as SheetTemplateId });
+  };
 
   return (
     <div className="params">
@@ -25,6 +42,24 @@ export function ParamsBar() {
           ))}
         </select>
       </label>
+
+      {multi ? (
+        <label className="params-field">
+          <span className="field-label">选择登记表</span>
+          <select
+            className="pill pill--select"
+            aria-label="选择登记表"
+            value={draft.key}
+            onChange={(e) => pickSheet(e.target.value)}
+          >
+            {sheets.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.content || '未命名'}{s.key === draft.key ? ' · 当前' : ''}{s.entered ? ` · ${s.entered} 人` : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
 
       <label className="params-field">
         <span className="field-label">日期</span>
