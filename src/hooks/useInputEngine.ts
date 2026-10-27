@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { selectDigitKeyMode, selectVisibleNos } from '../store/selectors';
 import { gradeAllowed } from '../domain/grading';
 import { schemeAllowsGrade, schemeAllowsScore } from '../domain/scoring';
-import type { GradeLetter } from '../domain/types';
+import type { GradeLetter, ScoringScheme, SheetTemplateId } from '../domain/types';
 import { gridColumns } from '../domain/layout';
 import { buildGradeKeyMap } from '../domain/keymap';
 import { checkScore, maxScoreOf, reasonText, sanitizeScoreChar } from '../domain/scoreInput';
@@ -29,6 +29,10 @@ export function useInputEngine() {
 
   useEffect(() => {
     const store = () => useStore.getState();
+
+    /** 听写语义的判定：check 方案或听写模板（与 resolveDigitMeaning 的 auto 口径一致） */
+    const isDictationScheme = (sch: ScoringScheme, tid: SheetTemplateId): boolean =>
+      sch.kind === 'check' || tid === 'dictation';
 
     const clearPending = () => {
       if (timerRef.current) {
@@ -379,6 +383,14 @@ export function useInputEngine() {
           if (schemeAllowsScore(scheme)) {
             e.preventDefault();
             appendBuffer(key);
+            return;
+          }
+          // v2.6.8：听写表（check 方案）若被切到「数字＝分数」，数字键仍应按听写语义记「错几」。
+          // 原来这里直接吞键并提示「本表不接受分数」——提示条写着「0–9（0=全对）」，
+          // 键按下去却什么都没发生，老师以为功能坏了。
+          if (isDictationScheme(scheme, s.draft.templateId) && /^[0-9]$/.test(key)) {
+            e.preventDefault();
+            dictationDigit(key);
             return;
           }
           s.showToast('本表不接受分数', 'warn');

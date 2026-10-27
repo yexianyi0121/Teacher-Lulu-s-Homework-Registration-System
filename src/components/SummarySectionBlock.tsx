@@ -27,6 +27,7 @@ export function SummarySectionBlock({ section }: { section: SummarySection }) {
               emoji: c.emoji,
               badge: c.badge,
               subText: c.subText,
+              keptValue: c.keptValue,
               full: c.text,
             }}
             stamp={c.stamp}

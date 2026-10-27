@@ -34,6 +34,8 @@ export interface PosterCell {
   emoji?: string;
   badge?: CellBadge;
   subText?: string;
+  /** 手打过关时保留下来的原值（v2.6.8），海报里同样挂在主值下方 */
+  keptValue?: string;
   stamp: Stamp;
   status: EntryStatus;
   pass: boolean;

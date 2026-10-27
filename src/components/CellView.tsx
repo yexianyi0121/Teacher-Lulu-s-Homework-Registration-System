@@ -38,7 +38,7 @@ export function CellView({
   error,
   title,
 }: CellViewProps) {
-  const { text, kind, tone, grade, emoji, badge, subText, full } = display;
+  const { text, kind, tone, grade, emoji, badge, subText, keptValue, full } = display;
 
   return (
     <div
@@ -73,6 +73,20 @@ export function CellView({
               {emoji}
             </span>
           ) : null}
+          {/* v2.6.8：手打过关时把原值挂成主值下方的小字「（错22）」——
+              底部副文本位是学生姓名，塞那里会跟名字重叠。 */}
+          {keptValue ? (
+            <span className="cell-kept" aria-hidden="true">
+              （{keptValue}）
+            </span>
+          ) : null}
+          {/* v2.6.8：补交副文本原来绝对定位在格子底部，正好和学生姓名同一条基线，
+              两者叠在一起。现在跟 keptValue 一样挂在主值下方（column flex 内）。 */}
+          {subText ? (
+            <span className="cell-sub" aria-hidden="true">
+              {subText}
+            </span>
+          ) : null}
         </span>
       ) : null}
 
@@ -82,7 +96,7 @@ export function CellView({
         </span>
       ) : null}
 
-      {subText ? <span className="cell-sub">{subText}</span> : null}
+      {!text && subText ? <span className="cell-sub">{subText}</span> : null}
 
       {stamp !== 'none' ? (
         <span className="cell-stamp" data-stamp={stamp} aria-hidden="true">

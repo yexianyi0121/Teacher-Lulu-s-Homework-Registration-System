@@ -141,9 +141,11 @@ test('E2E-32 v2.6.4 BUG1：取消「允许 ✓ 过关标记」→ 提示清空 �
   await expect(confirmDlg).toContainText('个格子将被清空');
   await confirmDlg.getByRole('button', { name: '确认修改' }).click();
 
-  // 标记被清掉：格子回到空态，不再挂着 ✓
-  await expect(page.locator('[data-no="1"]')).not.toHaveAttribute('data-pass', '1');
-  await expect(page.locator('[data-no="1"]')).not.toContainText('✓');
+  // 标记被清掉，不再挂着 ✓；v2.6.8 起手打过关会保留原值，所以格子回到等级「A」并自动算过关（✓ 角标）
+  const cell = page.locator('[data-no="1"]');
+  await expect(cell).not.toHaveAttribute('data-pass', '1');
+  await expect(cell).toHaveAttribute('data-kind', 'grade');
+  await expect(cell).toContainText('A');
 });
 
 test('E2E-33 v2.6.4 BUG2：「听写/默写全对自动算过关」只在听写表的本表设置里出现', async ({ page }) => {

@@ -6,6 +6,18 @@
 > **只写「做了什么、为什么、验收到什么程度」**，不贴用户操作步骤与反馈原话。
 > 每次改动的细节（根因、代码位置、验收编号）见 `docs/` 里对应的需求说明书或修复日志。
 
+## [2.6.8] - 2026-10-27
+
+### 修复 Fixed
+
+- 听写默写表在「数字＝分数」模式下数字键被吞掉、提示「本表不接受分数」——提示条却写着「0–9（0=全对）」。现在听写模板 / `check` 方案下 0–9 一律按听写语义记「错几」，900ms 内连敲两位拼成「错22」。
+- 手打 `G` 标过关时会把已登记的值一并清掉——「错22」「A」这类记录消失。现在只翻过关标记，原值保留在格子副文本里。
+
+### 文档 Docs
+
+- 新增 `docs/33-修复日志-v2.6.8.md`。
+- 版本号升至 **2.6.8**，`dist/` 已重建。
+
 ## [2.6.7] - 2026-10-27
 
 ### 修复 Fixed
@@ -373,7 +385,8 @@ V1 基线：16 条 FR，作业/测验成绩登记、界面规格、口径、样�
 
 ---
 
-[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.7...HEAD
+[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.8...HEAD
+[2.6.8]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.7...v2.6.8
 [2.6.7]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.6...v2.6.7
 [2.6.6]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.5...v2.6.6
 [2.6.5]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.4...v2.6.5

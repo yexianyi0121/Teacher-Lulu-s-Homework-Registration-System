@@ -43,6 +43,23 @@ describe('cellDisplay：状态位与角标', () => {
     expect(d).toMatchObject({ text: '✓', kind: 'pass', tone: 'green' });
     expect(d.badge).toBeUndefined();
   });
+
+  it('手工过关但已登记值 → 主值 ✓ + keptValue 挂下方（v2.6.8）', () => {
+    const d = cellDisplay(e(text('错22'), { pass: true }), check, opts);
+    expect(d.text).toBe('✓');
+    expect(d.kind).toBe('pass');
+    // 原值走 keptValue（渲染成主值下方的「（错22）」），不占底部副文本位——那是学生姓名
+    expect(d.keptValue).toBe('错22');
+    expect(d.subText).toBeUndefined();
+    expect(d.full).toBe('已过关 · 错22');
+  });
+
+  it('手工过关 + 补交 → keptValue 与补交副文本互不干扰（v2.6.8）', () => {
+    const d = cellDisplay(e(g('A'), { pass: true, makeup: { at: 0, note: '' } }), grade, opts);
+    expect(d.keptValue).toBe('A');
+    expect(d.subText).toBe('补交');
+    expect(d.badge).toBe('madeup');
+  });
 });
 
 describe('cellDisplay：听写「全对」不重复显示 √（AC-32.1）', () => {

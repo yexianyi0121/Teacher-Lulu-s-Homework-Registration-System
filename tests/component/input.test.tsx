@@ -81,13 +81,14 @@ describe('录入内核（组件级）', () => {
     expect(useStore.getState().cellError).toBe(1);
   });
 
-  it('听写：数字 2 → 文字「错2」，Enter 过关（G 同效）', () => {
+  it('听写：数字 2 → 文字「错2」，按 G 过关但保留错题数', () => {
     setup('dictation');
     press('2');
     expect(useStore.getState().draft.entries['1'].value).toEqual({ kind: 'text', text: '错2' });
     press('g');
     expect(useStore.getState().draft.entries['1'].pass).toBe(true);
-    expect(useStore.getState().draft.entries['1'].value).toBeNull();
+    // v2.6.8：手打过关只翻 pass，不清值——「错22」这类记录要留在格子里
+    expect(useStore.getState().draft.entries['1'].value).toEqual({ kind: 'text', text: '错2' });
   });
 
   it('X 缺交、再按一次取消（状态位互斥）', () => {

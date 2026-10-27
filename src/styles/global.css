@@ -1854,10 +1854,10 @@ pre {
   --badge-inset-bottom: 3px;
   --badge-inset-right: 3px;
 }
-/* 补交小字是「交」/「缺」，原来和主值叠在一起；汇总格里让它贴底居中、主值上移 */
+/* v2.6.8：副文本已挪进主值的 column flex（见 .cell-sub），
+   汇总格里只需按小格尺寸给字号，不再需要贴底居中。 */
 .summary-grid .cell[data-variant="mini"] .cell-sub {
   display: block;
-  bottom: 1px;
   font-size: 9px;
   line-height: 1;
 }
@@ -1960,15 +1960,17 @@ pre {
 .cell-badge[data-badge="madeup"]  { background: var(--state-madeup-fg); }
 .cell-badge[data-badge="passed"]  { background: #2E7D4F; }
 
+/* v2.6.8：副文本（补交 / 缺 / 假）原来绝对定位在格子底部，
+   正好压在 .cell-name（学生姓名，同样 bottom: 2px）上，两者叠在一起。
+   现在挪进 .cell-value 的 column flex，跟主值、表情一样从上往下排。 */
 .cell-sub {
-  position: absolute;
-  bottom: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 10px;
+  font-size: .5em;
   color: var(--state-madeup-fg);
-  line-height: 1;
+  line-height: 1.1;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* v2.5.10 FR-67.1：表情改为自己占一行（见 .cell-value 的 column flex），
@@ -1978,6 +1980,19 @@ pre {
   font-size: .8em;
   line-height: 1;
   flex: none;
+}
+
+/* v2.6.8：手打过关保留的原值，挂在主值 ✓ 的正下方（跟着 .cell-value 的 column flex 走），
+   不与底部学生姓名抢位置。 */
+.cell-kept {
+  font-size: .5em;
+  line-height: 1;
+  color: var(--text-2);
+  font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cell[data-variant="mini"] .cell-badge { --badge-size: 11px; --badge-font: 8px; --badge-inset-bottom: 1px; --badge-inset-right: 1px; }

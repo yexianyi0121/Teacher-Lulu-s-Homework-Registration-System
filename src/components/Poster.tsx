@@ -34,6 +34,7 @@ export function Poster({ model }: { model: PosterModel }) {
                 emoji: cell.emoji,
                 badge: cell.badge,
                 subText: cell.subText,
+                keptValue: cell.keptValue,
                 full: cell.text,
               }}
               stamp={cell.stamp}

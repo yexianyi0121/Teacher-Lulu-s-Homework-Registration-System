@@ -42,6 +42,8 @@ export interface CellDisplay {
   emoji?: string;
   badge?: CellBadge;
   subText?: string;
+  /** 手打过关时保留下来、挂在主值下方的原值（如「错22」「A」） */
+  keptValue?: string;
   full: string;
 }
 
@@ -81,9 +83,18 @@ export function cellDisplay(entry: Entry | undefined, s: ScoringScheme, opts: Di
 
   // 手工过关：主值 ✓（U+2713，v2.5.9：跨平台一致；U+221A「√」在 Mac 上就是根号。输入侧仍接受 √）
   if (isManualPass(entry)) {
+    // v2.6.8：手打过关保留已登记的值——主值仍是 ✓（老师要看的是「这格算过关」），
+    // 但把原值（如「错22」「A」）放到副文本，事后还看得出他当时错了几处。
+    const kept = formatValue(entry.value, s);
+    const keptText = kept === '✓' ? '' : kept;
     return {
       text: '✓', kind: 'pass', tone: 'green',
-      badge: makeupBadge, subText: makeupText, full: '已过关',
+      badge: makeupBadge,
+      // 原值挂在主值下方（CellView 里渲染成「✓ (错22)」），不用底部副文本位——
+      // 那个位置是学生姓名，塞进去会跟名字叠在一起。
+      keptValue: keptText || undefined,
+      subText: makeupText,
+      full: keptText ? `已过关 · ${keptText}` : '已过关',
     };
   }
 

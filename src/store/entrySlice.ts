@@ -195,9 +195,13 @@ export function createEntrySlice(set: StoreSet, get: StoreGet): EntrySlice {
     togglePass(no) {
       writeOne(no, (e) => {
         const on = !e.pass;
+        // v2.6.8：手打过关不再清掉已登记的值。
+        // 老师改完之后按 G 表示「这格算过关」，但「错22」这条记录本身要留着——
+        // 原来的 `value: null` 等于把当堂听写的错误数抹掉，事后完全看不出他错了几处。
+        // 取消过关同样只翻 pass，不动 value。
         return on
-          ? { ...e, pass: true, value: null, status: 'normal' }
-          : { ...e, pass: false, value: null };
+          ? { ...e, pass: true, status: 'normal' }
+          : { ...e, pass: false };
       }, '过关');
     },
 
