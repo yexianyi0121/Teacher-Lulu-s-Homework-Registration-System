@@ -101,6 +101,39 @@ test('FR-66.2 汇总里每张表各写各的评价语（A-144）', async ({ page
   expect(singleText).toContain('默写全对的同学请继续保持。');
 });
 
+test('FR-76.5 三张表各写各的评价语，重新生成后不重复（A-177）', async ({ page }) => {
+  await resetApp(page);
+  await closeJump(page);
+  await pickTemplate(page, 'homework');
+
+  // 建 3 张同模板、内容不同的表：默写 / 作文 / 第2单元
+  const contents = ['默写', '作文', '第2单元'];
+  const comments = ['默写全对的同学请继续保持。', '作文结构清晰，值得表扬。', '第2单元的生字要再巩固。'];
+  for (let i = 0; i < contents.length; i += 1) {
+    await page.getByLabel('作业内容').fill(contents[i]);
+    await page.getByLabel('新建登记').click();
+    await typeCell(page, i + 1, ['1']);
+  }
+
+  // 依次给三张表各写一条评价语
+  await page.locator('.output-bar button[aria-label="当日汇总"]').click();
+  expect((await sheetCommentNames(page)).length).toBe(3);
+  for (let i = 0; i < contents.length; i += 1) {
+    const row = page.locator('.sheet-comment').filter({ has: page.locator('.sheet-comment-name', { hasText: contents[i] }) });
+    await row.locator('button.chip').click();
+    const box = row.locator('textarea');
+    await box.fill(comments[i]);
+    await box.blur();
+  }
+
+  // 重新生成后，每条评价语在汇总图上只出现一次（以前最后会多出与第一张相同的一行）
+  const posterText = await capturePosterText(page, () => page.locator('.modal-foot button', { hasText: '重新生成' }).click());
+  for (const text of comments) {
+    const hits = posterText.split(text).length - 1;
+    expect(hits, `评价语「${text}」在汇总图上出现了 ${hits} 次`).toBe(1);
+  }
+});
+
 test('FR-67.1 等级格的表情不再压住等级，汇总格也显示表情（A-145）', async ({ page }) => {
   await resetApp(page);
   await closeJump(page);

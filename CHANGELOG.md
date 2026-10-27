@@ -6,6 +6,17 @@
 > **只写「做了什么、为什么、验收到什么程度」**，不贴用户操作步骤与反馈原话。
 > 每次改动的细节（根因、代码位置、验收编号）见 `docs/` 里对应的需求说明书或修复日志。
 
+## [2.6.6] - 2026-10-27
+
+### 修复 Fixed
+
+- 当日 / 本周汇总图底部会多出一行与某张表相同的评价语——汇总模型不再接收「整图评价语」，评价语只跟着各自的表走。
+
+### 文档 Docs
+
+- 新增 `docs/31-修复日志-v2.6.6.md`。
+- 版本号升至 **2.6.6**，`dist/` 已重建。
+
 ## [2.6.5] - 2026-10-27
 
 ### 新增 Added
@@ -351,7 +362,8 @@ V1 基线：16 条 FR，作业/测验成绩登记、界面规格、口径、样�
 
 ---
 
-[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.5...HEAD
+[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.6...HEAD
+[2.6.6]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.5...v2.6.6
 [2.6.5]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.4...v2.6.5
 [2.6.4]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.3...v2.6.4
 [2.6.3]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.2...v2.6.3

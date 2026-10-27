@@ -184,7 +184,8 @@ export function selectSummary(s: AppState) {
     date: s.draft.date,
     sheets,
     n: countOf(s),
-    comment: s.draft.comment ?? s.settings.defaultComment,
+    // FR-76.5：汇总图不再画「整图评价语」。评价语属于每张表自己的 section，
+    // 以前这里把当前草稿的 comment 当页脚，等于把某一张表的评价语又重复画了一遍。
     school: cls?.school ?? '',
     showSchoolInPoster: s.settings.showSchoolInPoster,
     display: selectDisplayOptions(s),
@@ -200,7 +201,7 @@ export function selectWeek(s: AppState, weekStart?: string) {
     state: posterState(s),
     classId: s.activeClassId,
     display: selectDisplayOptions(s),
-    comment: s.draft.comment ?? s.settings.defaultComment,
+    // FR-76.5：周汇总同理——评价语只跟着各自的表走
     school: cls?.school ?? '',
     showSchoolInPoster: s.settings.showSchoolInPoster,
   });
