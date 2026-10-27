@@ -112,13 +112,14 @@ test('E2E-38 1366×768 不出现纵向滚动；输出带 4 按钮顺序固定（
     expect(m.innerBottom).toBeLessThanOrEqual(768);
   });
 
-  await test.step('输出带 4 按钮存在、顺序固定、aria-label 与 title 齐备', async () => {
+  await test.step('输出带按钮存在、顺序固定、aria-label 与 title 齐备', async () => {
     const bar = page.locator('.output-bar');
     await expect(bar).toBeVisible();
     const labels = await bar.locator('button[aria-label]').evaluateAll((els) =>
       els.map((el) => el.getAttribute('aria-label')),
     );
-    expect(labels).toEqual(['报表生成', '单条海报', '当日汇总', '本周汇总']);
+    // v2.6.5 需求3：最左新增常驻「本表方案」提示，其余四个按钮顺序不变
+    expect(labels).toEqual(['本表方案', '报表生成', '单条海报', '当日汇总', '本周汇总']);
     for (const name of ['报表生成', '单条海报', '当日汇总', '本周汇总']) {
       const btn = bar.locator(`button[aria-label="${name}"]`);
       await expect(btn).toHaveAttribute('title', /.+/);

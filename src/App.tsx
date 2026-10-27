@@ -370,6 +370,8 @@ export function App() {
         <ParamsBar />
         <OutputBar
           busy={busy}
+          scheme={draft.scheme}
+          onOpenScheme={() => setModal('scheme')}
           onReport={() => setModal('report')}
           onPoster={() => handlePoster({ mode: 'single', key: draft.key }, 'poster')}
           onSummary={() => handlePoster({ mode: 'daily' }, 'daily')}

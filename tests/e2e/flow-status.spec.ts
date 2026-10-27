@@ -30,9 +30,10 @@ test('flow-status：过关 / 请假 / 缺交 / 只看未过关（FR-21 / FR-22 /
   await page.keyboard.press('x');
   await expect(page.locator('[data-no="5"]')).toContainText('×');
 
-  // 只看未过关：应只剩 4、5 与空白学生（4 请假被排除）
+  // 只看未过关：应只剩 4、5 与空白学生
+  // v2.6.5 需求4：请假算不算过关由本表 leavePass 决定，默认「不算」→ 4 号请假也要出现（46 → 47）
   await page.getByLabel('只看未过关').click();
-  await expect(page.locator('.cell')).toHaveCount(46);
+  await expect(page.locator('.cell')).toHaveCount(47);
   await page.getByLabel('只看未过关').click();
 
   // 报表：已过关 / 暂未提交 / 请假 三段

@@ -1,4 +1,6 @@
 import type { CellValue, Entries, GradeLetter, ScoringScheme } from './types';
+import { SCHEME_LABEL, TIER_LABEL } from './constants';
+import { passConfigOf } from './passRule';
 
 /**
  * 方案与已登记值的相容性（v2.6.3 FR-72.3 / 问题三）—— 纯函数。
@@ -84,6 +86,26 @@ export interface LegacyPassRule {
  * 把旧数据补成新口径（v2.6.3 FR-72.4）：老备份里过关规则存在 settings.passRule，
  * 现在要落到每条记录自己的方案上，老师当初勾过的白名单不能丢。
  */
+/**
+ * 一行说清「本表方案类型 + 过关口径」（v2.6.5 需求3）——摆在输出带上常驻。
+ * 老师不用点进「本表设置」就能知道现在按什么规则判过关。
+ */
+export function schemeHint(s: ScoringScheme): string {
+  const cfg = passConfigOf(s);
+  const kind = SCHEME_LABEL[s.kind];
+  if (s.kind === 'grade') {
+    const g = cfg.gradePass.length ? cfg.gradePass.join('/') : '（未勾等级）';
+    return `${kind} · 过关 ${g}`;
+  }
+  if (s.kind === 'score') return `${kind} · ${TIER_LABEL[cfg.scorePassTier]}以上算过关`;
+  if (s.kind === 'mixed') {
+    const g = cfg.gradePass.length ? cfg.gradePass.join('/') : '（未勾等级）';
+    return `${kind} · 等级 ${g}；分数 ${TIER_LABEL[cfg.scorePassTier]}以上`;
+  }
+  if (s.kind === 'check') return `${kind} · 按 ✓ 判定过关`;
+  return `${kind} · 不计过关`;
+}
+
 export function normalizeScheme(s: ScoringScheme, legacy?: LegacyPassRule | null): ScoringScheme {
   if (!legacy) {
     return { ...s, grades: [...s.grades] };

@@ -1,4 +1,6 @@
 import { Pill } from './ui/controls';
+import type { ScoringScheme } from '../domain/types';
+import { schemeHint } from '../domain/scheme';
 
 /**
  * 输出带（V4 FR-49.1 / ADR-25）：只放 4 个输出动作，顺序固定，右对齐。
@@ -14,18 +16,30 @@ export function OutputBar({
   onSummary,
   onWeek,
   busy,
-  note = '录入完成 → 一键输出',
+  scheme,
+  onOpenScheme,
 }: {
   onReport: () => void;
   onPoster: () => void;
   onSummary: () => void;
   onWeek: () => void;
   busy?: OutputJob;
-  note?: string;
+  /** 当前这张表的方案（v2.6.5 需求3：常驻显示方案类型 + 过关口径） */
+  scheme: ScoringScheme;
+  onOpenScheme: () => void;
 }) {
   return (
     <div className="output-bar" role="toolbar" aria-label="输出">
-      <span className="output-note">{note}</span>
+      {/* v2.6.5 需求3：原来那句「录入完成 → 一键输出」没有任何信息量，换成可点的本表方案提示 */}
+      <button
+        type="button"
+        className="pill pill--scheme output-scheme"
+        aria-label="本表方案"
+        title="查看或修改本表的方案类型与过关规则"
+        onClick={onOpenScheme}
+      >
+        {schemeHint(scheme)}
+      </button>
       <span className="output-grow" />
       <Pill
         variant="report"

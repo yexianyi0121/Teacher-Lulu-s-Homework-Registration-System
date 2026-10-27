@@ -6,6 +6,24 @@
 > **只写「做了什么、为什么、验收到什么程度」**，不贴用户操作步骤与反馈原话。
 > 每次改动的细节（根因、代码位置、验收编号）见 `docs/` 里对应的需求说明书或修复日志。
 
+## [2.6.5] - 2026-10-27
+
+### 新增 Added
+
+- 系统设置「导出表格」支持 **Excel（.xlsx）**：一表一个工作表，列宽按内容调好，日期按文本写入，打开即可打印；CSV 导出保留。
+
+### 修复 Fixed
+
+- 导出的表格里日期显示成 `#####`——日期改为按文本写入，不再交给 Excel 当日期值解释。
+- 「本表方案」提示从参数行移到输出带最左，不再遮挡「选择登记表」，同时替掉无信息的「录入完成 → 一键输出」。
+- 取消「请假算过关」后，请假的学生不参与「只看未过关」筛选——筛选改为统一走 `isPassed()`，不再有「请假一律排除」的硬编码。
+- 只建好第一张表时「选择登记表」不出现——选择栏改为常驻（有一张表即显示）。
+
+### 文档 Docs
+
+- 新增 `docs/30-修复日志-v2.6.5.md`（根因、代码位置与验收编号）。
+- 版本号升至 **2.6.5**，`dist/` 已重建。
+
 ## [2.6.4] - 2026-10-27
 
 ### 新增 Added
@@ -333,7 +351,8 @@ V1 基线：16 条 FR，作业/测验成绩登记、界面规格、口径、样�
 
 ---
 
-[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.4...HEAD
+[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.5...HEAD
+[2.6.5]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.4...v2.6.5
 [2.6.4]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.3...v2.6.4
 [2.6.3]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.2...v2.6.3
 [2.6.2]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.1...v2.6.2

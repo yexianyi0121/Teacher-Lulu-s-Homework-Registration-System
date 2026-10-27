@@ -5,8 +5,8 @@ import { COMMENT_MAX, EMOJI_CHOICES, GRADE_ORDER, SUBJECTS, DEFAULT_GRADE_EMOJI 
 import { THEMES } from '../../domain/theme';
 import { APP_CONTACT_EMAIL, APP_CONTACT_MAILTO, APP_NAME, APP_REPO_URL, APP_AUTHOR, APP_VERSION } from '../../domain/appInfo';
 import { formatDateCN, monthOf, stampForFile, todayISO } from '../../domain/date';
-import { buildSheetTableCsv } from '../../domain/exporter';
-import { downloadBlob, downloadCsv, downloadText, safeName } from '../../infra/download';
+import { buildSheetTableBlocks, buildSheetTableCsv } from '../../domain/exporter';
+import { downloadBlob, downloadCsv, downloadText, downloadXlsx, safeName } from '../../infra/download';
 import { getSnapshots, getVoiceLogs } from '../../infra/idb';
 import { exportAllBlob, importAll, markBackupDone } from '../../infra/backup';
 import { readHealth, type StorageHealth } from '../../infra/storageHealth';
@@ -57,18 +57,45 @@ export function SettingsModal() {
 
   const pickedCount = daySheets.filter((x) => picked[x.key]).length;
 
-  const exportSheets = () => {
-    const records = daySheets
+  const pickedRecords = () =>
+    daySheets
       .filter((x) => picked[x.key])
       .map((x) => s.records[x.key] ?? s.history.find((h) => h.key === x.key))
       .filter((r): r is NonNullable<typeof r> => !!r);
+
+  const fileBase = (count: number) =>
+    `${safeName(cls.name)}_${exportDate}_登记表${count > 1 ? `${count}张` : ''}`;
+
+  /** v2.6.5 需求1：Excel 优先——列宽已给足，日期按文本写入，不会再出现 `#####` */
+  const exportSheetsXlsx = () => {
+    const records = pickedRecords();
+    if (!records.length) {
+      s.showToast('请先勾选要导出的登记表', 'warn');
+      return;
+    }
+    const blocks = buildSheetTableBlocks({ className: cls.name, records, n: cls.count, names });
+    downloadXlsx(
+      blocks.map((b) => ({
+        name: b.name,
+        rows: b.rows,
+        // A 标签/序号 · B 值/学号 · C 姓名 · D 登记值 · E 状态 · F 是否过关 · G 盖章
+        widths: [12, 12, 14, 18, 10, 12, 10],
+      })),
+      `${fileBase(records.length)}.xlsx`,
+    );
+    const rows = records.reduce((sum, r) => sum + Object.keys(r.entries).length, 0);
+    s.showToast(`已导出 ${records.length} 张表的 Excel（${rows} 条登记）`, 'ok');
+  };
+
+  const exportSheetsCsv = () => {
+    const records = pickedRecords();
     if (!records.length) {
       s.showToast('请先勾选要导出的登记表', 'warn');
       return;
     }
     const csv = buildSheetTableCsv({ className: cls.name, records, n: cls.count, names });
+    downloadCsv(csv, `${fileBase(records.length)}.csv`);
     const rows = records.reduce((sum, r) => sum + Object.keys(r.entries).length, 0);
-    downloadCsv(csv, `${safeName(cls.name)}_${exportDate}_登记表${records.length > 1 ? `${records.length}张` : ''}.csv`);
     s.showToast(`已导出 ${records.length} 张表（${rows} 条登记）`, 'ok');
   };
 
@@ -255,11 +282,13 @@ export function SettingsModal() {
                 全选
               </Pill>
               <Pill variant="ghost" onClick={() => setPicked({})}>清空勾选</Pill>
-              <Pill variant="save" onClick={exportSheets}>📄 导出所选表格（CSV）</Pill>
+              <Pill variant="save" onClick={exportSheetsXlsx}>📊 导出 Excel（.xlsx）</Pill>
+              <Pill variant="ghost" onClick={exportSheetsCsv}>📄 导出 CSV</Pill>
             </div>
             <div className="field-hint">
-              每张表导出一块：班级 / 日期 / 登记表 / 作业内容 / 评价语 + 每生一行（学号 / 姓名 / 登记值 / 状态 / 是否过关 / 盖章）。
-              多张表之间空一行，Excel 双击即可打开并直接打印。
+              每张表一个工作表：班级 / 日期 / 登记表 / 作业内容 / 评价语 + 每生一行（学号 / 姓名 / 登记值 / 状态 / 是否过关 / 盖章）。
+              <br />
+              Excel（.xlsx）已按内容调好列宽、日期按文本写入，打开就是能直接打印的表格；CSV 留给需要导入其他系统的场景。
             </div>
           </>
         ) : (

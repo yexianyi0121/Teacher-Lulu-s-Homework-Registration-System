@@ -84,7 +84,8 @@ for (const vp of VIEWPORTS) {
 
     await test.step('底部操作条真正固定贴底：初始即贴视口底，滚 400px 后仍贴底（FR-50.3）', async () => {
       const bar = page.locator('.output-bar');
-      await expect(bar.locator('.pill')).toHaveCount(4);
+      // v2.6.5 需求3：输出带多了常驻「本表方案」提示（4 个按钮 + 1 个提示）
+      await expect(bar.locator('.pill')).toHaveCount(5);
       // 真断言：量 boundingBox 比对视口底边——验证「在不在用户眼前」，
       // 而不是「DOM 里有没有」。v2.3.0 的旧断言只数 .pill 个数（页面任何位置都命中），
       // 且 click() 会自动滚动到元素，属于「断言与要求不对应」的假绿。

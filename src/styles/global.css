@@ -222,6 +222,12 @@ pre {
   text-overflow: ellipsis;
 }
 .output-bar .output-grow { flex: 1 1 auto; min-width: 0; }
+/* v2.6.5 需求3：输出带左侧常驻「本表方案」（取代原来那句没有信息量的提示） */
+.output-bar .output-scheme {
+  max-width: 52%;
+  height: 32px;
+  flex: 0 1 auto;
+}
 
 .input-bar {
   height: 48px;
@@ -1387,6 +1393,7 @@ pre {
   .app[data-keypad="1"] .output-bar { transform: translateY(110%); pointer-events: none; }
   .app[data-keypad="1"] .mobile-notices { transform: translateY(220%); pointer-events: none; }
   .output-bar .output-note { display: none; }
+  .output-bar .output-scheme { max-width: 44%; height: 28px; font-size: 11px; }
   .output-bar .output-grow { display: none; }
   .output-bar .pill { padding: 0 8px; font-size: 12px; gap: 4px; }
   /* V4 ADR-26.3b：底部操作条 4 项只留图标（文字隐藏，aria-label 保留），

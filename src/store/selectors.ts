@@ -215,16 +215,16 @@ export function selectHistoryWindow(s: AppState) {
   return s.history.filter((h) => h.classId === s.activeClassId).slice(0, 8);
 }
 
-/** 只看未过关：唯一入口 isPassed；请假不算未过关 */
+/**
+ * 只看未过关：唯一入口 isPassed。
+ * v2.6.5 需求4：请假 / 缺交算不算未过关，完全交给本表方案的 leavePass / missingPass 决定——
+ * 以前这里硬写「请假一律不算未过关」，老师没勾「请假算过关」时也筛不出请假的学生。
+ */
 export function selectVisibleNos(s: AppState): number[] {
   const n = countOf(s);
   const all = Array.from({ length: n }, (_, i) => i + 1);
   if (!s.filterNotPassed) return all;
-  return all.filter((no) => {
-    const e = s.draft.entries[String(no)];
-    if (e?.status === 'leave') return false;
-    return !isPassed(e, s.draft.scheme);
-  });
+  return all.filter((no) => !isPassed(s.draft.entries[String(no)], s.draft.scheme));
 }
 
 /** 学号 → 姓名 */

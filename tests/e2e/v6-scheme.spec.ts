@@ -180,7 +180,7 @@ test('E2E-34 v2.6.4 需求1：设置里按登记表导出表格（CSV 下载）'
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    dlg.getByRole('button', { name: /导出所选表格/ }).click(),
+    dlg.getByRole('button', { name: /导出 CSV/ }).click(),
   ]);
   expect(download.suggestedFilename()).toMatch(/登记表.*\.csv$/);
 });

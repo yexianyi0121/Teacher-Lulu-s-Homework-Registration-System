@@ -40,16 +40,22 @@ test('FR-66.1 同类型多张表：主屏「选择登记表」可切换，切过
   await expect(page.locator('[data-no="1"]')).not.toContainText('A+');
 });
 
-test('FR-66.1 只有一张表时不出现选择器（不添乱）', async ({ page }) => {
+test('FR-76.4 建好第一张表后「选择登记表」就常驻（不再等第二张才出现）', async ({ page }) => {
   await resetApp(page);
   await closeJump(page);
   await pickTemplate(page, 'homework');
 
-  await expect(page.getByLabel('选择登记表')).toHaveCount(0);
+  // pickTemplate 已经建好并落了一张表（v2.6.5 需求5：一张表也要常驻在选择栏里）
+  await expect(page.getByLabel('选择登记表')).toBeVisible();
 
-  // 录一张之后仍然只有一张
+  // 再建一张表：选择器给出两个选项
+  await page.getByLabel('作业内容').fill('默写');
+  await page.getByLabel('新建登记').click();
   await typeCell(page, 1, ['1']);
-  await expect(page.getByLabel('选择登记表')).toHaveCount(0);
+  await expect(page.getByLabel('选择登记表')).toBeVisible();
+  const opts = await page.getByLabel('选择登记表').locator('option').evaluateAll((os) => os.map((o) => (o.textContent ?? '').trim()));
+  expect(opts.length).toBe(1);
+  expect(opts[0]).toContain('默写');
 });
 
 test('FR-66.2 汇总里每张表各写各的评价语（A-144）', async ({ page }) => {
@@ -214,7 +220,8 @@ test('FR-71.1 作业内容随手打字不建表，点「新建登记」才建（
   await page.getByLabel('作业内容').fill('默写1');
   await page.getByLabel('作业内容').fill('默写12');
   await page.getByLabel('作业内容').fill('默写1');
-  await expect(page.getByLabel('选择登记表')).toHaveCount(0);          // 仍只有一张表
+  await expect(page.getByLabel('选择登记表')).toBeVisible();           // 常驻（v2.6.5 需求5）
+  expect(await page.getByLabel('选择登记表').locator('option').count()).toBe(1); // 仍只有一张表
   await expect(page.locator('[data-no="1"]')).toContainText('A+');     // 当前表没被切走
 
   // 点「新建登记」才真的多一张表，并且落到新表上（干净的空表）
@@ -250,9 +257,10 @@ test('FR-71.2 删除整张登记表：确认后从选择器与汇总里消失（
   await expect(dlg).toBeVisible();
   await dlg.getByRole('button', { name: '删除' }).click();
 
-  // 删完回到剩下的那张表；只剩一张表时选择器自动收起（不添乱）
+  // 删完回到剩下的那张表；选择器仍在，但只剩一个可选项
   await expect(page.getByLabel('作业内容')).toHaveValue('默写');
-  await expect(page.getByLabel('选择登记表')).toHaveCount(0);
+  await expect(page.getByLabel('选择登记表')).toBeVisible();
+  expect(await page.getByLabel('选择登记表').locator('option').count()).toBe(1);
   await expect(page.locator('[data-no="1"]')).toContainText('A+');
   await expect(page.locator('[data-no="2"]')).not.toContainText('A');
 

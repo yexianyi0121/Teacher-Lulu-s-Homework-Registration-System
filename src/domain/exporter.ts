@@ -144,24 +144,40 @@ export interface SheetTableArgs {
   names?: Record<number, string | undefined>;
 }
 
-/**
- * 表格导出（v2.6.4 需求1）：把选中的登记表按「一表一块」排成便于打印/存档的表格。
- * 每块 = 表头信息（班级 / 日期 / 登记表 / 作业内容 / 评价语）+ 每生一行（学号 / 姓名 / 登记值 / 状态 / 过关 / 盖章）。
- * 多张表之间空一行，Excel 打开即可直接打印；不引入任何新依赖，仍走 CSV（UTF-8 BOM）。
- */
-export function buildSheetTableCsv(args: SheetTableArgs): string {
-  const { className, records, n, names } = args;
-  const rows: Array<Array<string | number | null | undefined>> = [];
-  const pretty = new Date().toLocaleString('zh-CN');
-  void pretty;
+export type Row = Array<string | number | null | undefined>;
+export interface SheetTableBlock {
+  /** 工作表名（Excel 用，已去掉非法字符并截到 31 字） */
+  name: string;
+  rows: Row[];
+}
 
-  records.forEach((r, idx) => {
-    if (idx > 0) rows.push([]);
+/** Excel 工作表名：去掉 []:*?/\ 并截到 31 字（Excel 硬限制） */
+function sheetNameOf(templateName: string, content: string): string {
+  const ILLEGAL = '\\/?*[]:';
+  const raw = [...`${templateName}${content ? ` ${content}` : ''}`]
+    .map((ch) => (ILLEGAL.includes(ch) ? ' ' : ch))
+    .join('')
+    .trim();
+  return (raw || '登记表').slice(0, 31);
+}
+
+/**
+ * 表格导出（v2.6.4 需求1 / v2.6.5 需求1）：把选中的登记表按「一表一块」排成便于打印/存档的表格块。
+ * 每块 = 表头信息（班级 / 日期 / 登记表 / 作业内容 / 评价语）+ 每生一行（学号 / 姓名 / 登记值 / 状态 / 过关 / 盖章）。
+ * CSV 与 Excel 共用这份数据，保证两条导出路径内容一致。
+ *
+ * 日期一律按**文本**给出（不交给 Excel 猜成日期序列号），避免列宽不足时显示成 `#####`。
+ */
+export function buildSheetTableBlocks(args: SheetTableArgs): SheetTableBlock[] {
+  const { className, records, n, names } = args;
+  return records.map((r) => {
     const tpl = SHEET_TEMPLATES[r.templateId];
-    rows.push(['班级', className]);
-    rows.push(['日期', r.date]);
-    rows.push(['登记表', tpl.name]);
-    rows.push(['作业内容', r.content || '（未命名）']);
+    const rows: Row[] = [
+      ['班级', className],
+      ['日期', r.date],
+      ['登记表', tpl.name],
+      ['作业内容', r.content || '（未命名）'],
+    ];
     if (r.comment) rows.push(['评价语', r.comment]);
     rows.push([]);
     rows.push(['序号', '学号', '姓名', '登记值', '状态', '是否过关', '盖章']);
@@ -173,6 +189,16 @@ export function buildSheetTableCsv(args: SheetTableArgs): string {
       const stamp = e?.stamp === 'corrected' ? '已更正' : e?.stamp === 'excellent' ? '优秀' : '';
       rows.push([no, no, names?.[no] ?? '', value, status, pass, stamp]);
     }
+    return { name: sheetNameOf(tpl.name, r.content), rows };
+  });
+}
+
+/** 表格导出 CSV：多块之间空一行 */
+export function buildSheetTableCsv(args: SheetTableArgs): string {
+  const rows: Row[] = [];
+  buildSheetTableBlocks(args).forEach((b, idx) => {
+    if (idx > 0) rows.push([]);
+    rows.push(...b.rows);
   });
   return csv(rows);
 }
