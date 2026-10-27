@@ -12,6 +12,7 @@ test('flow-points：连续 3 次听写过关 → 账本 +5 且只加一次（AC-
   for (const day of ['11', '12', '13']) {
     await page.getByLabel('日期').fill(`2026-03-${day}`);
     await page.getByLabel('作业内容').fill('第3单元字词');
+    await page.getByLabel('新建登记').click();
     await page.getByLabel('作业内容').blur();
     await page.locator('[data-no="1"]').click();
     await page.keyboard.press('Enter');   // 过关
@@ -43,6 +44,7 @@ test('flow-points：月度表显示本人积分与名次', async ({ page }) => {
   await page.getByLabel('秒跳开关').click();
   await page.getByLabel('日期').fill('2026-03-13');
   await page.getByLabel('作业内容').fill('第3单元');
+  await page.getByLabel('新建登记').click();
   await page.getByLabel('作业内容').blur();
   await page.locator('[data-no="4"]').click();
   await page.keyboard.press('x');           // 缺交 → −3

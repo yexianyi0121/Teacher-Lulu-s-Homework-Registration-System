@@ -51,9 +51,23 @@ export interface ScoringScheme {
   excellentRate: number;          // 0-1，默认 .90
   goodRate: number;               // 默认 .80
   passRate: number;               // 默认 .60
+  // ---- v2.6.3 FR-72：过关规则随本表走（方案类型直接决定口径）----
+  /** 等级制 / 混合制：哪些等级算过关（默认 ['A+','A']） */
+  gradePass?: GradeLetter[];
+  /** 分数制 / 混合制的分数口径：≥ 该档才算过关（默认 'pass' 即及格线） */
+  scorePassTier?: ScorePassTier;
+  /** 缺交是否算过关（默认 false） */
+  missingPass?: boolean;
+  /** 请假是否算过关（默认 false） */
+  leavePass?: boolean;
+  /** 听写「全对 / 错 0」自动算过关（默认 true） */
+  dictationAutoPass?: boolean;
 }
 
 export type Tier = 'excellent' | 'good' | 'pass' | 'fail';
+
+/** 分数口径的过关档（v2.6.3 FR-72.2）：达到该档及以上算过关 */
+export type ScorePassTier = 'pass' | 'good' | 'excellent';
 
 // ---------- 过关规则（V3 设计 06 §2.1 / §3.1） ----------
 export type PassRuleKind = 'percent' | 'grade' | 'mixed';
@@ -193,7 +207,8 @@ export interface Settings {
   voiceAutoConfirmMs: number;     // 回显自动确认延时，默认 1500
   theme: ThemeKey;                // V4 FR-48：6 套背景主题，pink 默认（取代原明暗死字段）
   // ---- V3 新增 ----
-  passRule: PassRule;
+  // v2.6.3 FR-72：全局过关规则已移除——过关规则改由每张表的方案（ScoringScheme）决定，
+  // 老数据里的 settings.passRule 在载入 / 迁移时并入每条记录自己的 scheme。
   gradeEmoji: Record<GradeLetter, string>;
   showEmoji: boolean;
   defaultComment: string;         // 默认评价语，≤ 60 字

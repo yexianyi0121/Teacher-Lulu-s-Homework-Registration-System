@@ -1,4 +1,4 @@
-import type { Entries, Entry, ScoringScheme, SheetTemplateId, Student } from '../src/domain/types';
+import type { Entries, Entry, GradeLetter, ScoringScheme, SheetTemplateId, Student } from '../src/domain/types';
 import { DEFAULT_SCHEMES } from '../src/domain/constants';
 
 /** 样例与断言共用的构造器 */
@@ -30,7 +30,7 @@ export function e(value: Entry['value'], extra: Partial<Entry> = {}): Entry {
 }
 
 export const score = (n: number) => ({ kind: 'score' as const, score: n });
-export const g = (letter: 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'C' | 'D') => ({ kind: 'grade' as const, grade: letter });
+export const g = (letter: GradeLetter) => ({ kind: 'grade' as const, grade: letter });
 export const text = (t: string) => ({ kind: 'text' as const, text: t });
 
 /** V1 样例 A 的 20 个分数（PRD §7.1） */
@@ -111,7 +111,7 @@ export const EXPECTED_C = {
   avgPercent: 80,
   avgScore: 96.1,
   excellentRate: 0.389,
-  qualifiedRate: 0.778,
+  qualifiedRate: 0.667,   // v2.6.3：混合制下等级值只认白名单，A-/B+ 不再被及格线兜底（原为 0.778）
 };
 
 export function studentsOf(n: number): Student[] {

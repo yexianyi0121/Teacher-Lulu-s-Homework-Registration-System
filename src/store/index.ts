@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { PersistedStateV4, RecordDoc } from '../domain/types';
+import { normalizeScheme, type LegacyPassRule } from '../domain/scheme';
 import { DEFAULT_SETTINGS } from '../domain/constants';
 import type { AppState } from './store-types';
 import { createEmptyState, createRecord, hasEntries } from './initial';
@@ -20,8 +21,16 @@ export function fromPersisted(state: PersistedStateV4): Partial<AppState> {
     ? state.activeClassId
     : classes[0].id;
 
+  // v2.6.3 FR-72.4：老备份把过关规则存在 settings.passRule，现在落到每条记录自己的方案上。
+  // 载入时把这份旧字段摘掉，避免它继续在设置里"存在但没人读"。
+  const rawSettings = ((state.settings ?? {}) as unknown) as Record<string, unknown>;
+  const legacy = (rawSettings.passRule as LegacyPassRule | undefined) ?? null;
+  const { passRule: _legacyPassRule, ...settingsRest } = rawSettings;
+  void _legacyPassRule;
+
   const records: Record<string, RecordDoc> = {};
-  for (const r of state.records) records[r.key] = r;
+  for (const r of state.records) records[r.key] = { ...r, scheme: normalizeScheme(r.scheme, legacy) };
+  const history = state.history.map((h) => ({ ...h, scheme: normalizeScheme(h.scheme, legacy) }));
 
   // ⚠️ 「打开后该显示哪张表」（v2.5.7 两次修正，别改回去）：
   //
@@ -50,10 +59,10 @@ export function fromPersisted(state: PersistedStateV4): Partial<AppState> {
     classes,
     activeClassId,
     records,
-    history: state.history,
+    history,
     pointRules: state.pointRules,
     pointLedger: state.pointLedger,
-    settings: state.settings ?? DEFAULT_SETTINGS,
+    settings: { ...DEFAULT_SETTINGS, ...settingsRest } as typeof DEFAULT_SETTINGS,
     activeKey: draft.key,
     draft,
   };

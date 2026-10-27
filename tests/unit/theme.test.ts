@@ -25,10 +25,10 @@ describe('THEMES：6 套预设元数据（FR-48.1）', () => {
     }
   });
 
-  it('默认主题是 pink（樱粉）', () => {
-    expect(DEFAULT_THEME).toBe('pink');
+  it('默认主题是 plain（纯白，v2.6.3 改进1）', () => {
+    expect(DEFAULT_THEME).toBe('plain');
+    expect(THEMES.find((t) => t.key === 'plain')?.name).toContain('默认');
     expect(THEMES[0].key).toBe('pink');
-    expect(THEMES[0].name).toContain('默认');
   });
 
   it('night 与 plain 存在（FR-48.4 / 纯白）', () => {
@@ -53,14 +53,14 @@ describe('isThemeKey / themeOf', () => {
     for (const t of THEMES) expect(isThemeKey(t.key)).toBe(true);
   });
 
-  it('未知值与旧值回落 pink（B-4：v3 的 auto/light 不是主题 key）', () => {
-    expect(themeOf('auto')).toBe('pink');
-    expect(themeOf('light')).toBe('pink');
-    expect(themeOf('dark')).toBe('pink');
-    expect(themeOf('')).toBe('pink');
-    expect(themeOf(undefined)).toBe('pink');
-    expect(themeOf(null)).toBe('pink');
-    expect(themeOf(42)).toBe('pink');
+  it('未知值与旧值回落 plain（B-4：v3 的 auto/light 不是主题 key）', () => {
+    expect(themeOf('auto')).toBe('plain');
+    expect(themeOf('light')).toBe('plain');
+    expect(themeOf('dark')).toBe('plain');
+    expect(themeOf('')).toBe('plain');
+    expect(themeOf(undefined)).toBe('plain');
+    expect(themeOf(null)).toBe('plain');
+    expect(themeOf(42)).toBe('plain');
   });
 
   it('合法 key 原样返回', () => {

@@ -5,19 +5,12 @@ import { COMMENT_MAX, EMOJI_CHOICES, GRADE_ORDER, SUBJECTS, DEFAULT_GRADE_EMOJI 
 import { THEMES } from '../../domain/theme';
 import { APP_CONTACT_EMAIL, APP_CONTACT_MAILTO, APP_NAME, APP_REPO_URL, APP_AUTHOR, APP_VERSION } from '../../domain/appInfo';
 import { formatDateCN, monthOf, stampForFile } from '../../domain/date';
-import type { GradeLetter, PassRuleKind } from '../../domain/types';
 import { downloadBlob, downloadText } from '../../infra/download';
 import { getSnapshots, getVoiceLogs } from '../../infra/idb';
 import { exportAllBlob, importAll, markBackupDone } from '../../infra/backup';
 import { readHealth, type StorageHealth } from '../../infra/storageHealth';
 import { Modal } from '../ui/Modal';
 import { Pill, Toggle } from '../ui/controls';
-
-const PASS_KIND: Array<[PassRuleKind, string]> = [
-  ['percent', '按及格线（百分）'],
-  ['grade', '按等级白名单'],
-  ['mixed', '百分或等级（默认）'],
-];
 
 export function SettingsModal() {
   const s = useStore();
@@ -47,18 +40,6 @@ export function SettingsModal() {
     }
     setCountError('');
     s.setCount(n);
-  };
-
-  const setPassRule = (patch: Partial<typeof s.settings.passRule>) => {
-    s.updateSettings({ passRule: { ...s.settings.passRule, ...patch } });
-  };
-
-  const toggleGradePass = (g: GradeLetter) => {
-    const has = s.settings.passRule.gradePass.includes(g);
-    const next = has
-      ? s.settings.passRule.gradePass.filter((x) => x !== g)
-      : [...s.settings.passRule.gradePass, g].sort((a, b) => GRADE_ORDER.indexOf(a) - GRADE_ORDER.indexOf(b));
-    setPassRule({ gradePass: next });
   };
 
   const historyByMonth = new Map<string, typeof s.history>();
@@ -180,74 +161,15 @@ export function SettingsModal() {
         </div>
       </section>
 
-      <section className="settings-section" data-section="pass-rule">
+      {/* v2.6.3 问题二：过关规则已搬到「本表设置」（⋯ 更多 → ⚙️ 本表设置），
+          因为它跟方案类型强相关，放在系统设置里会让老师找不到关系。 */}
+      <section className="settings-section" data-section="pass-rule-moved">
         <div className="settings-title">过关规则</div>
-        <div className="field">
-          <label className="field-label" htmlFor="pass-kind">判定方式</label>
-          <select
-            id="pass-kind"
-            value={s.settings.passRule.kind}
-            onChange={(e) => setPassRule({ kind: e.target.value as PassRuleKind })}
-          >
-            {PASS_KIND.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-          </select>
+        <div className="field-hint">
+          过关规则现在跟着「本表方案」走：打开主界面的「⋯ 更多 → ⚙️ 本表设置」，
+          在「过关规则（由方案类型决定）」里配置。等级制只看等级白名单，分数制只看分数过关线，
+          混合制两者各管各的。
         </div>
-        {s.settings.passRule.kind !== 'percent' ? (
-          <div className="field">
-            <span className="field-label">哪些等级算过关（分数仍按及格线）</span>
-            <div className="grade-chips">
-              {GRADE_ORDER.map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  className="chip"
-                  data-on={s.settings.passRule.gradePass.includes(g) ? '1' : '0'}
-                  aria-pressed={s.settings.passRule.gradePass.includes(g)}
-                  aria-label={`等级 ${g} 算过关`}
-                  onClick={() => toggleGradePass(g)}
-                >
-                  {g}
-                </button>
-              ))}
-            </div>
-            {/* v2.6.1 FR-70.1：mixed（默认）下等级值会被百分兜底——达到本表及格线的等级
-                即使没勾也算过关，老师会误以为「没勾的 D 也自动过关」；这里把它写明白。 */}
-            <div className="field-hint">
-              {s.settings.passRule.kind === 'mixed'
-                ? '混合判定：分数达到本表及格线即过关；等级值达到及格线同样算过关，未勾的等级只在低于及格线时才判未过关。'
-                : '只按勾选的等级判过关，分数仍按本表及格线。'}
-            </div>
-            <div className="field-hint">
-              当前勾选：{s.settings.passRule.gradePass.length > 0 ? s.settings.passRule.gradePass.join(' / ') : '（未勾选任何等级）'}
-            </div>
-          </div>
-        ) : null}
-        <div className="switch-row">
-          <span>听写「全对/错0」自动算过关</span>
-          <Toggle
-            checked={s.settings.passRule.dictationAutoPass}
-            onChange={(v) => setPassRule({ dictationAutoPass: v })}
-            label="听写全对自动过关"
-          />
-        </div>
-        {/* v2.6.2 FR-71.3：缺交 / 请假也要能选——以前写死「不过关」，老师想把请假视为不拖后腿时没办法。 */}
-        <div className="switch-row">
-          <span>缺交算过关</span>
-          <Toggle
-            checked={s.settings.passRule.missingPass ?? false}
-            onChange={(v) => setPassRule({ missingPass: v })}
-            label="缺交算过关"
-          />
-        </div>
-        <div className="switch-row">
-          <span>请假算过关</span>
-          <Toggle
-            checked={s.settings.passRule.leavePass ?? false}
-            onChange={(v) => setPassRule({ leavePass: v })}
-            label="请假算过关"
-          />
-        </div>
-        <div className="field-hint">改规则只重算 ✅ / 名单 / 达标率，不改任何已录入的值。</div>
       </section>
 
       <section className="settings-section" data-section="display">

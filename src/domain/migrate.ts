@@ -257,7 +257,6 @@ export function migrateV2toV3(old: PersistedStateV2): PersistedStateV3 {
     settings: {
       ...DEFAULT_SETTINGS,
       ...old.settings,
-      passRule: { ...DEFAULT_SETTINGS.passRule, gradePass: [...DEFAULT_SETTINGS.passRule.gradePass] },
       gradeEmoji: { ...DEFAULT_SETTINGS.gradeEmoji },
       showEmoji: true,
       defaultComment: '',
@@ -281,7 +280,6 @@ export function migrateV3toV4(old: PersistedStateV3): PersistedStateV4 {
       ...DEFAULT_SETTINGS,
       ...old.settings,
       theme: themeOf(old.settings?.theme),
-      passRule: { ...DEFAULT_SETTINGS.passRule, gradePass: [...DEFAULT_SETTINGS.passRule.gradePass] },
       gradeEmoji: { ...DEFAULT_SETTINGS.gradeEmoji },
       digitKey: old.settings?.digitKey ?? DEFAULT_SETTINGS.digitKey,
       posterFollowTheme: old.settings?.posterFollowTheme ?? false,

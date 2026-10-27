@@ -20,7 +20,7 @@ body {
   font-family: var(--font-sans);
   color: var(--text-1);
   background: var(--bg-gradient) fixed;
-  background-color: #F7F1FA;
+  background-color: #FFFFFF;   /* v2.6.3 改进1：默认纯白——兜底色不能还是樱粉 */
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -109,6 +109,37 @@ pre {
   align-items: center;
   gap: 8px;
 }
+
+/* v2.6.3 改进1：顶栏的「当前时间 + 当前学期」 */
+.clock-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+.clock-time { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.clock-semester { font-size: 12px; color: var(--text-3); }
+.clock-short { display: none; font-size: 13px; font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+/* v2.6.3 改进1：界面最下方的版本号 */
+.app-footer {
+  margin: 10px 0 4px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-3);
+  user-select: none;
+}
+
+/* v2.6.3 问题四：参数行里的「新建登记」——只有内容改过才显示为高亮主按钮 */
+.pill--primary {
+  border: 1px solid var(--brand);
+  color: var(--brand);
+  background: var(--brand-soft, var(--surface));
+  font-weight: 600;
+}
+.pill--primary:hover:not(:disabled) { background: var(--brand-soft, var(--surface)); }
 
 .params {
   height: 48px;
@@ -1449,7 +1480,10 @@ pre {
    5 字班名（≈107px）也能完整显示；预算：20+6+116+4+30+4+60+4+28×3 ≈ 324 ≤ 351。
    放在 1023 块之后：同特异性下后者胜，手机端的窄覆盖平板端的宽。 */
 @media (max-width: 767px) {
-  .header { gap: 4px; }
+  /* v2.6.3 改进1：375px 放不下「年月日时分秒 + 学期」，窄屏只留时分秒并允许换行 */
+  .header { gap: 4px; flex-wrap: wrap; height: auto; row-gap: 4px; }
+  .clock-time, .clock-semester { display: none; }
+  .clock-short { display: inline; }
   .header-right { gap: 4px; }
   .header-right .pill { padding: 0 6px; }
   .header .class-select { max-width: 116px; }   /* 提高特异性：压过后面的桌面基准 200px */

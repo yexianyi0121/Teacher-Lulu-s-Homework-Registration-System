@@ -1,9 +1,8 @@
-import type { CellTone, Entry, GradeLetter, PassRule, ScoringScheme } from './types';
+import type { CellTone, Entry, GradeLetter, ScoringScheme } from './types';
 import { percentOf, tierOfPercent, tierTone } from './scoring';
 import { classifyDictation, formatScore, formatValue } from './grading';
 import { isManualPass, isPassed } from './passRule';
 import { DEFAULT_GRADE_EMOJI } from './constants';
-import { DEFAULT_PASS_RULE } from './passRule';
 
 /**
  * 单元格显示（V3 设计 06 §3.2）—— 纯函数。
@@ -47,7 +46,6 @@ export interface CellDisplay {
 }
 
 export interface DisplayOptions {
-  passRule?: PassRule;
   showEmoji?: boolean;
   gradeEmoji?: Record<GradeLetter, string>;
 }
@@ -60,7 +58,6 @@ function textTone(text: string): CellTone {
 }
 
 export function cellDisplay(entry: Entry | undefined, s: ScoringScheme, opts: DisplayOptions = {}): CellDisplay {
-  const rule = opts.passRule ?? DEFAULT_PASS_RULE;
   const showEmoji = opts.showEmoji ?? false;
   const emojiMap = opts.gradeEmoji ?? DEFAULT_GRADE_EMOJI;
 
@@ -93,7 +90,7 @@ export function cellDisplay(entry: Entry | undefined, s: ScoringScheme, opts: Di
   const v = entry.value;
   if (!v) return { text: '', kind: 'empty', tone: 'empty', full: '' };
 
-  const passed = isPassed(entry, s, rule);
+  const passed = isPassed(entry, s);
   const badge: CellBadge | undefined = makeupBadge ?? (passed ? 'passed' : undefined);
 
   if (v.kind === 'grade') {

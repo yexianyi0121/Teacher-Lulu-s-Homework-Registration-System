@@ -28,7 +28,6 @@ export function PointsModal() {
       month,
       n: cls.count,
       names,
-      passRule: s.settings.passRule,
     }),
     [s.history, s.pointLedger, cls.id, cls.count, month, names],
   );

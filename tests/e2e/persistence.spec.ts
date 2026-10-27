@@ -5,6 +5,9 @@ test('persistence：录入 → 刷新 → 数据仍在（V1 回归）', async ({
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('.cell');
+  // v2.6.3 FR-73.4：作业内容是登记前提
+  await page.getByLabel('作业内容').fill('默写');
+  await page.getByLabel('新建登记').click();
 
   await page.getByLabel('秒跳开关').click();
   await page.locator('[data-no="1"]').click();
@@ -20,6 +23,9 @@ test('persistence：人数 50→40→50 不丢隐藏数据（INV-8）', async ({
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('.cell');
+  // v2.6.3 FR-73.4：作业内容是登记前提
+  await page.getByLabel('作业内容').fill('默写');
+  await page.getByLabel('新建登记').click();
 
   await page.getByLabel('秒跳开关').click();
   await page.locator('[data-no="45"]').click();
@@ -87,6 +93,9 @@ test('persistence：清空当前记录可 Ctrl+Z 一次恢复', async ({ page })
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('.cell');
+  // v2.6.3 FR-73.4：作业内容是登记前提
+  await page.getByLabel('作业内容').fill('默写');
+  await page.getByLabel('新建登记').click();
 
   await page.getByLabel('秒跳开关').click();
   for (const no of [1, 2, 3]) {

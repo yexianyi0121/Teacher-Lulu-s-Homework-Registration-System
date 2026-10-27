@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { migrateV2toV3 } from '../../src/domain/migrate';
-import { DEFAULT_PASS_RULE } from '../../src/domain/passRule';
 import { DEFAULT_SETTINGS } from '../../src/domain/constants';
 import type { PersistedStateV2 } from '../../src/domain/types';
 import { e, makeScheme, score, studentsOf } from '../fixtures';
@@ -44,7 +43,7 @@ describe('migrateV2toV3：只加字段，不动数据（§2.2）', () => {
 
   it('version 升到 3，settings 补齐默认值', () => {
     expect(next.version).toBe(3);
-    expect(next.settings.passRule).toEqual(DEFAULT_PASS_RULE);
+    expect('passRule' in next.settings).toBe(false);   // v2.6.3：全局过关规则已移除
     expect(next.settings.showEmoji).toBe(true);
     expect(next.settings.showSchoolInPoster).toBe(false);
     expect(next.settings.autoBackupDays).toBe(7);

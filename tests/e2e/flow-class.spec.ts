@@ -5,6 +5,9 @@ test('flow-class：新建班级后数据互不污染（AC-25.1 / AC-46）', asyn
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('.cell');
+  // v2.6.3 FR-73.4：作业内容是登记前提
+  await page.getByLabel('作业内容').fill('默写');
+  await page.getByLabel('新建登记').click();
 
   await page.getByLabel('秒跳开关').click();
   await page.locator('[data-no="1"]').click();
@@ -30,6 +33,9 @@ test('flow-class：报表带当前班级名（AC-47）', async ({ page }) => {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('.cell');
+  // v2.6.3 FR-73.4：作业内容是登记前提
+  await page.getByLabel('作业内容').fill('默写');
+  await page.getByLabel('新建登记').click();
 
   await page.getByTitle('设置').click();
   await page.getByLabel('班级名', { exact: true }).fill('一年一班');

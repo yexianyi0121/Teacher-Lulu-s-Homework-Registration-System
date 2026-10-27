@@ -22,6 +22,7 @@ export async function launchFreshProfile(): Promise<Profile> {
   const page = ctx.pages()[0] ?? (await ctx.newPage());
   await page.goto(BASE);
   await page.waitForSelector('.cell');
+  await ensureSheet(page);
   return { ctx, page, dir };
 }
 
@@ -33,6 +34,7 @@ export async function reopenProfile(dir: string): Promise<Omit<Profile, 'dir'>> 
   const page = ctx.pages()[0] ?? (await ctx.newPage());
   await page.goto(BASE);
   await page.waitForSelector('.cell');
+  await ensureSheet(page);
   return { ctx, page };
 }
 
@@ -49,10 +51,20 @@ export async function resetApp(page: Page): Promise<void> {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('.cell');
+  await ensureSheet(page);
 }
 
 export async function pickTemplate(page: Page, id: 'dictation' | 'homework' | 'quality' | 'custom'): Promise<void> {
   await page.getByLabel('登记类型').selectOption(id);
+  await ensureSheet(page);
+}
+
+/** v2.6.3 FR-73.4：作业内容是登记前提——当前表没内容时先填一个并建表 */
+export async function ensureSheet(page: Page): Promise<void> {
+  const box = page.getByLabel('作业内容');
+  if ((await box.inputValue()).trim()) return;
+  await box.fill('默写');
+  await page.getByLabel('新建登记').click();
 }
 
 /** 关掉秒跳，便于逐格断言 */
@@ -63,6 +75,7 @@ export async function closeJump(page: Page): Promise<void> {
 
 /** 在某一格按键（先点格子，再依次按键） */
 export async function typeCell(page: Page, no: number, keys: string[]): Promise<void> {
+  await ensureSheet(page);
   await page.locator(`[data-no="${no}"]`).click();
   for (const k of keys) await page.keyboard.press(k);
 }

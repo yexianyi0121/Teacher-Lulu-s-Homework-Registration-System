@@ -62,7 +62,7 @@ describe('FR-66.2：汇总每张表各写各的评价语（不再整图一条）
       sheets: snapshotDay(persisted([a, b]), 'cls_1', todayISO()),
       n: 5,
       comment: '这是整图页脚那条，不该覆盖每张表',
-      display: { passRule: { kind: 'grade', gradePass: ['A+', 'A'], dictationAutoPass: true }, showEmoji: true, gradeEmoji: DEFAULT_SETTINGS.gradeEmoji },
+      display: { showEmoji: true, gradeEmoji: DEFAULT_SETTINGS.gradeEmoji },
     });
     const byContent = Object.fromEntries(model.sections.map((s) => [s.content, s]));
     expect(byContent['默写'].comment).toBe('默写全对的同学请继续保持。');
@@ -77,7 +77,7 @@ describe('FR-66.2：汇总每张表各写各的评价语（不再整图一条）
       sheets: snapshotDay(persisted([a]), 'cls_1', todayISO()),
       n: 5,
       comment: '',
-      display: { passRule: { kind: 'grade', gradePass: ['A+', 'A'], dictationAutoPass: true }, showEmoji: true, gradeEmoji: DEFAULT_SETTINGS.gradeEmoji },
+      display: { showEmoji: true, gradeEmoji: DEFAULT_SETTINGS.gradeEmoji },
     });
     expect(model.sections[0].comment).toBe('');
   });
@@ -90,7 +90,7 @@ describe('FR-66.2：汇总每张表各写各的评价语（不再整图一条）
       sheets: snapshotDay(persisted([a]), 'cls_1', todayISO()),
       n: 5,
       comment: '页脚那条',
-      display: { passRule: { kind: 'grade', gradePass: ['A+', 'A'], dictationAutoPass: true }, showEmoji: true, gradeEmoji: DEFAULT_SETTINGS.gradeEmoji },
+      display: { showEmoji: true, gradeEmoji: DEFAULT_SETTINGS.gradeEmoji },
     });
     expect(model.comment).toBe('页脚那条');
     expect(model.sections[0].comment).toBe('本表自己的评价语');
@@ -165,7 +165,7 @@ describe('FR-66.3：主屏切换同模板的另一张表（问题 1 现场）', 
       sheets: snapshotDay(dumped, 'cls_1', todayISO()),
       n: 5,
       comment: '',
-      display: { passRule: { kind: 'grade', gradePass: ['A+', 'A'], dictationAutoPass: true }, showEmoji: true, gradeEmoji: DEFAULT_SETTINGS.gradeEmoji },
+      display: { showEmoji: true, gradeEmoji: DEFAULT_SETTINGS.gradeEmoji },
     });
     expect(model.sections.find((s) => s.content === '作文')?.comment).toBe('作文注意审题。');
   });
@@ -201,7 +201,7 @@ describe('FR-67.1：表情在主值下方单独一行（数据结构层面）', 
       sheets: snapshotDay(persisted([a]), 'cls_1', todayISO()),
       n: 5,
       comment: '',
-      display: { passRule: { kind: 'grade', gradePass: ['A+', 'A'], dictationAutoPass: true }, showEmoji: true, gradeEmoji: DEFAULT_SETTINGS.gradeEmoji },
+      display: { showEmoji: true, gradeEmoji: DEFAULT_SETTINGS.gradeEmoji },
     });
     const cell = model.sections[0].cells.find((c) => c.kind === 'grade');
     expect(cell).toBeTruthy();
@@ -217,7 +217,7 @@ describe('FR-67.1：表情在主值下方单独一行（数据结构层面）', 
       sheets: snapshotDay(persisted([a]), 'cls_1', todayISO()),
       n: 5,
       comment: '',
-      display: { passRule: { kind: 'grade', gradePass: ['A+', 'A'], dictationAutoPass: true }, showEmoji: false, gradeEmoji: DEFAULT_SETTINGS.gradeEmoji },
+      display: { showEmoji: false, gradeEmoji: DEFAULT_SETTINGS.gradeEmoji },
     });
     expect(model.sections[0].cells.find((c) => c.kind === 'grade')?.emoji).toBeUndefined();
   });

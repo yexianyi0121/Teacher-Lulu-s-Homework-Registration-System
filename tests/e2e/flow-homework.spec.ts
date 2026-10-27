@@ -5,6 +5,9 @@ test('flow-homework：等级录入 + 空格盖章 + X 缺交（V1 行为回归�
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('.cell');
+  // v2.6.3 FR-73.4：作业内容是登记前提
+  await page.getByLabel('作业内容').fill('默写');
+  await page.getByLabel('新建登记').click();
 
   // 秒跳关掉，便于逐格断言
   await page.getByLabel('秒跳开关').click();
@@ -37,6 +40,9 @@ test('flow-homework：/ 定位学号并跳转，输入框聚焦时不污染网�
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('.cell');
+  // v2.6.3 FR-73.4：作业内容是登记前提
+  await page.getByLabel('作业内容').fill('默写');
+  await page.getByLabel('新建登记').click();
 
   await page.keyboard.press('/');
   await expect(page.getByLabel('搜学号')).toBeFocused();
@@ -44,6 +50,8 @@ test('flow-homework：/ 定位学号并跳转，输入框聚焦时不污染网�
   await page.keyboard.press('Enter');
 
   await page.getByLabel('作业内容').fill('测试');
+
+  await page.getByLabel('新建登记').click();
   await page.getByLabel('作业内容').focus();
   await page.keyboard.type('9');
   await expect(page.locator('[data-no="1"]')).not.toContainText('A+');

@@ -1,6 +1,6 @@
-import type { Entries, PassRule, ScoringScheme, SessionMetrics } from './types';
+import type { Entries, ScoringScheme, SessionMetrics } from './types';
 import { percentOf, tierOfPercent } from './scoring';
-import { DEFAULT_PASS_RULE, isPassed } from './passRule';
+import { isPassed } from './passRule';
 import { round1 } from './round';
 
 /**
@@ -22,7 +22,6 @@ export function computeStats(
   s: ScoringScheme,
   n: number,
   honorIncludesA: boolean,
-  passRule: PassRule = DEFAULT_PASS_RULE,
 ): SessionMetrics {
   void honorIncludesA; // 签名照抄设计；荣誉口径只影响名单，不影响四档
 
@@ -60,7 +59,7 @@ export function computeStats(
     graded++;
     sum += p;
     // 达标率走唯一入口 isPassed（老师改过关规则后统计条立即重算）
-    if (isPassed(e, s, passRule)) qualified++;
+    if (isPassed(e, s)) qualified++;
     const t = tierOfPercent(p, s);
     if (t === 'excellent') excellent++;
     else if (t === 'good') good++;

@@ -9,11 +9,19 @@ import { resolve } from 'node:path';
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf-8');
 
-describe('FR-70.1：过关规则区必须解释 mixed 的百分兜底', () => {
-  it('SettingsModal 写明了 mixed 下等级值也会因达及格线而过关', () => {
+describe('FR-70.1 → FR-72.2：过关规则区已搬到本表设置', () => {
+  it('SettingsModal 只留一个指路牌，不再自己管过关规则', () => {
     const src = read('src/components/modals/SettingsModal.tsx');
-    expect(src).toContain('等级值达到及格线同样算过关');
-    expect(src).toContain('当前勾选');
+    expect(src).toContain('pass-rule-moved');
+    expect(src).toContain('本表设置');
+    expect(src).not.toContain('id="pass-kind"');
+  });
+
+  it('SchemeModal 里同时有等级白名单与分数线两套口径', () => {
+    const src = read('src/components/modals/SchemeModal.tsx');
+    expect(src).toContain('id="scheme-pass-tier"');
+    expect(src).toContain('算过关的等级');
+    expect(src).toContain('等级过关');
   });
 });
 

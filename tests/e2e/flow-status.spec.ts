@@ -5,10 +5,14 @@ test('flow-status：过关 / 请假 / 缺交 / 只看未过关（FR-21 / FR-22 /
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('.cell');
+  // v2.6.3 FR-73.4：作业内容是登记前提
+  await page.getByLabel('作业内容').fill('默写');
+  await page.getByLabel('新建登记').click();
 
   await page.getByLabel('登记类型').selectOption('dictation');
   await page.getByLabel('秒跳开关').click();
   await page.getByLabel('作业内容').fill('第3单元字词');
+  await page.getByLabel('新建登记').click();
   await page.getByLabel('作业内容').blur();
 
   // 1–3 号过关
@@ -45,8 +49,10 @@ test('flow-status：补交带说明后从暂未提交移入已补交（AC-23.1�
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('.cell');
-
   await page.getByLabel('登记类型').selectOption('homework');
+  // v2.6.3 FR-73.4：作业内容是登记前提（切模板后再建）
+  await page.getByLabel('作业内容').fill('默写');
+  await page.getByLabel('新建登记').click();
   await page.getByLabel('秒跳开关').click();
 
   await page.locator('[data-no="3"]').click();
@@ -72,6 +78,9 @@ test('flow-status：自定义文字（F2）不并入名单（AC-20.1）', async 
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('.cell');
+  // v2.6.3 FR-73.4：作业内容是登记前提
+  await page.getByLabel('作业内容').fill('默写');
+  await page.getByLabel('新建登记').click();
 
   await page.getByLabel('登记类型').selectOption('dictation');
   await page.getByLabel('秒跳开关').click();

@@ -1,4 +1,3 @@
-import { DEFAULT_PASS_RULE } from './passRule';
 import type {
   GradeLetter,
   PointRule,
@@ -57,6 +56,18 @@ export const GRADE_ORDER: GradeLetter[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C'
 /** 默认等级集（PRD §2.2 原案；v2.5.9：用户要求增加 B- → 常规作业默认含 B-，其余默认全 8 档） */
 const HOMEWORK_GRADES: GradeLetter[] = ['A+', 'A', 'A-', 'B', 'B-', 'C', 'D'];
 
+/**
+ * v2.6.3 FR-72：过关规则随本表走——模板默认口径。
+ * 等级制/混合制看 gradePass 白名单；分数制/混合制看 scorePassTier（默认及格档）。
+ */
+const PASS_DEFAULTS = {
+  gradePass: ['A+', 'A'] as GradeLetter[],
+  scorePassTier: 'pass' as const,
+  missingPass: false,
+  leavePass: false,
+  dictationAutoPass: true,
+};
+
 /** 模板默认方案（PRD FR-17 表格） */
 export const DEFAULT_SCHEMES: Record<SheetTemplateId, ScoringScheme> = {
   dictation: {
@@ -69,6 +80,7 @@ export const DEFAULT_SCHEMES: Record<SheetTemplateId, ScoringScheme> = {
     excellentRate: 0.9,
     goodRate: 0.8,
     passRate: 0.6,
+    ...PASS_DEFAULTS,
   },
   homework: {
     kind: 'grade',
@@ -80,6 +92,7 @@ export const DEFAULT_SCHEMES: Record<SheetTemplateId, ScoringScheme> = {
     excellentRate: 0.9,
     goodRate: 0.8,
     passRate: 0.6,
+    ...PASS_DEFAULTS,
   },
   quality: {
     kind: 'score',
@@ -91,6 +104,7 @@ export const DEFAULT_SCHEMES: Record<SheetTemplateId, ScoringScheme> = {
     excellentRate: 0.9,
     goodRate: 0.8,
     passRate: 0.6,
+    ...PASS_DEFAULTS,
   },
   custom: {
     kind: 'mixed',
@@ -102,6 +116,7 @@ export const DEFAULT_SCHEMES: Record<SheetTemplateId, ScoringScheme> = {
     excellentRate: 0.9,
     goodRate: 0.8,
     passRate: 0.6,
+    ...PASS_DEFAULTS,
   },
 };
 
@@ -265,8 +280,7 @@ export const DEFAULT_SETTINGS: Settings = {
   honorIncludesA: false,
   voiceEnabled: true,
   voiceAutoConfirmMs: 1500,
-  theme: 'pink',
-  passRule: DEFAULT_PASS_RULE,
+  theme: 'plain',
   gradeEmoji: DEFAULT_GRADE_EMOJI,
   showEmoji: true,
   defaultComment: '',

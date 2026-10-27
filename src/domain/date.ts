@@ -78,3 +78,25 @@ export function dayHeading(date: string): string {
 export function weekRange(weekStart: string): string {
   return `${weekStart} ~ ${addDaysISO(weekStart, 6)}`;
 }
+
+
+/**
+ * 学期（v2.6.3 改进1）：9 月—次年 1 月为第一学期，2 月—8 月为第二学期。
+ * 返回形如「2026—2027学年 第一学期」。
+ */
+export function semesterOf(date: string = todayISO()): string {
+  const y = Number(date.slice(0, 4));
+  const m = Number(date.slice(5, 7));
+  if (m >= 9) return `${y}—${y + 1}学年 第一学期`;
+  if (m === 1) return `${y - 1}—${y}学年 第一学期`;
+  if (m === 2) return `${y - 1}—${y}学年 第二学期`;
+  return `${y - 1}—${y}学年 第二学期`;
+}
+
+/** 顶部时钟（v2.6.3 改进1）：2026年10月27日 10:10:09 星期二 */
+export function formatClock(now: Date = new Date()): string {
+  const p2 = (n: number) => String(n).padStart(2, '0');
+  const iso = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`;
+  const hms = `${p2(now.getHours())}:${p2(now.getMinutes())}:${p2(now.getSeconds())}`;
+  return `${formatDateFullCN(iso)} ${hms} ${weekdayCN(iso)}`;
+}

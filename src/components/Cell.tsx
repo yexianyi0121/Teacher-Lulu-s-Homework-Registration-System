@@ -80,7 +80,6 @@ export const Cell = memo(function Cell({ no, name, showName }: CellProps) {
   const setEditing = useStore((s) => s.setEditing);
 
   const d = cellDisplay(entry, scheme, {
-    passRule: settings.passRule,
     showEmoji: settings.showEmoji,
     gradeEmoji: settings.gradeEmoji,
   });

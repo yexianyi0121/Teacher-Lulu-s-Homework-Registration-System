@@ -5,12 +5,14 @@ import type { AppState, StoreGet, StoreSet } from './store-types';
 import { cloneEntries, cloneScheme, createRecord, hasEntries, toHistoryEntry } from './initial';
 import { classCount } from './entrySlice';
 import { recordKey } from '../utils/id';
+import { pruneEntries } from '../domain/scheme';
 
 type SheetSlice = Pick<
   AppState,
   | 'switchTemplate' | 'switchSheet' | 'setDate' | 'setContent' | 'switchRecord'
   | 'setScheme' | 'resetScheme' | 'setComment' | 'setSheetComment' | 'commitToHistory' | 'clearCurrentRecord'
   | 'deleteHistory' | 'clearHistory' | 'setDigitKey' | 'deleteRecord'
+  | 'newSheet' | 'applySchemePrune'
 >;
 
 function upsert(history: HistoryEntry[], entry: HistoryEntry): HistoryEntry[] {
@@ -110,6 +112,43 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
       });
 
       if (committed) s.showToast('已保存上一条', 'ok');
+    },
+
+    /**
+     * v2.6.3 问题四：只有点「新建登记」才建表——作业内容由调用方先校验非空。
+     * 同内容已存在时切过去（不重复建表），否则新建一张按当前模板默认方案的空表。
+     */
+    newSheet(content) {
+      const c = content.trim().slice(0, 20);
+      if (!c) {
+        get().showToast('请先填写作业内容', 'warn');
+        return;
+      }
+      const s = get();
+      const key = recordKey({
+        classId: s.activeClassId,
+        date: s.draft.date,
+        content: c,
+        sheetId: s.draft.sheetId,
+      });
+      const existed = !!s.records[key];
+      get().switchRecord({ content: c });
+      get().showToast(existed ? `已切换到「${c}」` : `已新建登记「${c}」`, 'ok');
+    },
+
+    /**
+     * v2.6.3 问题三：方案改动经二次确认后，按新方案清理不再适用的已登记值。
+     * 返回被清空的格子数（0 表示不需要清理）。
+     */
+    applySchemePrune(prevScheme) {
+      const s = get();
+      const rec = s.draft;
+      const { entries, cleared } = pruneEntries(rec.entries, rec.scheme, prevScheme);
+      if (!cleared) return 0;
+      s.pushUndo('修改本表方案', rec.entries, entries, s.pointLedger.length);
+      const updated = { ...rec, entries, updatedAt: Date.now() };
+      set({ records: { ...s.records, [rec.key]: updated }, draft: updated, buffer: null });
+      return cleared;
     },
 
     setScheme(patch: Partial<ScoringScheme>) {

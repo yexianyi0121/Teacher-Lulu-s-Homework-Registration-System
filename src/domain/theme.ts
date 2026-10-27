@@ -17,15 +17,16 @@ export interface ThemeMeta {
 }
 
 export const THEMES: ThemeMeta[] = [
-  { key: 'pink', name: '樱粉（默认）', bg: '#FDEBF3', brand: '#FF6FA5' },
+  { key: 'pink', name: '樱粉', bg: '#FDEBF3', brand: '#FF6FA5' },
   { key: 'mint', name: '薄荷', bg: '#EAF7F0', brand: '#3FA97A' },
   { key: 'sky', name: '天青', bg: '#EAF3FD', brand: '#4A7BC8' },
   { key: 'sand', name: '米杏', bg: '#FDF7EC', brand: '#C08A3E' },
   { key: 'night', name: '夜空', bg: '#2A2340', brand: '#8E7CD8' },
-  { key: 'plain', name: '纯白', bg: '#FFFFFF', brand: '#4A4A57' },
+  { key: 'plain', name: '纯白（默认）', bg: '#FFFFFF', brand: '#4A4A57' },
 ];
 
-export const DEFAULT_THEME: ThemeKey = 'pink';
+/** v2.6.3 改进1：系统默认背景改为纯白 */
+export const DEFAULT_THEME: ThemeKey = 'plain';
 
 const KEYS = new Set<ThemeKey>(THEMES.map((t) => t.key));
 

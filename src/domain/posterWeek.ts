@@ -47,7 +47,7 @@ export function groupWeek(
       sheetName: s.sheetName,
       content: s.content,
       comment: (s.comment ?? '').trim(),
-      statLine: sectionStatLine(s, n, display.passRule),
+      statLine: sectionStatLine(s, n),
       cells: cellsOf(s.entries, s.scheme, n, display),
       createdAt: s.createdAt,
     }));

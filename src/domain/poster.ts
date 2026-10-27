@@ -3,7 +3,6 @@ import type {
   Entries,
   EntryStatus,
   GradeLetter,
-  PassRule,
   ScoringScheme,
   SheetTemplateId,
   Stamp,
@@ -22,7 +21,6 @@ import type { DaySheetSnapshot } from './summary';
  */
 
 export interface PosterDisplayOptions {
-  passRule: PassRule;
   showEmoji: boolean;
   gradeEmoji: Record<GradeLetter, string>;
 }
@@ -80,7 +78,6 @@ export function cellsOf(
   for (let no = 1; no <= n; no++) {
     const e = entries[String(no)];
     const d = cellDisplay(e, scheme, {
-      passRule: opts.passRule,
       showEmoji: opts.showEmoji,
       gradeEmoji: opts.gradeEmoji,
     });
@@ -161,7 +158,7 @@ export interface SummaryModel {
 }
 
 /** section 右侧统计：按类型取最相关的 2–3 项（PRD FR-24-4 / FR-33.5） */
-export function sectionStatLine(s: DaySheetSnapshot, n: number, rule: PassRule): string {
+export function sectionStatLine(s: DaySheetSnapshot, n: number): string {
   void n;
   const m = s.metrics;
   const makeupSuffix = m.madeUp > 0 ? ` · 补交 ${m.madeUp}` : '';
@@ -173,7 +170,7 @@ export function sectionStatLine(s: DaySheetSnapshot, n: number, rule: PassRule):
       if (!e) continue;
       if (e.status === 'leave') continue;
       if (e.status === 'missing') continue;
-      const ok = isPassed(e, s.scheme, rule);
+      const ok = isPassed(e, s.scheme);
       if (ok) passed++;
       else if (e.value !== null || e.pass) notPassed++;
     }
@@ -213,7 +210,7 @@ export function buildSummaryModel(args: {
     content: s.content,
     // FR-66.2：每张表的评价语来自它自己的记录（空串表示这张表不写）
     comment: (s.comment ?? '').trim(),
-    statLine: sectionStatLine(s, n, display.passRule),
+    statLine: sectionStatLine(s, n),
     cells: cellsOf(s.entries, s.scheme, n, display),
     createdAt: s.createdAt,
   }));

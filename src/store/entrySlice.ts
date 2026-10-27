@@ -74,6 +74,11 @@ export function createEntrySlice(set: StoreSet, get: StoreGet): EntrySlice {
       return;
     }
     const rec = s.draft;
+    // FR-73.4：作业内容是登记的前提——没填内容时任何登记都不落库（点「＋ 新建登记」才建表）
+    if (!rec.content.trim()) {
+      s.showToast('请先填写作业内容，再点「＋ 新建登记」', 'warn');
+      return;
+    }
     const before = cloneEntries(rec.entries);
     const now = Date.now();
 
@@ -89,7 +94,6 @@ export function createEntrySlice(set: StoreSet, get: StoreGet): EntrySlice {
         if (!entry) continue;
         const rows = evaluatePoints({
           entry,
-          passRule: s.settings.passRule,
           studentNo: no,
           record: rec,
           prevRecords,
@@ -264,7 +268,6 @@ export function createEntrySlice(set: StoreSet, get: StoreGet): EntrySlice {
       for (const no of changed) {
         ledger = [...ledger, ...evaluatePoints({
           entry: entries[String(no)],
-          passRule: s.settings.passRule,
           studentNo: no,
           record: updated,
           prevRecords,

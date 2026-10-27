@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { selectSheetsOfDay } from '../store/selectors';
 import { SHEET_TEMPLATES, TEMPLATE_LIST } from '../domain/constants';
@@ -5,21 +6,28 @@ import type { SheetTemplateId } from '../domain/types';
 import { hasEntries } from '../store/initial';
 
 /**
- * 参数行（PRD FR-14）：登记类型 / 选择登记表 / 日期 / 作业内容。
- * v2.5.10 用户反馈：同一天同一类型可以有多张表（作业内容不同），
- * 此前主屏只显示当前这一张，之前的表「再也看不到」。
- * 这里补一个选择器，只列当天该类型的表；切换 = switchRecord 落到既有记录。
+ * 参数行（PRD FR-14）：登记类型 / 日期 / 作业内容 / 选择登记表。
+ * v2.5.10 用户反馈：同一天同一类型可以有多张表（作业内容不同），补了选择器。
+ * v2.6.3 用户反馈（问题四）：以前在「作业内容」里每敲一个字就 switchRecord 建一张表，
+ * 列表里凭空多出一堆删不完的表。现在作业内容只是**待新建**的名称，点「新建登记」才建表；
+ * 想改已登记表的名称，先选中那张表再改这里的名字（改名 = 新建 + 删旧，不在本轮范围）。
  */
 export function ParamsBar() {
   const draft = useStore((s) => s.draft);
   const switchTemplate = useStore((s) => s.switchTemplate);
   const setDate = useStore((s) => s.setDate);
-  const setContent = useStore((s) => s.setContent);
+  const newSheet = useStore((s) => s.newSheet);
   const switchRecord = useStore((s) => s.switchRecord);
   const deleteRecord = useStore((s) => s.deleteRecord);
   const openConfirm = useStore((s) => s.openConfirm);
   const sheets = useStore(selectSheetsOfDay).filter((s) => s.templateId === draft.templateId);
   const multi = sheets.length > 1;
+
+  // 输入框只是「下一张表的作业内容」，不随每敲一个字写库
+  const [content, setContent] = useState(draft.content);
+  useEffect(() => {
+    setContent(draft.content);
+  }, [draft.key, draft.content]);
 
   const pickSheet = (key: string) => {
     const hit = sheets.find((s) => s.key === key);
@@ -42,6 +50,9 @@ export function ParamsBar() {
     });
   };
 
+  const createSheet = () => newSheet(content);
+  const dirty = content.trim() !== draft.content;
+
   return (
     <div className="params">
       <label className="params-field">
@@ -59,6 +70,44 @@ export function ParamsBar() {
           ))}
         </select>
       </label>
+
+      <label className="params-field">
+        <span className="field-label">日期</span>
+        <input
+          type="date"
+          aria-label="日期"
+          value={draft.date}
+          onChange={(e) => e.target.value && setDate(e.target.value)}
+        />
+      </label>
+
+      <label className="params-field params-grow">
+        <span className="field-label">作业内容</span>
+        <input
+          type="text"
+          aria-label="作业内容"
+          maxLength={20}
+          placeholder="如：第3单元字词"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              createSheet();
+            }
+          }}
+        />
+      </label>
+
+      <button
+        type="button"
+        className={`pill${dirty ? ' pill--primary' : ''}`}
+        aria-label="新建登记"
+        title="用上面的作业内容新建一张登记表（同名则直接切过去）"
+        onClick={createSheet}
+      >
+        ＋ 新建登记
+      </button>
 
       {multi ? (
         <label className="params-field">
@@ -88,28 +137,6 @@ export function ParamsBar() {
           🗑 删除此表
         </button>
       ) : null}
-
-      <label className="params-field">
-        <span className="field-label">日期</span>
-        <input
-          type="date"
-          aria-label="日期"
-          value={draft.date}
-          onChange={(e) => e.target.value && setDate(e.target.value)}
-        />
-      </label>
-
-      <label className="params-field params-grow">
-        <span className="field-label">作业内容</span>
-        <input
-          type="text"
-          aria-label="作业内容"
-          maxLength={20}
-          placeholder="如：第3单元字词"
-          value={draft.content}
-          onChange={(e) => setContent(e.target.value)}
-        />
-      </label>
     </div>
   );
 }

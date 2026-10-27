@@ -9,6 +9,7 @@ test('flow-poster：当日汇总长图可生成并下载（AC-24.1 / AC-44）', 
   // 今天录两条：听写 + 常规作业
   await page.getByLabel('登记类型').selectOption('dictation');
   await page.getByLabel('作业内容').fill('第3单元字词');
+  await page.getByLabel('新建登记').click();
   await page.getByLabel('作业内容').blur();
   await page.getByLabel('秒跳开关').click();
   await page.locator('[data-no="1"]').click();
@@ -17,6 +18,7 @@ test('flow-poster：当日汇总长图可生成并下载（AC-24.1 / AC-44）', 
 
   await page.getByLabel('登记类型').selectOption('homework');
   await page.getByLabel('作业内容').fill('生字抄写');
+  await page.getByLabel('新建登记').click();
   await page.getByLabel('作业内容').blur();
   await page.locator('[data-no="1"]').click();
   await page.keyboard.press('2');
@@ -43,6 +45,7 @@ test('flow-export：导出月度 ZIP（含 3 个 CSV，文件名带班级与月�
   await page.getByLabel('登记类型').selectOption('quality');
   await page.getByLabel('日期').fill('2026-03-13');
   await page.getByLabel('作业内容').fill('第3单元');
+  await page.getByLabel('新建登记').click();
   await page.getByLabel('作业内容').blur();
   await page.getByLabel('秒跳开关').click();
   await page.locator('[data-no="1"]').click();

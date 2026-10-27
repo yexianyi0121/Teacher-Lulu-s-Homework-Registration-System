@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore, currentClass } from '../store';
 import { matchStudents } from '../domain/search';
+import { formatClock, semesterOf } from '../domain/date';
 import { IconButton } from './ui/controls';
 
 export interface HeaderProps {
@@ -35,6 +36,13 @@ export function Header({ onImport, onSettings, onManual }: HeaderProps) {
   const candidateRef = useRef(0);
   const matches = useMemo(() => matchStudents(searchQuery, count), [searchQuery, count]);
 
+  // v2.6.3 改进1：顶栏给一眼能看到的「现在几点 + 这学期」
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
   useEffect(() => {
     if (searchOpen) {
       candidateRef.current = 0;
@@ -58,6 +66,15 @@ export function Header({ onImport, onSettings, onManual }: HeaderProps) {
       <div className="brand">
         <span className="brand-emoji" aria-hidden="true">🌸</span>
         <span className="brand-text">学情登记分析系统</span>
+      </div>
+
+      {/* v2.6.3 改进1：当前时间（年月日时分秒）+ 当前学期 */}
+      <div className="clock-block" aria-label="当前时间">
+        <span className="clock-time">{formatClock(now)}</span>
+        <span className="clock-short">{formatClock(now).split(' ')[1]}</span>
+        <span className="clock-semester" title="按 9 月—次年 1 月为第一学期、2—8 月为第二学期推算">
+          {semesterOf()}
+        </span>
       </div>
 
       <div className="header-right">

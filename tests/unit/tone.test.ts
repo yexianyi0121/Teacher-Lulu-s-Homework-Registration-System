@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GRADE_TONE, cellDisplay } from '../../src/domain/tone';
 import { GRADE_ORDER, DEFAULT_GRADE_EMOJI } from '../../src/domain/constants';
-import { DEFAULT_PASS_RULE } from '../../src/domain/passRule';
+import type { ScoringScheme } from '../../src/domain/types';
 import { e, g, makeScheme, score, text } from '../fixtures';
 
 /** V3 显示：两套色系（等级八档，v2.5.9 新增 B- / 分数四档）+ 三态角标 + 表情 */
@@ -9,7 +9,7 @@ import { e, g, makeScheme, score, text } from '../fixtures';
 const check = makeScheme('check');
 const grade = makeScheme('grade');
 const scoreScheme = makeScheme('score');
-const opts = { passRule: DEFAULT_PASS_RULE, showEmoji: true, gradeEmoji: DEFAULT_GRADE_EMOJI };
+const opts = { showEmoji: true, gradeEmoji: DEFAULT_GRADE_EMOJI };
 
 describe('GRADE_TONE：八档两两可辨（AC-37.1 / INV-17 / v2.5.9 B-）', () => {
   it('底色 + 边框色 + 边框样式 组合唯一', () => {
@@ -66,14 +66,14 @@ describe('cellDisplay：等级色与表情', () => {
     expect(cellDisplay(e(g('A-')), grade, opts).grade).toBe('A-');
   });
 
-  it('默认 mixed：A- 百分达标 → ✅ 角标', () => {
-    expect(cellDisplay(e(g('A-')), grade, opts).badge).toBe('passed');
+  it('本表白名单只认 A/A+：A- 没有 ✅ 角标（AC-32.2 / v2.6.3 口径）', () => {
+    expect(cellDisplay(e(g('A-')), grade, opts).badge).toBeUndefined();
   });
 
-  it('规则改为 grade + 只认 A/A+ → A- 的 ✅ 消失（AC-32.2）', () => {
-    const strict = { ...DEFAULT_PASS_RULE, kind: 'grade' as const, gradePass: ['A+', 'A'] as const };
-    const d = cellDisplay(e(g('A-')), grade, { ...opts, passRule: { ...strict, gradePass: [...strict.gradePass] } });
-    expect(d.badge).toBeUndefined();
+  it('本表勾上 A- 后，A- 拿到 ✅ 角标', () => {
+    const s2: ScoringScheme = { ...grade, gradePass: ['A+', 'A', 'A-'] };
+    const d = cellDisplay(e(g('A-')), s2, opts);
+    expect(d.badge).toBe('passed');
   });
 
   it('showEmoji=true 时 A+ 带 😄；false 时不带（AC-38.1）', () => {

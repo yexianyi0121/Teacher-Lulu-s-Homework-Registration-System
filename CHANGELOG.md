@@ -6,6 +6,27 @@
 > **只写「做了什么、为什么、验收到什么程度」**，不贴用户操作步骤与反馈原话。
 > 每次改动的细节（根因、代码位置、验收编号）见 `docs/` 里对应的需求说明书或修复日志。
 
+## [2.6.3] - 2026-10-27
+
+### 修复 Fixed
+
+- 过关判定随方案类型走：等级制 / 混合制的等级值只看本表勾选的等级白名单，不再被及格线兜底（此前只勾 A+/A/A- 时，除 D 外全判过关）。
+- 分数制新增过关档位：达到及格% / 良好% / 优秀% 三档可选，不再只有一条及格线。
+- 过关规则从系统设置搬到「本表设置」，与方案类型同一处配置；旧数据里的全局过关规则在载入时迁移进每条记录，配置不丢。
+- 改方案点「完成」时先二次确认，确认后按新方案清空不兼容的已登记值（如等级制改分数制、改满分），可 Ctrl+Z 撤销；取消则方案回滚。
+- 作业内容改为「待新建的名称」：点「＋ 新建登记」（或回车）才建表，同名切回原表，不再输入即建表。
+- 未填写作业内容时登记被拦下并提示。
+
+### 新增 Added
+
+- 顶栏显示当前时间（年月日时分秒）与当前学期，窄屏只留时分秒；页脚显示系统版本号。
+- 默认背景改为纯白（主题「纯白（默认）」）。
+
+### 文档 Docs
+
+- 新增 `docs/28-修复日志-v2.6.3.md`（根因、代码位置与验收编号）。
+- 版本号升至 **2.6.3**，`dist/` 已重建。
+
 ## [2.6.2] - 2026-10-27
 
 ### 修复 Fixed
@@ -288,7 +309,8 @@ V1 基线：16 条 FR，作业/测验成绩登记、界面规格、口径、样�
 
 ---
 
-[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.2...HEAD
+[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.3...HEAD
+[2.6.3]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.2...v2.6.3
 [2.6.2]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.1...v2.6.2
 [2.6.1]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.5.10...v2.6.0

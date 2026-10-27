@@ -21,30 +21,30 @@ test('E2E-29 过关规则：白名单改动重算 ✅ 与筛选，已录值不�
     await expect(page.locator('[data-no="4"]')).toContainText('D');
   });
 
-  await test.step('默认规则（百分或等级 A+/A）：A、A-、C 过关，D 不过关', async () => {
-    await expect(page.locator('[data-no="1"]')).toHaveAttribute('data-badge', 'passed');
-    await expect(page.locator('[data-no="2"]')).toHaveAttribute('data-badge', 'passed');
-    await expect(page.locator('[data-no="3"]')).toHaveAttribute('data-badge', 'passed');
-    await expect(page.locator('[data-no="4"]')).not.toHaveAttribute('data-badge', 'passed');
-
-    await page.getByLabel('只看未过关').click();
-    await expect(page.locator('.cell')).toHaveCount(47); // 50 - 3 过关
-    await page.getByLabel('只看未过关').click();
-  });
-
-  await test.step('改成「按等级白名单」：A- 与 C 退出过关', async () => {
-    await page.getByTitle('设置').click();
-    await page.getByLabel('判定方式').selectOption('grade');
-    await expect(page.getByLabel('等级 A+ 算过关')).toHaveAttribute('aria-pressed', 'true');
-    await page.getByRole('dialog').getByRole('button', { name: '完成' }).click();
-
+  await test.step('v2.6.3 新口径：等级制只看本表白名单（默认 A+/A）→ 只有 A 过关', async () => {
     await expect(page.locator('[data-no="1"]')).toHaveAttribute('data-badge', 'passed');
     await expect(page.locator('[data-no="2"]')).not.toHaveAttribute('data-badge', 'passed');
     await expect(page.locator('[data-no="3"]')).not.toHaveAttribute('data-badge', 'passed');
+    await expect(page.locator('[data-no="4"]')).not.toHaveAttribute('data-badge', 'passed');
 
-    // 只看未过关：现在只剩 D + 46 个空白 = 47+2
     await page.getByLabel('只看未过关').click();
-    await expect(page.locator('.cell')).toHaveCount(49);
+    await expect(page.locator('.cell')).toHaveCount(49); // 50 - 1 过关
+    await page.getByLabel('只看未过关').click();
+  });
+
+  await test.step('在本表设置里把 A- 也勾进白名单 → 重算 ✅ 与筛选', async () => {
+    await page.getByRole('button', { name: /本表设置/ }).click();
+    const dlg = page.getByRole('dialog');
+    await dlg.getByLabel('等级过关 A-').click();
+    await dlg.getByRole('button', { name: '完成' }).click();
+
+    await expect(page.locator('[data-no="1"]')).toHaveAttribute('data-badge', 'passed');
+    await expect(page.locator('[data-no="2"]')).toHaveAttribute('data-badge', 'passed');
+    await expect(page.locator('[data-no="3"]')).not.toHaveAttribute('data-badge', 'passed');
+    await expect(page.locator('[data-no="4"]')).not.toHaveAttribute('data-badge', 'passed');
+
+    await page.getByLabel('只看未过关').click();
+    await expect(page.locator('.cell')).toHaveCount(48); // 50 - 2 过关
     await page.getByLabel('只看未过关').click();
 
     // 已录值一个都没动
@@ -81,9 +81,10 @@ test('E2E-29b 听写「全对自动过关」开关联动 ✅ / 筛选 / 汇总�
   });
 
   await test.step('关掉自动过关 → 全对也算未过关，汇总图同步', async () => {
-    await page.getByTitle('设置').click();
-    await page.getByLabel('听写全对自动过关').click();
-    await page.getByRole('dialog').getByRole('button', { name: '完成' }).click();
+    await page.getByRole('button', { name: /本表设置/ }).click();
+    const dlg = page.getByRole('dialog');
+    await dlg.getByLabel('听写全对自动算过关').click();
+    await dlg.getByRole('button', { name: '完成' }).click();
 
     await expect(page.locator('[data-no="1"]')).not.toHaveAttribute('data-badge', 'passed');
     await page.getByLabel('只看未过关').click();

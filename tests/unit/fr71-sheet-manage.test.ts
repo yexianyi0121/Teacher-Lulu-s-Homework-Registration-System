@@ -5,7 +5,7 @@ import { isPassed } from '../../src/domain/passRule';
 import { DEFAULT_SETTINGS } from '../../src/domain/constants';
 import { studentsOf } from '../fixtures';
 import { todayISO } from '../../src/domain/date';
-import type { GradeLetter, PassRule, PersistedStateV4, RecordDoc, ScoringScheme } from '../../src/domain/types';
+import type { PersistedStateV4, RecordDoc, ScoringScheme } from '../../src/domain/types';
 
 /**
  * v2.6.2 回归（FR-71，用户三问）：
@@ -140,33 +140,32 @@ describe('FR-71.2：删除整张登记表', () => {
   });
 });
 
-describe('FR-71.3：缺交 / 请假是否算过关', () => {
+describe('FR-71.3：缺交 / 请假是否算过关（v2.6.3 起由本表方案决定）', () => {
   const missing = { value: null, stamp: 'none' as const, status: 'missing' as const, pass: false, makeup: null, updatedAt: 1 };
   const leave = { value: null, stamp: 'none' as const, status: 'leave' as const, pass: false, makeup: null, updatedAt: 1 };
 
-  it('默认（旧数据没有这两个字段）：缺交/请假都不过关', () => {
-    expect(isPassed(missing, scheme, { kind: 'mixed', gradePass: ['A+', 'A'] as GradeLetter[], dictationAutoPass: true })).toBe(false);
-    expect(isPassed(leave, scheme, { kind: 'mixed', gradePass: ['A+', 'A'] as GradeLetter[], dictationAutoPass: true })).toBe(false);
+  it('本表没开开关：缺交/请假都不过关', () => {
+    expect(isPassed(missing, scheme)).toBe(false);
+    expect(isPassed(leave, scheme)).toBe(false);
   });
 
   it('打开 leavePass：请假算过关，缺交仍不算', () => {
-    const rule: PassRule = { kind: 'mixed', gradePass: ['A+', 'A'], dictationAutoPass: true, leavePass: true };
-    expect(isPassed(leave, scheme, rule)).toBe(true);
-    expect(isPassed(missing, scheme, rule)).toBe(false);
+    const s2: ScoringScheme = { ...scheme, leavePass: true };
+    expect(isPassed(leave, s2)).toBe(true);
+    expect(isPassed(missing, s2)).toBe(false);
   });
 
   it('打开 missingPass：缺交算过关', () => {
-    const rule: PassRule = { kind: 'grade', gradePass: ['A+'], dictationAutoPass: true, missingPass: true };
-    expect(isPassed(missing, scheme, rule)).toBe(true);
+    const s2: ScoringScheme = { ...scheme, missingPass: true };
+    expect(isPassed(missing, s2)).toBe(true);
   });
 
   it('从 fromPersisted 读回的老数据同样按「不算过关」处理', () => {
     const dumped = persisted([rec('默写', 100)]);
-    // 老数据没有 leavePass 字段
-    delete (dumped.settings as { passRule: { leavePass?: boolean } }).passRule.leavePass;
     const st = fromPersisted(dumped);
-    const rule = st.settings?.passRule ?? { kind: 'mixed' as const, gradePass: [] as GradeLetter[], dictationAutoPass: true };
-    expect(rule.leavePass ?? false).toBe(false);
-    expect(isPassed(leave, scheme, rule)).toBe(false);
+    const recs = st.records ?? {};
+    const sc = Object.values(recs)[0]?.scheme ?? scheme;
+    expect(sc.leavePass ?? false).toBe(false);
+    expect(isPassed(leave, sc)).toBe(false);
   });
 });

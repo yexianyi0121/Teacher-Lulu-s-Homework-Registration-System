@@ -6,14 +6,13 @@ import { buildSummaryModel, sectionStatLine, summaryOverflowNote, SUMMARY_LIMIT 
 import { snapshotDay, type DaySheetSnapshot } from '../../src/domain/summary';
 import type { Entries, PersistedStateV4, RecordDoc, ScoringScheme, SheetTemplateId } from '../../src/domain/types';
 import { DEFAULT_SETTINGS, DEFAULT_GRADE_EMOJI } from '../../src/domain/constants';
-import { DEFAULT_PASS_RULE } from '../../src/domain/passRule';
 import {
   makeScheme, sampleAEntries, sampleBEntries, sampleCEntries, SAMPLE_C_SCHEME, studentsOf, e, score, text,
 } from '../fixtures';
 
 /** 黄金样例（PRD-V2 §8）：任何一位偏差都说明 classify / computeStats 写错 */
 
-const DISPLAY = { passRule: DEFAULT_PASS_RULE, showEmoji: false, gradeEmoji: DEFAULT_GRADE_EMOJI };
+const DISPLAY = { showEmoji: false, gradeEmoji: DEFAULT_GRADE_EMOJI };
 
 describe('样例 C：混合登记 + 满分 120 + 请假 + 补交', () => {
   const m = computeStats(sampleCEntries(), SAMPLE_C_SCHEME, 50, false);
@@ -32,7 +31,7 @@ describe('样例 C：混合登记 + 满分 120 + 请假 + 补交', () => {
     expect(m.avgPercent).toBe(80.0);
     expect(m.avgScore).toBe(96.1);
     expect(m.excellentRate).toBe(0.389);
-    expect(m.qualifiedRate).toBe(0.778);
+    expect(m.qualifiedRate).toBe(0.667);   // v2.6.3：混合制下 A-/B+ 不再被及格线兜底（12/18）
   });
 
   it('名单：光荣榜 7、需更正 4（只抓不及格）、已补交 1、请假 1', () => {
@@ -168,10 +167,10 @@ describe('样例 E：当日汇总海报', () => {
       sheets: [dictation, homework, quality], n: 50,
     });
     expect(model.sections.map((s) => s.icon)).toEqual(['📖', '📝', '📊']);
-    expect(sectionStatLine(dictation, 50, DEFAULT_PASS_RULE)).toBe('过关 45 · 未过关 5');
-    expect(sectionStatLine(homework, 50, DEFAULT_PASS_RULE)).toContain('A+ 1');
-    expect(sectionStatLine(homework, 50, DEFAULT_PASS_RULE)).toContain('未交 1');
-    expect(sectionStatLine(quality, 50, DEFAULT_PASS_RULE)).toBe('平均 96.1 · 优秀 7 · 未交 31');
+    expect(sectionStatLine(dictation, 50)).toBe('过关 45 · 未过关 5');
+    expect(sectionStatLine(homework, 50)).toContain('A+ 1');
+    expect(sectionStatLine(homework, 50)).toContain('未交 1');
+    expect(sectionStatLine(quality, 50)).toBe('平均 96.1 · 优秀 7 · 未交 31');
   });
 
   it('超过 6 条取**最近** 6 条，并在标题下给出提示（PRD FR-24-2）', () => {
@@ -296,7 +295,7 @@ describe('F1 回归：当日汇总必须走真实链路（snapshotDay → comput
     expect(snap0.metrics.entered).toBe(49);
     expect(snap0.metrics.leave).toBe(1);
     expect(snap0.metrics.notSubmitted).toBe(0);          // v2.0.0 此处置为 50
-    expect(sectionStatLine(snap0, 50, DEFAULT_PASS_RULE)).toBe('过关 44 · 未过关 5');   // v2.0.0 此处未过关为 0
+    expect(sectionStatLine(snap0, 50)).toBe('过关 44 · 未过关 5');   // v2.0.0 此处未过关为 0
   });
 
   it('质量监测 20 人有值：统计条「有值 20 / 未提交 30」', () => {
@@ -307,7 +306,7 @@ describe('F1 回归：当日汇总必须走真实链路（snapshotDay → comput
     const [snap0] = snapshotDay(state, 'cls_test', '2026-10-23');
     expect(snap0.metrics.entered).toBe(20);
     expect(snap0.metrics.notSubmitted).toBe(30);
-    expect(sectionStatLine(snap0, 50, DEFAULT_PASS_RULE)).toBe('平均 87.7 · 优秀 13 · 未交 30');
+    expect(sectionStatLine(snap0, 50)).toBe('平均 87.7 · 优秀 13 · 未交 30');
   });
 
   it('同一天多张表：sections 按录入时间升序且统计不串类型', () => {

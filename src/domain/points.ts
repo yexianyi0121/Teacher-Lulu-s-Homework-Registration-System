@@ -1,7 +1,6 @@
 import type {
   Entry,
   HistoryEntry,
-  PassRule,
   PointLedgerEntry,
   PointRule,
   RecordDoc,
@@ -10,7 +9,7 @@ import type {
   Tier,
 } from './types';
 import { tierOf } from './scoring';
-import { DEFAULT_PASS_RULE, isPassed } from './passRule';
+import { isPassed } from './passRule';
 import { uid } from '../utils/id';
 
 /**
@@ -50,7 +49,6 @@ export function dedupeKeyOf(
 
 export interface EvaluateInput {
   entry: Entry;
-  passRule?: PassRule;
   studentNo: number;
   record: Pick<RecordDoc, 'key' | 'classId' | 'date' | 'content' | 'templateId' | 'scheme'>;
   /** 同班同模板的历史，按日期降序（不含本次） */
@@ -63,9 +61,8 @@ export interface EvaluateInput {
 
 function streakHit(input: EvaluateInput, times: number, templateId: SheetTemplateId): boolean {
   const { record, studentNo, prevRecords } = input;
-  const rule = input.passRule ?? DEFAULT_PASS_RULE;
   if (record.templateId !== templateId) return false;
-  if (!isPassed(input.entry, record.scheme, rule)) return false;
+  if (!isPassed(input.entry, record.scheme)) return false;
 
   const prev = prevRecords
     .filter((h) => h.templateId === templateId && h.date < record.date)
@@ -77,7 +74,7 @@ function streakHit(input: EvaluateInput, times: number, templateId: SheetTemplat
     const e = h.entries[String(studentNo)];
     if (!e) return false;
     // 用历史记录自己的方案判定（方案是快照，§16-7）
-    return isPassed(e, h.scheme, rule);
+    return isPassed(e, h.scheme);
   });
 }
 
@@ -215,10 +212,8 @@ export function monthStats(args: {
   month: string;                  // 'YYYY-MM'
   n: number;
   names?: Record<number, string | undefined>;
-  passRule?: PassRule;
 }): MonthStats {
   const { history, ledger, classId, month, n, names } = args;
-  const passRule = args.passRule ?? DEFAULT_PASS_RULE;
   const inMonth = history.filter((h) => h.classId === classId && h.date.startsWith(month));
 
   const rows: MonthRow[] = [];
@@ -236,7 +231,7 @@ export function monthStats(args: {
       sessions++;
       if (e.status === 'missing') missing++;
       if (e.makeup) madeUp++;
-      if (isPassed(e, h.scheme, passRule)) qualified++;
+      if (isPassed(e, h.scheme)) qualified++;
     }
 
     const points = ledger

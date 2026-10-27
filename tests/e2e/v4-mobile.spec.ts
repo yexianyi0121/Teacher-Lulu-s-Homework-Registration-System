@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { closeJump, closeModal, pickTemplate, resetApp, waitPoster } from './v3-fixtures';
+import { closeJump, closeModal, ensureSheet, pickTemplate, resetApp, waitPoster } from './v3-fixtures';
 
 /**
  * E2E-39 / E2E-40（V4 FR-50 / FR-51 / ADR-26）——手机端形态与数据安全。
@@ -26,6 +26,8 @@ for (const vp of VIEWPORTS) {
       await expect(hint).toHaveCount(0);
       await page.reload();
       await page.waitForSelector('.cell');
+      // 刷新后空表不会留在 records 里（没有登记内容就不落库），作业内容要重新填
+      await ensureSheet(page);
       await expect(page.getByTestId('install-hint')).toHaveCount(0);
     });
 

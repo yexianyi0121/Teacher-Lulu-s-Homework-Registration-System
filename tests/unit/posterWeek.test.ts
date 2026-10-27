@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { estimateWeekPart, groupWeek, paginateWeek, WEEK_MAX_HEIGHT } from '../../src/domain/posterWeek';
 import { DEFAULT_GRADE_EMOJI } from '../../src/domain/constants';
-import { DEFAULT_PASS_RULE } from '../../src/domain/passRule';
 import type { PersistedStateV4, RecordDoc } from '../../src/domain/types';
 import { e, makeScheme, score, studentsOf } from '../fixtures';
 
-const DISPLAY = { passRule: DEFAULT_PASS_RULE, showEmoji: false, gradeEmoji: DEFAULT_GRADE_EMOJI };
+const DISPLAY = { showEmoji: false, gradeEmoji: DEFAULT_GRADE_EMOJI };
 
 function rec(date: string, sheetId: string, content: string, createdAt: number): RecordDoc {
   return {
@@ -22,7 +21,7 @@ function state(records: RecordDoc[]): PersistedStateV4 {
     records, history: [], pointRules: [], pointLedger: [],
     settings: {
       secondsJump: true, showName: false, honorIncludesA: false, voiceEnabled: true, voiceAutoConfirmMs: 1500, theme: 'pink',
-      passRule: DEFAULT_PASS_RULE, gradeEmoji: DEFAULT_GRADE_EMOJI, showEmoji: false,
+      gradeEmoji: DEFAULT_GRADE_EMOJI, showEmoji: false,
       defaultComment: '', showSchoolInPoster: false, autoBackupDays: 7, digitKey: 'auto',
       posterFollowTheme: false, installHintDismissed: false, lastExportAt: null,
     },

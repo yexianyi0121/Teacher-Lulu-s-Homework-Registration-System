@@ -21,7 +21,6 @@ function v3(patch: Partial<PersistedStateV3['settings']> = {}): PersistedStateV3
       voiceEnabled: true,
       voiceAutoConfirmMs: 1500,
       theme: 'auto',           // v3 的旧值：不是合法 ThemeKey
-      passRule: DEFAULT_SETTINGS.passRule,
       gradeEmoji: DEFAULT_SETTINGS.gradeEmoji,
       showEmoji: true,
       defaultComment: '',
@@ -38,16 +37,16 @@ describe('migrateV3toV4：只补字段，不动数据（设计 09 ADR-28）', ()
   it('4 个新字段取默认值', () => {
     const out = migrateV3toV4(v3());
     expect(out.version).toBe(4);
-    expect(out.settings.theme).toBe('pink');
+    expect(out.settings.theme).toBe('plain');   // v2.6.3 改进1：默认纯白
     expect(out.settings.posterFollowTheme).toBe(false);
     expect(out.settings.installHintDismissed).toBe(false);
     expect(out.settings.lastExportAt).toBeNull();
   });
 
-  it('未知 theme 回落 pink（B-4）', () => {
-    expect(migrateV3toV4(v3({ theme: 'auto' as never })).settings.theme).toBe('pink');
-    expect(migrateV3toV4(v3({ theme: 'light' as never })).settings.theme).toBe('pink');
-    expect(migrateV3toV4(v3({ theme: 'neon' as never })).settings.theme).toBe('pink');
+  it('未知 theme 回落 plain（B-4 / v2.6.3）', () => {
+    expect(migrateV3toV4(v3({ theme: 'auto' as never })).settings.theme).toBe('plain');
+    expect(migrateV3toV4(v3({ theme: 'light' as never })).settings.theme).toBe('plain');
+    expect(migrateV3toV4(v3({ theme: 'neon' as never })).settings.theme).toBe('plain');
   });
 
   it('已有的 digitKey / 其它设置不被覆盖', () => {

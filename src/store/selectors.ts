@@ -1,6 +1,5 @@
 import type {
   Entries,
-  PassRule,
   PersistedStateV4,
   PosterTarget,
   RosterGroups,
@@ -33,7 +32,6 @@ export function selectDigitKeyMode(s: AppState): DigitKeyMode {
 /** 展示选项（两套色系 / 表情 / 过关规则）—— 所有渲染入口共用 */
 export function selectDisplayOptions(s: AppState): PosterDisplayOptions {
   return {
-    passRule: s.settings.passRule,
     showEmoji: s.settings.showEmoji,
     gradeEmoji: s.settings.gradeEmoji,
   };
@@ -42,15 +40,13 @@ export function selectDisplayOptions(s: AppState): PosterDisplayOptions {
 interface StatsCache {
   stats: SessionMetrics;
   n: number;
-  rule: PassRule;
 }
 
 const statsMemo = new WeakMap<object, Map<ScoringScheme, StatsCache>>();
 
-/** 统计（按 entries 引用 + 方案 + 人数 + 过关规则缓存，避免 120 格每键重算） */
+/** 统计（按 entries 引用 + 方案 + 人数缓存，避免 120 格每键重算） */
 export function selectStats(s: AppState): SessionMetrics {
   const n = countOf(s);
-  const rule = s.settings.passRule;
   const key = s.draft.entries as unknown as object;
   let byScheme = statsMemo.get(key);
   if (!byScheme) {
@@ -58,9 +54,9 @@ export function selectStats(s: AppState): SessionMetrics {
     statsMemo.set(key, byScheme);
   }
   const hit = byScheme.get(s.draft.scheme);
-  if (hit && hit.n === n && hit.rule === rule) return hit.stats;
-  const stats = computeStats(s.draft.entries, s.draft.scheme, n, s.settings.honorIncludesA, rule);
-  byScheme.set(s.draft.scheme, { stats, n, rule });
+  if (hit && hit.n === n) return hit.stats;
+  const stats = computeStats(s.draft.entries, s.draft.scheme, n, s.settings.honorIncludesA);
+  byScheme.set(s.draft.scheme, { stats, n });
   return stats;
 }
 
@@ -69,9 +65,8 @@ export function statsOf(
   scheme: ScoringScheme,
   n: number,
   honorIncludesA: boolean,
-  passRule: PassRule,
 ): SessionMetrics {
-  return computeStats(entries, scheme, n, honorIncludesA, passRule);
+  return computeStats(entries, scheme, n, honorIncludesA);
 }
 
 export function selectRoster(s: AppState): RosterGroups {
@@ -228,7 +223,7 @@ export function selectVisibleNos(s: AppState): number[] {
   return all.filter((no) => {
     const e = s.draft.entries[String(no)];
     if (e?.status === 'leave') return false;
-    return !isPassed(e, s.draft.scheme, s.settings.passRule);
+    return !isPassed(e, s.draft.scheme);
   });
 }
 

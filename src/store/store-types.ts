@@ -36,6 +36,8 @@ export interface ConfirmRequest {
   requireText?: string;
   danger?: boolean;
   onConfirm: () => void;
+  /** v2.6.3 问题三：点「取消」时的回调（例如把本表方案回滚到改动前） */
+  onCancel?: () => void;
 }
 
 export type ToastTone = 'ok' | 'warn' | 'error';
@@ -180,6 +182,10 @@ export interface AppState {
   setDigitKey: (mode: DigitKeyMode) => void;
   /** v2.6.2 FR-71.2：删除一整张登记表（records + history 同清） */
   deleteRecord: (key: string) => void;
+  /** v2.6.3 问题四：点「新建登记」才建表（内容非空由调用方保证） */
+  newSheet: (content: string) => void;
+  /** v2.6.3 问题三：方案改动确认后按新方案清理不再适用的已登记值，返回清空格数 */
+  applySchemePrune: (prevScheme: ScoringScheme) => number;
   resetScheme: () => void;
   commitToHistory: () => void;
   clearCurrentRecord: () => void;

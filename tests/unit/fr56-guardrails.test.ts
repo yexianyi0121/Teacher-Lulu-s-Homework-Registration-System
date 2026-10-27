@@ -12,6 +12,8 @@ import { DEFAULT_SETTINGS } from '../../src/domain/constants';
 
 function resetStore() {
   useStore.setState(useStore.getInitialState(), true);
+  // FR-73.4：作业内容是登记前提，测试里先填一个
+  useStore.getState().setContent('默写');
 }
 
 describe('FR-56-1 半截分数缓冲不得悬空（焦点离开即丢弃）', () => {

@@ -20,6 +20,8 @@ function setup(template: 'homework' | 'quality' | 'dictation' | 'custom' = 'home
   useStore.getState().replaceState(createEmptyState(0));
   useStore.getState().setCount(10);
   useStore.getState().switchTemplate(template);
+  // FR-73.4：作业内容是登记前提
+  useStore.getState().setContent('默写');
   useStore.getState().updateSettings({ secondsJump: false });
   useStore.getState().setFocusedNo(1);
 }

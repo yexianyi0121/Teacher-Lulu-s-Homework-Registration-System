@@ -16,13 +16,19 @@ export function ConfirmModal() {
 
   const canConfirm = !req.requireText || typed === req.requireText;
 
+  // v2.6.3 问题三：取消（含右上角 ×、Esc）要能把调用方的临时改动回滚
+  const cancel = () => {
+    close();
+    req.onCancel?.();
+  };
+
   return (
     <Modal
       title={req.title}
-      onClose={close}
+      onClose={cancel}
       footer={
         <>
-          <Pill variant="ghost" onClick={close}>
+          <Pill variant="ghost" onClick={cancel}>
             取消
           </Pill>
           <Pill
