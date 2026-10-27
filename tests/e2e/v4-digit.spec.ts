@@ -17,8 +17,9 @@ test('E2E-34 混合表：敲 1 = A+；chip 切分数后 85 = 85 分；切回 2 =
   await test.step('默认语义是「数字＝等级」', async () => {
     await expect(page.locator('.digit-chip')).toContainText('数字＝等级');
     await expect(page.locator('.digit-chip')).toHaveAttribute('data-meaning', 'grade');
-    // 提示条与语义一致：列等级键位，并说明可切分数
-    await expect(page.locator('.hint')).toContainText('1 A+');
+    // 提示条与语义一致：键位以左侧色块呈现（v2.6.7：文字不再重复列一遍），文字只说明可切分数
+    await expect(page.locator('.hint .hint-grade')).toHaveCount(8);
+    await expect(page.locator('.hint-grade').first()).toContainText('A+');
     await expect(page.locator('.hint')).toContainText('按 ` 切「数字＝分数」');
   });
 
@@ -34,7 +35,7 @@ test('E2E-34 混合表：敲 1 = A+；chip 切分数后 85 = 85 分；切回 2 =
     await expect(page.locator('.digit-chip')).toHaveAttribute('data-meaning', 'score');
     // 提示条同步改成分数语义，不再列等级键位
     await expect(page.locator('.hint')).toContainText('数字＝分数，Enter 提交');
-    await expect(page.locator('.hint')).not.toContainText('1 A+');
+    await expect(page.locator('.hint .hint-grade')).toHaveCount(0);
 
     await typeCell(page, 2, ['8', '5', 'Enter']);
     await expect(page.locator('[data-no="2"]')).toContainText('85');

@@ -6,6 +6,17 @@
 > **只写「做了什么、为什么、验收到什么程度」**，不贴用户操作步骤与反馈原话。
 > 每次改动的细节（根因、代码位置、验收编号）见 `docs/` 里对应的需求说明书或修复日志。
 
+## [2.6.7] - 2026-10-27
+
+### 修复 Fixed
+
+- 提示条在宽屏下被挤满——左侧色块已逐档列出「按键 = 等级」，文字不再重复列 `1 A+ 2 A …`，收敛为「数字＝等级」。
+
+### 文档 Docs
+
+- 新增 `docs/32-修复日志-v2.6.7.md`。
+- 版本号升至 **2.6.7**，`dist/` 已重建。
+
 ## [2.6.6] - 2026-10-27
 
 ### 修复 Fixed
@@ -362,7 +373,8 @@ V1 基线：16 条 FR，作业/测验成绩登记、界面规格、口径、样�
 
 ---
 
-[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.6...HEAD
+[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.7...HEAD
+[2.6.7]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.6...v2.6.7
 [2.6.6]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.5...v2.6.6
 [2.6.5]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.4...v2.6.5
 [2.6.4]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.3...v2.6.4

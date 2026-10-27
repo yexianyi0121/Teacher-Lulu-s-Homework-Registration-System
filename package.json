@@ -1,7 +1,7 @@
 {
   "name": "teacher-lulu-homework-registration",
   "private": true,
-  "version": "2.6.6",
+  "version": "2.6.7",
   "type": "module",
   "description": "《学情登记分析系统》— 初中语文教师作业/测验极速登记与一键出图出文案工具",
   "engines": {

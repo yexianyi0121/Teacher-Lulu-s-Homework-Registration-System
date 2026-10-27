@@ -34,15 +34,16 @@ export function HintBar({
   const meaning = resolveDigitMeaning(mode, scheme, templateId);
   const showChip = digitKeyAmbiguous(scheme);
   const km = buildGradeKeyMap(scheme);
-  const hint = filterNotPassed
-    ? `👁 只看未过关：${notPassedCount ?? 0} 人 / 共 ${total ?? 0} 人（编号保持原学号）`
-    : buildHint(templateId, scheme, km, meaning);
   // v2.5.10 FR-68.1：方案启用等级时，把“按键=等级”化一组小片显示出来。
   // 原来只有一行可能被截断的纯文字，老师看不出 1–8 到底分别对应哪一桩。
   // v2.6.1 FR-70.5：本表未启用的等级（旧表常只勾 5/6 档）在提示条给出入口，
   // 否则老师找不到 B- 在哪一键、也想不到要去「本表设置」勾选。
   const pairs = meaning === 'grade' && scheme.grades.some((g) => GRADE_ORDER.includes(g)) ? keyMapPairs(km) : [];
   const missing = GRADE_ORDER.filter((g) => !scheme.grades.includes(g));
+  // v2.6.7：色块已经列全键位，文字里不再重复 `1 A+ 2 A …`（1366 宽下会把提示条挤满）
+  const hint = filterNotPassed
+    ? `👁 只看未过关：${notPassedCount ?? 0} 人 / 共 ${total ?? 0} 人（编号保持原学号）`
+    : buildHint(templateId, scheme, km, meaning, pairs.length > 0);
 
   return (
     <div className="hint" role="note">

@@ -13,13 +13,20 @@ export function buildHint(
   s: ScoringScheme,
   km: KeyMap = buildGradeKeyMap(s),
   meaning: DigitMeaning = resolveDigitMeaning(undefined, s, t),
+  /**
+   * v2.6.7 体验优化：提示条左侧已经把「按键 = 等级」做成一排色块时，
+   * 文字里再列一遍 `1 A+ 2 A …` 就是同一份信息说两遍，只会把提示条挤满。
+   * 置为 true 时文字只保留「数字＝等级」，具体键位交给色块。
+   */
+  keysInChips = false,
 ): string {
+  const keysText = keysInChips ? '数字＝等级' : describeKeyMap(km);
   // 三种默认组合按 PRD FR-32.4 的原文输出（评审会逐字看提示条）
   if (t === 'dictation' && !schemeAllowsScore(s) && !schemeAllowsGrade(s)) {
     return '💡 错几：输入 0–9（0=全对）· 空格 盖章 · X 缺交 · L 请假 · G 手打过关';
   }
   if (t === 'homework' && s.kind === 'grade') {
-    return `💡 ${describeKeyMap(km)} · 空格 盖章 · X 缺交 · L 请假`;
+    return `💡 ${keysText} · 空格 盖章 · X 缺交 · L 请假`;
   }
   if (t === 'quality' && s.kind === 'score') {
     return '💡 输入分数后按【Enter】跳下一格 · F2 自定义文字 · X 缺交 · L 请假';
@@ -29,7 +36,7 @@ export function buildHint(
   // 保证「能录什么就提示什么」，且与内核实际行为一致
   const parts: string[] = [];
   if (meaning === 'grade' && schemeAllowsGrade(s)) {
-    parts.push(describeKeyMap(km));
+    parts.push(keysText);
     if (schemeAllowsScore(s)) parts.push('按 ` 切「数字＝分数」');
   }
   if (meaning === 'score' && schemeAllowsScore(s)) {

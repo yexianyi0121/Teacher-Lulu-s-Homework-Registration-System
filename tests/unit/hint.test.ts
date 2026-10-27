@@ -39,3 +39,23 @@ describe('buildHint：随方案联动（AC-42.1）', () => {
     expect(hint).not.toContain('1 A+');
   });
 });
+
+describe('v2.6.7：提示条已有键位色块时，文字不再重复列一遍', () => {
+  it('色块场景（keysInChips=true）：常规作业只写「数字＝等级」', () => {
+    const hint = buildHint('homework', makeScheme('grade', { grades: ['A+', 'A', 'A-', 'B', 'C', 'D'] }), undefined, 'grade', true);
+    expect(hint).toBe('💡 数字＝等级 · 空格 盖章 · X 缺交 · L 请假');
+    expect(hint).not.toContain('1 A+');
+  });
+
+  it('色块场景（keysInChips=true）：混合表同样只写「数字＝等级」', () => {
+    const hint = buildHint('custom', makeScheme('mixed'), undefined, 'grade', true);
+    expect(hint).toContain('数字＝等级');
+    expect(hint).toContain('按 ` 切「数字＝分数」');
+    expect(hint).not.toContain('1 A+');
+  });
+
+  it('没有色块时（默认 false）仍逐档列出，供纯文字场景使用', () => {
+    const hint = buildHint('homework', makeScheme('grade', { grades: ['A+', 'A', 'A-', 'B', 'C', 'D'] }));
+    expect(hint).toContain('1 A+');
+  });
+});
