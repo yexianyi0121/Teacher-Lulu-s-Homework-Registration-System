@@ -27,6 +27,11 @@ export function valueAllowedByScheme(v: CellValue | null | undefined, s: Scoring
   }
 }
 
+/** 「手工过关标记」（录 G / 点 ✓）在新方案下是否还允许（v2.6.4 BUG1） */
+function markAllowed(s: ScoringScheme): boolean {
+  return s.kind === 'check' || s.kind === 'mixed' || s.allowCheck;
+}
+
 export interface PruneResult {
   entries: Entries;
   /** 被清空的格子数 */
@@ -45,19 +50,23 @@ export function pruneEntries(entries: Entries, next: ScoringScheme, prev?: Scori
   let cleared = 0;
   const out: Entries = {};
   for (const [no, e] of Object.entries(entries)) {
-    if (!e || !e.value) {
+    if (!e) {
       out[no] = e;
       continue;
     }
     // 满分变了 → 所有分数值作废；其余情况（含方案类型变了）一律看「新方案还认不认这个值」
-    const allowed = valueAllowedByScheme(e.value, next);
-    const drop = maxScoreChanged ? e.value.kind === 'score' || !allowed : !allowed;
-    if (!drop) {
+    const allowed = e.value ? valueAllowedByScheme(e.value, next) : true;
+    const dropValue = !!e.value && (maxScoreChanged ? e.value.kind === 'score' || !allowed : !allowed);
+    // v2.6.4 BUG1：手工过关标记（e.pass）不在 value 里，取消「允许 ✓ 过关标记」时也要一起清，
+    // 否则格子上还挂着过关，界面既不提示也不刷新。
+    // 注意不能把「只有标记、没有值」的格子当成空格子跳过——那正是老师报的那一格。
+    const dropMark = !!e.pass && !markAllowed(next);
+    if (!dropValue && !dropMark) {
       out[no] = e;
       continue;
     }
     cleared++;
-    out[no] = { ...e, value: null };
+    out[no] = { ...e, value: dropValue ? null : e.value, pass: dropMark ? false : e.pass };
   }
   return { entries: out, cleared };
 }

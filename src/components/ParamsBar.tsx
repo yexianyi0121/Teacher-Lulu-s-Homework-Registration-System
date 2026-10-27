@@ -4,6 +4,8 @@ import { selectSheetsOfDay } from '../store/selectors';
 import { SHEET_TEMPLATES, TEMPLATE_LIST } from '../domain/constants';
 import type { SheetTemplateId } from '../domain/types';
 import { hasEntries } from '../store/initial';
+import { SCHEME_LABEL, TIER_LABEL } from '../domain/constants';
+import { passConfigOf } from '../domain/passRule';
 
 /**
  * 参数行（PRD FR-14）：登记类型 / 日期 / 作业内容 / 选择登记表。
@@ -20,8 +22,24 @@ export function ParamsBar() {
   const switchRecord = useStore((s) => s.switchRecord);
   const deleteRecord = useStore((s) => s.deleteRecord);
   const openConfirm = useStore((s) => s.openConfirm);
+  const setModal = useStore((s) => s.setModal);
   const sheets = useStore(selectSheetsOfDay).filter((s) => s.templateId === draft.templateId);
   const multi = sheets.length > 1;
+
+  // v2.6.4 优化点1：把「本表当前方案 + 过关规则」直接摆在界面上，点一下就能改
+  const cfg = passConfigOf(draft.scheme);
+  const passLabel = (() => {
+    const kind = draft.scheme.kind;
+    if (kind === 'grade') return `过关 ${cfg.gradePass.length ? cfg.gradePass.join('/') : '（未勾等级）'}`;
+    if (kind === 'score') return `${TIER_LABEL[cfg.scorePassTier === 'pass' ? 'pass' : cfg.scorePassTier === 'good' ? 'good' : 'excellent']}以上算过关`;
+    if (kind === 'mixed') {
+      const g = cfg.gradePass.length ? cfg.gradePass.join('/') : '（未勾等级）';
+      const t = cfg.scorePassTier === 'excellent' ? '优秀' : cfg.scorePassTier === 'good' ? '良好' : '及格';
+      return `等级 ${g} · 分数 ${t}以上`;
+    }
+    if (kind === 'check') return '按 ✓ 过关标记';
+    return '纯文字，不计过关';
+  })();
 
   // 输入框只是「下一张表的作业内容」，不随每敲一个字写库
   const [content, setContent] = useState(draft.content);
@@ -85,6 +103,7 @@ export function ParamsBar() {
         <span className="field-label">作业内容</span>
         <input
           type="text"
+          className="params-content"
           aria-label="作业内容"
           maxLength={20}
           placeholder="如：第3单元字词"
@@ -101,12 +120,22 @@ export function ParamsBar() {
 
       <button
         type="button"
-        className={`pill${dirty ? ' pill--primary' : ''}`}
+        className={`pill pill--create${dirty ? ' pill--primary' : ''}`}
         aria-label="新建登记"
         title="用上面的作业内容新建一张登记表（同名则直接切过去）"
         onClick={createSheet}
       >
         ＋ 新建登记
+      </button>
+
+      <button
+        type="button"
+        className="pill pill--scheme"
+        aria-label="本表方案"
+        title="查看或修改本表的方案类型与过关规则"
+        onClick={() => setModal('scheme')}
+      >
+        {SCHEME_LABEL[draft.scheme.kind]} · {passLabel}
       </button>
 
       {multi ? (

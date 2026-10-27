@@ -2,6 +2,7 @@ import type { HistoryEntry, PointLedgerEntry, RecordDoc } from './types';
 import { SHEET_TEMPLATES } from './constants';
 import { formatValue } from './grading';
 import { percentOf, tierOf } from './scoring';
+import { isPassed } from './passRule';
 import { TIER_LABEL } from './constants';
 import { round1 } from './round';
 import type { MonthStats } from './points';
@@ -133,6 +134,47 @@ export function buildSummaryCsv(args: SummaryArgs): string {
     avg === null ? '' : round1(avg),
   ];
   return csv([header, row]);
+}
+
+export interface SheetTableArgs {
+  className: string;
+  /** 选中的登记表（顺序即输出顺序） */
+  records: RecordDoc[];
+  n: number;
+  names?: Record<number, string | undefined>;
+}
+
+/**
+ * 表格导出（v2.6.4 需求1）：把选中的登记表按「一表一块」排成便于打印/存档的表格。
+ * 每块 = 表头信息（班级 / 日期 / 登记表 / 作业内容 / 评价语）+ 每生一行（学号 / 姓名 / 登记值 / 状态 / 过关 / 盖章）。
+ * 多张表之间空一行，Excel 打开即可直接打印；不引入任何新依赖，仍走 CSV（UTF-8 BOM）。
+ */
+export function buildSheetTableCsv(args: SheetTableArgs): string {
+  const { className, records, n, names } = args;
+  const rows: Array<Array<string | number | null | undefined>> = [];
+  const pretty = new Date().toLocaleString('zh-CN');
+  void pretty;
+
+  records.forEach((r, idx) => {
+    if (idx > 0) rows.push([]);
+    const tpl = SHEET_TEMPLATES[r.templateId];
+    rows.push(['班级', className]);
+    rows.push(['日期', r.date]);
+    rows.push(['登记表', tpl.name]);
+    rows.push(['作业内容', r.content || '（未命名）']);
+    if (r.comment) rows.push(['评价语', r.comment]);
+    rows.push([]);
+    rows.push(['序号', '学号', '姓名', '登记值', '状态', '是否过关', '盖章']);
+    for (let no = 1; no <= n; no++) {
+      const e = r.entries[String(no)];
+      const value = e ? formatValue(e.value, r.scheme) : '';
+      const status = e ? STATUS_LABEL[e.status] ?? '' : '';
+      const pass = e && isPassed(e, r.scheme) ? '是' : '';
+      const stamp = e?.stamp === 'corrected' ? '已更正' : e?.stamp === 'excellent' ? '优秀' : '';
+      rows.push([no, no, names?.[no] ?? '', value, status, pass, stamp]);
+    }
+  });
+  return csv(rows);
 }
 
 /** 区间聚合（供汇总表使用） */

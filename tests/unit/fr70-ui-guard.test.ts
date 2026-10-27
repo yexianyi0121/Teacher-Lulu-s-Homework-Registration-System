@@ -10,11 +10,10 @@ import { resolve } from 'node:path';
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf-8');
 
 describe('FR-70.1 → FR-72.2：过关规则区已搬到本表设置', () => {
-  it('SettingsModal 只留一个指路牌，不再自己管过关规则', () => {
+  it('SettingsModal 不再管过关规则（v2.6.4 优化5 连指路牌也删了）', () => {
     const src = read('src/components/modals/SettingsModal.tsx');
-    expect(src).toContain('pass-rule-moved');
-    expect(src).toContain('本表设置');
     expect(src).not.toContain('id="pass-kind"');
+    expect(src).not.toContain('pass-rule-moved');
   });
 
   it('SchemeModal 里同时有等级白名单与分数线两套口径', () => {

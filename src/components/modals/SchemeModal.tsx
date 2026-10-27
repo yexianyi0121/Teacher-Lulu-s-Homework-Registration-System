@@ -17,6 +17,7 @@ export function SchemeModal() {
   const resetScheme = useStore((s) => s.resetScheme);
   const applySchemePrune = useStore((s) => s.applySchemePrune);
   const entries = useStore((s) => s.draft.entries);
+  const templateId = useStore((s) => s.draft.templateId);
   const showToast = useStore((s) => s.showToast);
   const setModal = useStore((s) => s.setModal);
   const openConfirm = useStore((s) => s.openConfirm);
@@ -264,16 +265,19 @@ export function SchemeModal() {
             aria-label="请假算过关"
           />
         </label>
-        <label className="switch-row">
-          <span>听写全对自动算过关</span>
-          <input
-            type="checkbox"
-            role="switch"
-            checked={cfg.dictationAutoPass}
-            onChange={(e) => setScheme({ dictationAutoPass: e.target.checked })}
-            aria-label="听写全对自动算过关"
-          />
-        </label>
+        {/* v2.6.4 BUG2：这一项只对「听写/默写」表有意义，别的登记类型里不出现 */}
+        {templateId === 'dictation' ? (
+          <label className="switch-row">
+            <span>听写/默写全对自动算过关</span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={cfg.dictationAutoPass}
+              onChange={(e) => setScheme({ dictationAutoPass: e.target.checked })}
+              aria-label="听写/默写全对自动算过关"
+            />
+          </label>
+        ) : null}
       </div>
 
       <div className="field">

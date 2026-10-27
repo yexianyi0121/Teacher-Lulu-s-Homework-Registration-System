@@ -1,16 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore, currentClass } from '../../store';
 import { selectNames } from '../../store/selectors';
 import { COMMENT_MAX, EMOJI_CHOICES, GRADE_ORDER, SUBJECTS, DEFAULT_GRADE_EMOJI } from '../../domain/constants';
 import { THEMES } from '../../domain/theme';
 import { APP_CONTACT_EMAIL, APP_CONTACT_MAILTO, APP_NAME, APP_REPO_URL, APP_AUTHOR, APP_VERSION } from '../../domain/appInfo';
-import { formatDateCN, monthOf, stampForFile } from '../../domain/date';
-import { downloadBlob, downloadText } from '../../infra/download';
+import { formatDateCN, monthOf, stampForFile, todayISO } from '../../domain/date';
+import { buildSheetTableCsv } from '../../domain/exporter';
+import { downloadBlob, downloadCsv, downloadText, safeName } from '../../infra/download';
 import { getSnapshots, getVoiceLogs } from '../../infra/idb';
 import { exportAllBlob, importAll, markBackupDone } from '../../infra/backup';
 import { readHealth, type StorageHealth } from '../../infra/storageHealth';
 import { Modal } from '../ui/Modal';
 import { Pill, Toggle } from '../ui/controls';
+import { hasEntries } from '../../store/initial';
+import { SHEET_TEMPLATES } from '../../domain/constants';
 
 export function SettingsModal() {
   const s = useStore();
@@ -23,6 +26,51 @@ export function SettingsModal() {
   const [countError, setCountError] = useState('');
   const [health, setHealth] = useState<StorageHealth | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // v2.6.4 需求1：按登记表导出表格（打印 / 存档）。
+  // 数据来源与「选择登记表」一致：当天的 records + history，同一张表以 records 为准。
+  const [exportDate, setExportDate] = useState(todayISO());
+  const [picked, setPicked] = useState<Record<string, boolean>>({});
+  const daySheets = useMemo(() => {
+    const byKey = new Map<string, { key: string; label: string; entered: number }>();
+    for (const h of s.history) {
+      if (h.classId !== cls.id || h.date !== exportDate || !hasEntries(h.entries)) continue;
+      if (!byKey.has(h.key)) byKey.set(h.key, { key: h.key, label: '', entered: 0 });
+    }
+    for (const r of Object.values(s.records)) {
+      if (r.classId !== cls.id || r.date !== exportDate || !hasEntries(r.entries)) continue;
+      const entered = Object.values(r.entries).filter((e) => e.value !== null || e.pass || e.status !== 'normal').length;
+      byKey.set(r.key, {
+        key: r.key,
+        label: `${SHEET_TEMPLATES[r.templateId].name}${r.content ? ` · ${r.content}` : ''}`,
+        entered,
+      });
+    }
+    return [...byKey.values()].map((x) => {
+      const rec = s.records[x.key] ?? s.history.find((h) => h.key === x.key);
+      const label = x.label || (rec
+        ? `${SHEET_TEMPLATES[rec.templateId].name}${rec.content ? ` · ${rec.content}` : ''}`
+        : x.key);
+      return { ...x, label };
+    });
+  }, [s.history, s.records, cls.id, exportDate]);
+
+  const pickedCount = daySheets.filter((x) => picked[x.key]).length;
+
+  const exportSheets = () => {
+    const records = daySheets
+      .filter((x) => picked[x.key])
+      .map((x) => s.records[x.key] ?? s.history.find((h) => h.key === x.key))
+      .filter((r): r is NonNullable<typeof r> => !!r);
+    if (!records.length) {
+      s.showToast('请先勾选要导出的登记表', 'warn');
+      return;
+    }
+    const csv = buildSheetTableCsv({ className: cls.name, records, n: cls.count, names });
+    const rows = records.reduce((sum, r) => sum + Object.keys(r.entries).length, 0);
+    downloadCsv(csv, `${safeName(cls.name)}_${exportDate}_登记表${records.length > 1 ? `${records.length}张` : ''}.csv`);
+    s.showToast(`已导出 ${records.length} 张表（${rows} 条登记）`, 'ok');
+  };
 
   useEffect(() => setCountText(String(cls.count)), [cls.count]);
 
@@ -161,15 +209,62 @@ export function SettingsModal() {
         </div>
       </section>
 
-      {/* v2.6.3 问题二：过关规则已搬到「本表设置」（⋯ 更多 → ⚙️ 本表设置），
-          因为它跟方案类型强相关，放在系统设置里会让老师找不到关系。 */}
-      <section className="settings-section" data-section="pass-rule-moved">
-        <div className="settings-title">过关规则</div>
-        <div className="field-hint">
-          过关规则现在跟着「本表方案」走：打开主界面的「⋯ 更多 → ⚙️ 本表设置」，
-          在「过关规则（由方案类型决定）」里配置。等级制只看等级白名单，分数制只看分数过关线，
-          混合制两者各管各的。
+      {/* v2.6.4 需求1：按登记表导出表格（打印 / 存档用），可勾选要导出的表 */}
+      <section className="settings-section" data-section="export-sheets">
+        <div className="settings-title">导出表格（按登记表）</div>
+        <div className="field-row">
+          <div className="field">
+            <label className="field-label" htmlFor="set-export-date">日期</label>
+            <input
+              id="set-export-date"
+              type="date"
+              aria-label="导出日期"
+              value={exportDate}
+              onChange={(e) => {
+                setExportDate(e.target.value || todayISO());
+                setPicked({});
+              }}
+            />
+          </div>
+          <div className="field">
+            <span className="field-label">已选</span>
+            <div className="field-hint" style={{ paddingTop: 6 }}>
+              {pickedCount ? `已选 ${pickedCount} 张表` : '还没勾选（默认不选）'}
+            </div>
+          </div>
         </div>
+
+        {daySheets.length ? (
+          <>
+            <div className="sheet-pick-list">
+              {daySheets.map((x) => (
+                <label key={x.key} className="sheet-pick-row">
+                  <input
+                    type="checkbox"
+                    checked={!!picked[x.key]}
+                    aria-label={`导出 ${x.label}`}
+                    onChange={(e) => setPicked((p) => ({ ...p, [x.key]: e.target.checked }))}
+                  />
+                  <span className="sheet-pick-label">{x.label}</span>
+                  <span className="sheet-pick-meta">{x.entered} 人</span>
+                </label>
+              ))}
+            </div>
+            <div className="field-row" style={{ marginTop: 10 }}>
+              <Pill variant="ghost" onClick={() => setPicked(Object.fromEntries(daySheets.map((x) => [x.key, true])))}>
+                全选
+              </Pill>
+              <Pill variant="ghost" onClick={() => setPicked({})}>清空勾选</Pill>
+              <Pill variant="save" onClick={exportSheets}>📄 导出所选表格（CSV）</Pill>
+            </div>
+            <div className="field-hint">
+              每张表导出一块：班级 / 日期 / 登记表 / 作业内容 / 评价语 + 每生一行（学号 / 姓名 / 登记值 / 状态 / 是否过关 / 盖章）。
+              多张表之间空一行，Excel 双击即可打开并直接打印。
+            </div>
+          </>
+        ) : (
+          <div className="field-hint">这一天还没有已登记的表格，换个日期试试。</div>
+        )}
       </section>
 
       <section className="settings-section" data-section="display">

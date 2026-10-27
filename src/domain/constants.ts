@@ -228,7 +228,8 @@ export const STAMP_ICON: Record<Exclude<Stamp, 'none'>, string> = {
   excellent: '⭐',
 };
 
-export const SUBJECTS = ['语文', '数学', '英语', '科学', '道法', '音乐', '美术', '体育', '其他'];
+// v2.6.4 优化3：学科按初中设置（去掉小学的「道法 / 科学」，补初中常见的物理 / 化学 / 生物 / 政治 / 历史 / 地理）
+export const SUBJECTS = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理', '体育', '音乐', '信息技术', '其他'];
 
 export const MIN_STUDENTS = 1;
 export const MAX_STUDENTS = 120;

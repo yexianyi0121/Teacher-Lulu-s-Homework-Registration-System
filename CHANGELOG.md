@@ -6,6 +6,30 @@
 > **只写「做了什么、为什么、验收到什么程度」**，不贴用户操作步骤与反馈原话。
 > 每次改动的细节（根因、代码位置、验收编号）见 `docs/` 里对应的需求说明书或修复日志。
 
+## [2.6.4] - 2026-10-27
+
+### 新增 Added
+
+- 系统设置新增「导出表格（按登记表）」：按日期勾选若干张表，导出 CSV（一表一块，含班级 / 日期 / 登记表 / 作业内容 / 评价语与每生一行），便于打印与存档。
+- 主界面参数行新增「本表方案」提示，显示当前方案类型与过关规则，点击打开本表设置。
+
+### 修复 Fixed
+
+- 取消「允许 ✓ 过关标记」后，已打的手工过关标记既不提示清空也不刷新显示——`pruneEntries` 不再把「只有标记、没有值」的格子当空格子跳过。
+- 「听写全对自动算过关」改为只出现在听写 / 默写表的本表设置里，并更名为「听写/默写全对自动算过关」。
+
+### 变更 Changed
+
+- 顶栏系统名放大、换楷体、去掉标题前的花，时间与学期贴到标题右侧（窄屏退化为时分秒）。
+- 学科列表改为初中学段（物理 / 化学 / 生物 / 政治 / 历史 / 地理，去掉道法 / 科学）。
+- 作业内容输入框收窄，新建登记按钮改为实底主色，突出「先建一张表」。
+- 系统设置删除「过关规则」历史提醒。
+
+### 文档 Docs
+
+- 新增 `docs/29-修复日志-v2.6.4.md`（根因、代码位置与验收编号）。
+- 版本号升至 **2.6.4**，`dist/` 已重建。
+
 ## [2.6.3] - 2026-10-27
 
 ### 修复 Fixed
@@ -309,7 +333,8 @@ V1 基线：16 条 FR，作业/测验成绩登记、界面规格、口径、样�
 
 ---
 
-[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.3...HEAD
+[未发布]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.4...HEAD
+[2.6.4]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.3...v2.6.4
 [2.6.3]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.2...v2.6.3
 [2.6.2]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.1...v2.6.2
 [2.6.1]: https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System/compare/v2.6.0...v2.6.1

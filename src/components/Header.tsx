@@ -63,18 +63,16 @@ export function Header({ onImport, onSettings, onManual }: HeaderProps) {
 
   return (
     <header className="header">
+      {/* v2.6.4 优化2：去掉标题前的花，字号调大、换更生动的字体，时间与学期贴在标题右边 */}
       <div className="brand">
-        <span className="brand-emoji" aria-hidden="true">🌸</span>
         <span className="brand-text">学情登记分析系统</span>
-      </div>
-
-      {/* v2.6.3 改进1：当前时间（年月日时分秒）+ 当前学期 */}
-      <div className="clock-block" aria-label="当前时间">
-        <span className="clock-time">{formatClock(now)}</span>
-        <span className="clock-short">{formatClock(now).split(' ')[1]}</span>
-        <span className="clock-semester" title="按 9 月—次年 1 月为第一学期、2—8 月为第二学期推算">
-          {semesterOf()}
-        </span>
+        <div className="clock-block" aria-label="当前时间">
+          <span className="clock-time">{formatClock(now)}</span>
+          <span className="clock-short">{formatClock(now).split(' ')[1]}</span>
+          <span className="clock-semester" title="按 9 月—次年 1 月为第一学期、2—8 月为第二学期推算">
+            {semesterOf()}
+          </span>
+        </div>
       </div>
 
       <div className="header-right">

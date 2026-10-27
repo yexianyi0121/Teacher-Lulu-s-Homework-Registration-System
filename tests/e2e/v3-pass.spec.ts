@@ -83,7 +83,7 @@ test('E2E-29b 听写「全对自动过关」开关联动 ✅ / 筛选 / 汇总�
   await test.step('关掉自动过关 → 全对也算未过关，汇总图同步', async () => {
     await page.getByRole('button', { name: /本表设置/ }).click();
     const dlg = page.getByRole('dialog');
-    await dlg.getByLabel('听写全对自动算过关').click();
+    await dlg.getByLabel('听写/默写全对自动算过关').click();
     await dlg.getByRole('button', { name: '完成' }).click();
 
     await expect(page.locator('[data-no="1"]')).not.toHaveAttribute('data-badge', 'passed');

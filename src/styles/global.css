@@ -92,11 +92,20 @@ pre {
 .brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 14px;
   font-size: 20px;
   font-weight: 600;
   color: var(--text-1);
   white-space: nowrap;
+}
+
+/* v2.6.4 优化2：系统名放大了，换成楷体这类更有笔锋的字，去掉原来的花 */
+.brand-text {
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "Songti SC", serif;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  line-height: 1.1;
 }
 
 .brand-emoji {
@@ -110,16 +119,17 @@ pre {
   gap: 8px;
 }
 
-/* v2.6.3 改进1：顶栏的「当前时间 + 当前学期」 */
+/* v2.6.3 改进1：顶栏的「当前时间 + 当前学期」；v2.6.4 优化2 起横排贴在标题右侧 */
 .clock-block {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 10px;
   flex: none;
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
 }
-.clock-time { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.clock-time { font-size: 13px; font-weight: 600; color: var(--text-2); font-family: var(--font-sans); }
 .clock-semester { font-size: 12px; color: var(--text-3); }
 .clock-short { display: none; font-size: 13px; font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; }
 
@@ -132,14 +142,56 @@ pre {
   user-select: none;
 }
 
-/* v2.6.3 问题四：参数行里的「新建登记」——只有内容改过才显示为高亮主按钮 */
+/* v2.6.3 问题四：参数行里的「新建登记」——只有内容改过才显示为高亮主按钮
+   v2.6.4 优化4：改成实底 brand，第一次进来就能看出「先建一张表」 */
 .pill--primary {
   border: 1px solid var(--brand);
-  color: var(--brand);
-  background: var(--brand-soft, var(--surface));
-  font-weight: 600;
+  color: #fff;
+  background: var(--brand);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
-.pill--primary:hover:not(:disabled) { background: var(--brand-soft, var(--surface)); }
+.pill--primary:hover:not(:disabled) { background: var(--brand); filter: brightness(1.06); }
+
+/* v2.6.4 优化4：作业内容输入框收窄，参数行给「新建登记」让出视觉重心 */
+.params-content { width: 150px; }
+
+/* v2.6.4 优化点1：参数行右侧常驻「本表方案 · 过关规则」提示，点开进本表设置 */
+.pill--scheme {
+  border: 1px dashed var(--line);
+  color: var(--text-2);
+  background: var(--surface-alt);
+  font-size: 12px;
+  font-weight: 500;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pill--scheme:hover { border-color: var(--brand); color: var(--brand); }
+
+/* v2.6.4 需求1：设置里的「导出表格」勾选列表 */
+.sheet-pick-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  max-height: 180px;
+  overflow: auto;
+}
+.sheet-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 13px;
+  cursor: pointer;
+}
+.sheet-pick-row:hover { border-color: var(--brand); }
+.sheet-pick-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-pick-meta { color: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
 
 .params {
   height: 48px;
@@ -1484,6 +1536,8 @@ pre {
   .header { gap: 4px; flex-wrap: wrap; height: auto; row-gap: 4px; }
   .clock-time, .clock-semester { display: none; }
   .clock-short { display: inline; }
+  .brand { gap: 6px; }
+  .brand-text { font-size: 17px; letter-spacing: 0; }
   .header-right { gap: 4px; }
   .header-right .pill { padding: 0 6px; }
   .header .class-select { max-width: 116px; }   /* 提高特异性：压过后面的桌面基准 200px */
