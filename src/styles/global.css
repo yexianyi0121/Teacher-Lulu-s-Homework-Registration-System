@@ -2205,3 +2205,184 @@ pre {
   font-size: 13px;
   line-height: 1.6;
 }
+
+/* ---- 日期选择器增强 ---- */
+.date-picker-wrap {
+  position: relative;
+}
+
+.date-input-enhanced {
+  width: 160px;
+  padding: 6px 10px;
+  font-size: 15px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.date-input-enhanced:focus {
+  border-color: #F09B9B;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(240, 155, 155, 0.15);
+}
+
+.date-calendar-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  padding: 12px;
+  min-width: 280px;
+  animation: calFadeIn 0.15s ease;
+}
+
+@keyframes calFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.date-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.cal-month-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.cal-nav-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: #f5f5f5;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.cal-nav-btn:hover {
+  background: #F09B9B;
+  color: #fff;
+}
+
+.date-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+
+.cal-weekday {
+  font-size: 12px;
+  color: #999;
+  padding: 4px 0;
+  font-weight: 500;
+}
+
+.cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  color: #333;
+  transition: background 0.12s, color 0.12s;
+}
+
+.cal-day:hover {
+  background: #fef0f0;
+}
+
+.cal-day--empty {
+  cursor: default;
+}
+
+.cal-day--today {
+  font-weight: 700;
+  color: #e05555;
+  background: #fff5f5;
+}
+
+.cal-day--selected {
+  background: #F09B9B !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+.cal-day--has-data {
+  font-weight: 600;
+}
+
+/* 有登记数据的日期：底部小圆点 */
+.cal-day--has-data::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #F09B9B;
+}
+
+.cal-day--selected.cal-day--has-data::after {
+  background: #fff;
+}
+
+/* 悬浮提示 */
+.cal-tooltip {
+  z-index: 200;
+  background: #333;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 200px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+.cal-tooltip-date {
+  font-weight: 600;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+.cal-tooltip-item {
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-tooltip-more {
+  opacity: 0.6;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+/* 日期栏容器稍宽 */
+.params-date-field {
+  min-width: 170px;
+}

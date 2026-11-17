@@ -447,8 +447,8 @@ export function SettingsModal() {
               const hist = parsed.state.history.length;
               s.openConfirm({
                 title: '导入恢复',
-                message: `备份含 ${recs} 条记录、${hist} 条历史。导入会覆盖当前数据（导入前会自动留一份，可在设置里回退）。确定继续？`,
-                confirmText: '覆盖导入',
+                message: `备份含 ${recs} 条记录、${hist} 条历史。导入会合并到当前数据（同 key 保留较新的那份，导入前会自动留一份）。确定继续？`,
+                confirmText: '合并导入',
                 danger: true,
                 onConfirm: () => {
                   try {
@@ -456,8 +456,8 @@ export function SettingsModal() {
                   } catch {
                     // 空间不足时仍允许导入：至少还有导出的文件
                   }
-                  s.replaceState(parsed.state);
-                  s.showToast('已恢复数据（导入前的数据已留底）', 'ok');
+                  s.mergeImport(parsed.state);
+                  s.showToast('已合并导入数据（导入前的数据已留底）', 'ok');
                 },
               });
             }}

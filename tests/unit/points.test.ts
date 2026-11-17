@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { evaluatePoints, monthStats, revokePoint, dedupeKeyOf, isoWeek, pointsOf } from '../../src/domain/points';
 import { DEFAULT_RULES } from '../../src/domain/constants';
 import type { HistoryEntry, PointLedgerEntry, RecordDoc } from '../../src/domain/types';
-import { makeScheme, e, score } from '../fixtures';
+import { makeScheme, e, score, text } from '../fixtures';
 
 const scoreScheme = makeScheme('score');
 
@@ -76,12 +76,14 @@ describe('points：默认 8 条规则', () => {
   });
 
   it('连续 3 次听写全对 → 只加一次 +5（AC-26.1 / AC-26.2）', () => {
+    // 用"全对"文本值（而非 pass=true 手动过关），因为"全对" streak 只认真正的零错误。
+    // 手动过关（pass=true）不代表全对，不应触发 streak。
     const prev = [
-      hist('2026-03-12', { '1': e(null, { pass: true }) }),
-      hist('2026-03-11', { '1': e(null, { pass: true }) }),
+      hist('2026-03-12', { '1': e(text('全对')) }),
+      hist('2026-03-11', { '1': e(text('全对')) }),
     ];
     const input = {
-      entry: e(null, { pass: true }),
+      entry: e(text('全对')),
       studentNo: 1,
       record: record({ date: '2026-03-13' }),
       prevRecords: prev,

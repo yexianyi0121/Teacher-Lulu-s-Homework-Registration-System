@@ -59,15 +59,18 @@ describe('v2.5.7 回归：打开后必须落在「今天」的表上', () => {
   // 日期不是今天，老师升级后第一眼看到空表，以为数据丢了（persistence.spec 现场）。
   // 最终裁定：今天有内容 → 今天；今天没内容 → **库里最近一条有内容的记录**（看得见数据），
   // 且 draft 的 key 就是那条记录自己的 key，所以编辑不会串写到别的记录上。
-  it('磁盘上只有昨天的记录 → 打开最近那条有内容的记录（不吞数据、也不串写）', () => {
+  it('磁盘上只有昨天的记录 → 自动创建今天的新空表（日期跟着本地时间走，不显示昨天的旧内容）', () => {
     const yesterday = '2026-10-25';
+    const today = todayISO();
     const yKey = `cls_1|${yesterday}||sheet_default_homework`;
     const st = fromPersisted(persisted([rec(yesterday, { 1: gradeEntry }, 9999)]));
-    expect(st.draft?.date).toBe(yesterday);
-    // 关键不变量：draft.key 必须是它自己那条记录的 key，否则录入会写到别人身上（事故根因）
-    expect(st.draft?.key).toBe(yKey);
+    // 新行为：今天没记录 → 自动创建今天的新空表（日期跟本地时间走）
+    // 昨天的记录仍然在 records 里可以查到，但当前展示的是今天的空表
+    expect(st.draft?.date).toBe(today);
+    // 昨天的记录仍然保留在 records 里（不丢数据）
     expect(st.records?.[yKey]).toBeTruthy();
-    expect(Object.keys(st.draft?.entries ?? {})).toHaveLength(1);
+    // 今天的新表是空的（作业内容、登记均为空）
+    expect(Object.keys(st.draft?.entries ?? {})).toHaveLength(0);
   });
 
   it('磁盘上有今天的记录 → 打开就是今天那张（继续录），哪怕昨天那条更新时间更晚', () => {

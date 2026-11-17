@@ -4,6 +4,7 @@ import { selectSheetsOfDay } from '../store/selectors';
 import { SHEET_TEMPLATES, TEMPLATE_LIST } from '../domain/constants';
 import type { SheetTemplateId } from '../domain/types';
 import { hasEntries } from '../store/initial';
+import { DatePicker } from './DatePicker';
 
 /**
  * 参数行（PRD FR-14）：登记类型 / 日期 / 作业内容 / 选择登记表。
@@ -73,14 +74,9 @@ export function ParamsBar() {
         </select>
       </label>
 
-      <label className="params-field">
+      <label className="params-field params-date-field">
         <span className="field-label">日期</span>
-        <input
-          type="date"
-          aria-label="日期"
-          value={draft.date}
-          onChange={(e) => e.target.value && setDate(e.target.value)}
-        />
+        <DatePicker value={draft.date} onChange={setDate} />
       </label>
 
       <label className="params-field params-grow">

@@ -9,6 +9,7 @@ import type {
   Tier,
 } from './types';
 import { tierOf } from './scoring';
+import { classifyDictation } from './grading';
 import { isPassed } from './passRule';
 import { uid } from '../utils/id';
 
@@ -59,10 +60,33 @@ export interface EvaluateInput {
   now?: number;
 }
 
+/** 听写"全对"判定：文本为"全对/错0/满分"等，或分数等于满分（100分）。
+ *  不对 isPassed 做二次判断——"全对"比"过关"更严格。
+ *  老师手动标过关（pass=true）不纳入"全对"计数，因为那不代表零错误。 */
+function isDictationPerfect(entry: Entry, scheme: { kind: string; maxScore?: number | null }): boolean {
+  if (!entry) return false;
+  if (entry.pass) return false; // 手动过关 ≠ 全对
+  const v = entry.value;
+  if (!v) return false;
+  if (v.kind === 'text') {
+    return classifyDictation(v.text).kind === 'perfect';
+  }
+  if (v.kind === 'score' && scheme.maxScore !== null && scheme.maxScore !== undefined) {
+    return v.score === scheme.maxScore;
+  }
+  // 等级值（如 A+）不能等价"全对"
+  return false;
+}
+
 function streakHit(input: EvaluateInput, times: number, templateId: SheetTemplateId): boolean {
   const { record, studentNo, prevRecords } = input;
   if (record.templateId !== templateId) return false;
-  if (!isPassed(input.entry, record.scheme)) return false;
+  // dictation 模板的 streak（如"连续3次全对"）必须用"全对"判定，
+  // 而非泛化的 isPassed——后者在混合制/分数制下会把 95 分也算成"全对"。
+  const currentOk = templateId === 'dictation'
+    ? isDictationPerfect(input.entry, record.scheme)
+    : isPassed(input.entry, record.scheme);
+  if (!currentOk) return false;
 
   const prev = prevRecords
     .filter((h) => h.templateId === templateId && h.date < record.date)
@@ -73,7 +97,8 @@ function streakHit(input: EvaluateInput, times: number, templateId: SheetTemplat
   return prev.every((h) => {
     const e = h.entries[String(studentNo)];
     if (!e) return false;
-    // 用历史记录自己的方案判定（方案是快照，§16-7）
+    // dictation 模板：历史记录也用"全对"判定
+    if (templateId === 'dictation') return isDictationPerfect(e, h.scheme);
     return isPassed(e, h.scheme);
   });
 }

@@ -96,6 +96,7 @@ export function cellsOf(
       status: e?.status ?? 'normal',
       pass: e?.pass ?? false,
       makeup: !!e?.makeup,
+      keptValue: d.keptValue,
     });
   }
   return out;

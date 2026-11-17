@@ -48,8 +48,11 @@ export function normalizeEntry(e: Entry, scheme: ScoringScheme): Entry {
     return next;
   }
   if (next.pass) {
-    // 过关是布尔位，不合成值（PRD FR-21-2：pass=true 时值清空）
-    next.value = null;
+    // v2.6.8 修复：手打过关不再清掉已登记的值。
+    // 老师按 G 表示「这格算过关」，但「错22」「A」这类记录本身要留着——
+    // 事后还得看得出他当时错了几处。value 保留给 keptValue 渲染用。
+    // 原逻辑「pass=true 时值清空」已废弃。
+    next.status = 'normal';
     return next;
   }
   next.status = 'normal';
@@ -250,7 +253,7 @@ export function createEntrySlice(set: StoreSet, get: StoreGet): EntrySlice {
         let next: Entry = { ...prev };
 
         if (c.status) next = { ...next, status: c.status, value: null, pass: false };
-        if (c.pass !== undefined) next = { ...next, pass: c.pass, value: c.pass ? null : next.value, status: 'normal' };
+        if (c.pass !== undefined) next = { ...next, pass: c.pass, status: 'normal' };
         if (c.value) next = { ...next, value: { ...c.value }, status: 'normal', pass: false };
         if (c.stamp) next = { ...next, stamp: c.stamp };
         if (c.makeup) next = { ...next, makeup: { at: now, note: '语音标记' }, status: next.status === 'missing' ? 'normal' : next.status };

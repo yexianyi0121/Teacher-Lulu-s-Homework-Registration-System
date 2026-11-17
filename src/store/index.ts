@@ -32,27 +32,16 @@ export function fromPersisted(state: PersistedStateV4): Partial<AppState> {
   for (const r of state.records) records[r.key] = { ...r, scheme: normalizeScheme(r.scheme, legacy) };
   const history = state.history.map((h) => ({ ...h, scheme: normalizeScheme(h.scheme, legacy) }));
 
-  // ⚠️ 「打开后该显示哪张表」（v2.5.7 两次修正，别改回去）：
-  //
-  // 旧实现取 updatedAt 最大的记录当 draft → 昨天录完关掉，今天打开看到的还是**昨天那张表**，
-  // 老师以为是新表照录，今天的成绩全写进昨天那条记录，把昨天的数据覆盖掉（事故根因）。
-  //
-  // 第一版修法「只认今天、否则新建空表」又踩了另一边：v1 迁移上来的老数据
-  // 日期不是今天，于是老师升级后打开第一眼看到空表，以为数据丢了（persistence 用例现场）。
-  //
-  // 现在取**今天有内容 → 今天；否则库里最近的记录**（让迁移/回看场景看得到数据）。
-  // 关键是：draft 只是**指向**那条记录做展示，老师一按键编辑，entrySlice 会写 draft.entries，
-  // 而此时 draft 的 key 就是那条记录自身的 key —— 所以不存在「写到别人记录上」的问题；
-  // 真正要避免的是「把旧表当成今天的新表静默继续录」，那由下面的 switchRecord/新表按钮保证。
+  // 「打开后该显示哪张表」：
+  // 新的一天 → 自动创建新的空登记表，日期跟随本地时间。
+  // 今天有记录 → 显示今天最新那条；今天没有 → 新建空表。
+  // 这样每天打开都是干净的，不会把昨天的内容误当成今天的继续录。
   const today = todayISO();
   const ofClass = Object.values(records).filter((r) => r.classId === activeClassId);
   const todayRec = ofClass
-    .filter((r) => r.date === today)
+    .filter((r) => r.date === today && hasEntries(r.entries))
     .sort((a, b) => b.updatedAt - a.updatedAt)[0];
-  const latestWithData = ofClass
-    .filter((r) => hasEntries(r.entries))
-    .sort((a, b) => b.updatedAt - a.updatedAt)[0];
-  const draft = todayRec ?? latestWithData ?? createRecord({ classId: activeClassId, templateId: 'homework' });
+  const draft = todayRec ?? createRecord({ classId: activeClassId, templateId: 'homework', date: today });
   records[draft.key] = draft;
 
   return {
@@ -147,7 +136,85 @@ export const useStore = create<AppState>()((set, get) => ({
     };
   },
 
-  replaceState(next) {
+  
+  /** 
+   * 合并导入（而非覆盖）：导入的 records/history 按 key 合并，
+   * 同 key 保留更新时间更晚的那份；当前独有的记录保留。
+   * 班级、积分规则、账本、设置以导入的为准。
+   */
+  mergeImport(next: PersistedStateV4) {
+    const s = get();
+    
+    // 合并 records：导入的覆盖同 key，保留当前独有的
+    const mergedRecords: Record<string, RecordDoc> = { ...s.records };
+    for (const r of next.records) {
+      const existing = mergedRecords[r.key];
+      if (!existing || r.updatedAt >= existing.updatedAt) {
+        mergedRecords[r.key] = r;
+      }
+    }
+    
+    // 合并 history：导入的覆盖同 key，保留当前独有的
+    const existingHistoryKeys = new Set(s.history.map((h) => h.key));
+    const mergedHistory = [...s.history];
+    for (const h of next.history) {
+      if (!existingHistoryKeys.has(h.key)) {
+        mergedHistory.push(h);
+      }
+    }
+    
+    // 去重并排序
+    const historyMap = new Map<string, typeof next.history[number]>();
+    for (const h of mergedHistory) {
+      const existing = historyMap.get(h.key);
+      if (!existing || h.savedAt >= existing.savedAt) {
+        historyMap.set(h.key, h);
+      }
+    }
+    const sortedHistory = [...historyMap.values()].sort((a, b) => b.savedAt - a.savedAt).slice(0, 200);
+    
+    const merged: PersistedStateV4 = {
+      ...next,
+      records: Object.values(mergedRecords),
+      history: sortedHistory,
+    };
+    
+    // 预导入快照
+    try {
+      localStorage.setItem(`xq.preimport.${Date.now()}`, JSON.stringify(s.exportState()));
+    } catch { /* 空间不足时仍允许导入 */ }
+    
+    set({
+      ...fromPersisted(merged),
+      history: merged.history,
+      pointRules: merged.pointRules,
+      pointLedger: merged.pointLedger,
+      settings: merged.settings,
+      focusedNo: 1,
+      selection: new Set<number>(),
+      selectionAnchor: null,
+      editing: null,
+      buffer: null,
+      undoStack: [],
+      redoStack: [],
+      filterNotPassed: false,
+      readOnly: false,
+      readOnlyReason: null,
+      blockedOverwrite: false,
+      modal: null,
+      confirmRequest: null,
+    });
+    
+    const importedRecs = next.records.length;
+    const importedHist = next.history.length;
+    const keptRecs = Object.keys(mergedRecords).length;
+    const keptHist = sortedHistory.length;
+    get().showToast(
+      `已合并导入：${importedRecs} 条记录 + ${importedHist} 条历史 → 合并后共 ${keptRecs} 条记录 + ${keptHist} 条历史`,
+      'ok',
+    );
+  },
+replaceState(next) {
     set({
       ...fromPersisted(next),
       history: next.history,

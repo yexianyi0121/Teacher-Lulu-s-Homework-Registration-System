@@ -218,6 +218,8 @@ export interface AppState {
   clearHistory: () => void;
   exportState: () => PersistedStateV4;
   replaceState: (next: PersistedStateV4) => void;
+  /** 合并导入：records/history 按 key 合并，同 key 保留较新的那份 */
+  mergeImport: (next: PersistedStateV4) => void;
   resetAll: () => void;
 }
 

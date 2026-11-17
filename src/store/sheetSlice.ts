@@ -155,7 +155,17 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
       const s = get();
       const rec = s.draft;
       const scheme = { ...rec.scheme, ...patch, grades: patch.grades ? [...patch.grades] : rec.scheme.grades };
-      const updated = { ...rec, scheme, updatedAt: Date.now() };
+      // 方案类型改变时，若当前数字键模式不再兼容，自动重置为 auto
+      // 例如：混合制下设为"数字＝分数"，切到等级制后应自动回到 auto（数字＝等级）
+      let digitKey = rec.digitKey;
+      if (patch.kind && patch.kind !== rec.scheme.kind) {
+        if (patch.kind === 'grade' && digitKey === 'score') {
+          digitKey = 'auto';
+        } else if (patch.kind === 'check' && digitKey === 'score') {
+          digitKey = 'auto';
+        }
+      }
+      const updated = { ...rec, scheme, digitKey, updatedAt: Date.now() };
       set({ records: { ...s.records, [rec.key]: updated }, draft: updated });
     },
 
