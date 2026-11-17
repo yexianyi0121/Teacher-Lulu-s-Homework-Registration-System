@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore, currentClass } from '../store';
 import { matchStudents } from '../domain/search';
 import { formatClock, semesterOf } from '../domain/date';
+import { APP_NAME } from '../domain/appInfo';
 import { IconButton } from './ui/controls';
 
 export interface HeaderProps {
@@ -65,7 +66,7 @@ export function Header({ onImport, onSettings, onManual }: HeaderProps) {
     <header className="header">
       {/* v2.6.4 优化2：去掉标题前的花，字号调大、换更生动的字体，时间与学期贴在标题右边 */}
       <div className="brand">
-        <span className="brand-text">学情登记分析系统</span>
+        <span className="brand-text">{APP_NAME}</span>
         <div className="clock-block" aria-label="当前时间">
           <span className="clock-time">{formatClock(now)}</span>
           <span className="clock-short">{formatClock(now).split(' ')[1]}</span>

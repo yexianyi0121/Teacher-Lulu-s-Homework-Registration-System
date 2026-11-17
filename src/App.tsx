@@ -4,7 +4,7 @@ import { useStore } from './store';
 import { hasEntries } from './store/initial';
 import { selectSheetsOfDay, selectStats, selectVisibleNos } from './store/selectors';
 import { SHEET_TEMPLATES, SCHEME_LABEL } from './domain/constants';
-import { APP_VERSION } from './domain/appInfo';
+import { APP_NAME, APP_VERSION } from './domain/appInfo';
 import { addDaysISO, todayISO, weekStartOf } from './domain/date';
 import type { PosterTarget } from './domain/types';
 import { useInputEngine } from './hooks/useInputEngine';
@@ -407,7 +407,7 @@ export function App() {
         <Grid />
         {/* v2.6.3 改进1：界面最下方的版本号（发版时由 APP_VERSION 带出来） */}
         <footer className="app-footer" aria-label="版本信息">
-          🌸 学情登记分析系统 · v{APP_VERSION}
+          🌸 {APP_NAME} · v{APP_VERSION}
         </footer>
       </div>
 

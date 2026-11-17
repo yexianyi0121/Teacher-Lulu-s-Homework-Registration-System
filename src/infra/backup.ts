@@ -2,6 +2,7 @@ import type { PersistedStateV4 } from '../domain/types';
 import { ENV_MARK_KEY } from '../domain/constants';
 import { isV1State, isV2State, isV3State, isV4State, migrate } from '../domain/migrate';
 import { validateState } from './storage';
+import { APP_NAME } from '../domain/appInfo';
 
 /**
  * 数据导出 / 导入 / 环境指纹（设计 06 §3.8 / FR-44）。
@@ -9,7 +10,7 @@ import { validateState } from './storage';
  */
 
 export interface BackupEnvelope {
-  app: '学情登记分析系统';
+  app: string;
   version: number;
   exportedAt: string;
   state: PersistedStateV4;
@@ -23,7 +24,7 @@ export interface EnvMark {
 
 export function exportAllBlob(s: PersistedStateV4): Blob {
   const env: BackupEnvelope = {
-    app: '学情登记分析系统',
+    app: APP_NAME,
     version: s.version,
     exportedAt: new Date().toISOString(),
     state: s,
@@ -71,7 +72,7 @@ export function importAll(text: string): ImportResult {
  */
 export function exportRawBackup(raw: string): Blob {
   const envelope = {
-    app: '学情登记分析系统',
+    app: APP_NAME,
     kind: 'RAW_UNRECOVERABLE',
     exportedAt: new Date().toISOString(),
     note: '这是无法解析的原始存储内容，不是可用备份。保留它是为了以后能尝试修复。',

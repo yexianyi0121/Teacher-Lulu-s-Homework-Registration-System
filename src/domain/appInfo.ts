@@ -9,10 +9,10 @@
  */
 
 /** 系统显示名（海报页眉 / 设置关于共用） */
-export const APP_NAME = '学情登记分析系统';
+export const APP_NAME = '学情登记管理系统';
 
 /** 产品版本，与 package.json version 同步 */
-export const APP_VERSION = '2.6.8';
+export const APP_VERSION = '2.6.9';
 
 /** 作者 GitHub 账号（仓库 owner） */
 export const APP_AUTHOR = 'yexianyi0121';
