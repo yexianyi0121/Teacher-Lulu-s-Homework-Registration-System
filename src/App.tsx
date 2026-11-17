@@ -9,6 +9,7 @@ import { addDaysISO, todayISO, weekStartOf } from './domain/date';
 import type { PosterTarget } from './domain/types';
 import { useInputEngine } from './hooks/useInputEngine';
 import { useAutoSave } from './hooks/useAutoSave';
+import { useDayRollover } from './hooks/useDayRollover';
 import { useVoice } from './hooks/useVoice';
 import { rasterizeWithRetry } from './infra/rasterize';
 import { exportAllBlob, exportRawBackup, markBackupDone, readRawStateText } from './infra/backup';
@@ -68,6 +69,7 @@ function hasAnyThisWeek(st: ReturnType<typeof useStore.getState>, weekStart: str
 export function App() {
   useInputEngine();
   useAutoSave();
+  useDayRollover();
   const { toggle: toggleVoice, listening, supported } = useVoice();
 
   const draft = useStore((s) => s.draft);
