@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { capturePosterText, closeJump, closeModal, pickTemplate, resetApp, typeCell } from './v3-fixtures';
+import { capturePosterText, closeJump, closeModal, pickTemplate, resetApp, typeCell, createSheet, selectSheet } from './v3-fixtures';
 
 /**
  * FR-66.1 / FR-67.1 / FR-69.1（v2.5.10）：
@@ -18,24 +18,22 @@ test('FR-66.1 同类型多张表：主屏「选择登记表」可切换，切过
   await pickTemplate(page, 'homework');
 
   // 第一张表：内容「默写」录 1 号
-  await page.getByLabel('作业内容').fill('默写');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
   await typeCell(page, 1, ['1']);
   await expect(page.locator('[data-no="1"]')).toContainText('A+');
 
   // 第二张表：内容「作文」录 2 号
-  await page.getByLabel('作业内容').fill('作文');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '作文');
   await typeCell(page, 2, ['2']);
   await expect(page.locator('[data-no="2"]')).toContainText('A');
 
   // 回到「默写」：1 号的 A+ 还在
-  await page.getByLabel('选择登记表').selectOption({ label: '默写 · 1 人' });
+  await selectSheet(page, '默写 · 1 人');
   await expect(page.locator('[data-no="1"]')).toContainText('A+');
   await expect(page.locator('[data-no="2"]')).not.toContainText('A');
 
   // 切到「作文」：2 号的 A 还在
-  await page.getByLabel('选择登记表').selectOption({ label: '作文 · 1 人' });
+  await selectSheet(page, '作文 · 1 人');
   await expect(page.locator('[data-no="2"]')).toContainText('A');
   await expect(page.locator('[data-no="1"]')).not.toContainText('A+');
 });
@@ -49,8 +47,7 @@ test('FR-76.4 建好第一张表后「选择登记表」就常驻（不再等第
   await expect(page.getByLabel('选择登记表')).toBeVisible();
 
   // 再建一张表：选择器给出两个选项
-  await page.getByLabel('作业内容').fill('默写');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
   await typeCell(page, 1, ['1']);
   await expect(page.getByLabel('选择登记表')).toBeVisible();
   const opts = await page.getByLabel('选择登记表').locator('option').evaluateAll((os) => os.map((o) => (o.textContent ?? '').trim()));
@@ -63,12 +60,9 @@ test('FR-66.2 汇总里每张表各写各的评价语（A-144）', async ({ page
   await closeJump(page);
   await pickTemplate(page, 'homework');
 
-  await page.getByLabel('作业内容').fill('默写');
-
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
   await typeCell(page, 1, ['1']);
-  await page.getByLabel('作业内容').fill('作文');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '作文');
   await typeCell(page, 2, ['2']);
 
   await page.locator('.output-bar button[aria-label="当日汇总"]').click();
@@ -96,7 +90,7 @@ test('FR-66.2 汇总里每张表各写各的评价语（A-144）', async ({ page
   await closeModal(page);
 
   // 单张海报（只含这张表）上也能看到这条评价语
-  await page.getByLabel('选择登记表').selectOption({ label: '默写 · 1 人' });
+  await selectSheet(page, '默写 · 1 人');
   const singleText = await capturePosterText(page, () => page.locator('.output-bar button[aria-label="单条海报"]').click());
   expect(singleText).toContain('默写全对的同学请继续保持。');
 });
@@ -110,8 +104,7 @@ test('FR-76.5 三张表各写各的评价语，重新生成后不重复（A-177�
   const contents = ['默写', '作文', '第2单元'];
   const comments = ['默写全对的同学请继续保持。', '作文结构清晰，值得表扬。', '第2单元的生字要再巩固。'];
   for (let i = 0; i < contents.length; i += 1) {
-    await page.getByLabel('作业内容').fill(contents[i]);
-    await page.getByLabel('新建登记').click();
+    await createSheet(page, contents[i]);
     await typeCell(page, i + 1, ['1']);
   }
 
@@ -138,8 +131,7 @@ test('FR-67.1 等级格的表情不再压住等级，汇总格也显示表情（
   await resetApp(page);
   await closeJump(page);
   await pickTemplate(page, 'homework');
-  await page.getByLabel('作业内容').fill('默写');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
 
   // 开表情：⋯ 更多 → ⚙️ 设置 → 「等级旁显示表情」（默认开，这里显式确认）
   await page.locator('.input-bar button[aria-label="更多"]').click();
@@ -238,35 +230,28 @@ test('FR-68.1 提示条把启用等级的键位做成色块，B- 也能一眼看
   expect(clipped).toBe(false);
 });
 
-test('FR-71.1 作业内容随手打字不建表，点「新建登记」才建（A-148）', async ({ page }) => {
+test('FR-71.1 作业内容框只读；点「新建登记」弹窗输入名称才建表（A-148）', async ({ page }) => {
   await resetApp(page);
   await closeJump(page);
   await pickTemplate(page, 'homework');
 
-  // 第一张表：输入内容 + 新建登记，才有了一张真正的表
-  await page.getByLabel('作业内容').fill('默写');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
   await typeCell(page, 1, ['1']);
   await expect(page.locator('[data-no="1"]')).toContainText('A+');
 
-  // 在作业内容里随手打字：不点「新建登记」就不会多出任何表/选项
-  await page.getByLabel('作业内容').fill('默写1');
-  await page.getByLabel('作业内容').fill('默写12');
-  await page.getByLabel('作业内容').fill('默写1');
-  await expect(page.getByLabel('选择登记表')).toBeVisible();           // 常驻（v2.6.5 需求5）
-  expect(await page.getByLabel('选择登记表').locator('option').count()).toBe(1); // 仍只有一张表
-  await expect(page.locator('[data-no="1"]')).toContainText('A+');     // 当前表没被切走
+  // 作业内容框只读：不能像以前那样直接改字
+  const box = page.getByLabel('作业内容');
+  await expect(box).toHaveValue('默写');
+  await expect(box).toHaveAttribute('readonly', '');
 
-  // 点「新建登记」才真的多一张表，并且落到新表上（干净的空表）
-  await page.getByLabel('新建登记').click();
-  await expect(page.getByLabel('选择登记表')).toBeVisible();
+  // 再建一张：弹窗输入名称 → 确定
+  await createSheet(page, '默写1');
   const opts = await page.getByLabel('选择登记表').locator('option').evaluateAll((os) => os.map((o) => (o.textContent ?? '').trim()));
   expect(opts.length).toBe(2);
-  expect(opts).toContain('默写 · 1 人');
   expect(opts.some((o) => o.startsWith('默写1'))).toBe(true);
 
   // 回到真正录过的表，数据还在
-  await page.getByLabel('选择登记表').selectOption({ label: '默写 · 1 人' });
+  await selectSheet(page, '默写 · 1 人');
   await expect(page.locator('[data-no="1"]')).toContainText('A+');
 });
 
@@ -275,12 +260,9 @@ test('FR-71.2 删除整张登记表：确认后从选择器与汇总里消失（
   await closeJump(page);
   await pickTemplate(page, 'homework');
 
-  await page.getByLabel('作业内容').fill('默写');
-
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
   await typeCell(page, 1, ['1']);
-  await page.getByLabel('作业内容').fill('作文');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '作文');
   await typeCell(page, 2, ['2']);
   await expect(page.getByLabel('选择登记表')).toBeVisible();
 
@@ -334,12 +316,9 @@ test('FR-71.4 汇总里每张表的评价语可以独立删除（A-151）', asyn
   await closeJump(page);
   await pickTemplate(page, 'homework');
 
-  await page.getByLabel('作业内容').fill('默写');
-
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
   await typeCell(page, 1, ['1']);
-  await page.getByLabel('作业内容').fill('作文');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '作文');
   await typeCell(page, 2, ['2']);
 
   await page.locator('.output-bar button[aria-label="当日汇总"]').click();

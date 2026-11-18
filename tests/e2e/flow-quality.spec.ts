@@ -1,20 +1,18 @@
 import { expect, test } from '@playwright/test';
+import { createSheet } from './v3-fixtures';
 
 test('flow-quality：混合方案下打分数与等级，统计按百分比', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
   // v2.6.3 FR-73.4：作业内容是登记前提
-  await page.getByLabel('作业内容').fill('默写');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
 
   // 自定义模板 = 混合方案（默认满分 100）
   await page.getByLabel('登记类型').selectOption('custom');
   await page.getByLabel('日期').fill('2026-03-13');
-  await page.getByLabel('作业内容').fill('第3单元');
-  await page.getByLabel('新建登记').click();
-  await page.getByLabel('作业内容').blur();
+  await createSheet(page, '第3单元');
 
   await page.getByLabel('秒跳开关').click(); // 先关秒跳，逐格录
 
@@ -48,12 +46,12 @@ test('flow-quality：满分 120 的表按百分比判定（73 分及格 / 71 分
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
   // v2.6.3 FR-73.4：作业内容是登记前提
-  await page.getByLabel('作业内容').fill('默写');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
 
   await page.getByLabel('登记类型').selectOption('custom');
+  await createSheet(page, '自定义');
   await page.getByRole('button', { name: /本表设置/ }).click();
   await page.getByLabel('满分（1–200）').fill('120');
   await page.getByLabel('满分（1–200）').blur();
@@ -79,12 +77,12 @@ test('flow-quality：质量监测模板出现统计条，且标签随阈值变�
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
   // v2.6.3 FR-73.4：作业内容是登记前提
-  await page.getByLabel('作业内容').fill('默写');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
 
   await page.getByLabel('登记类型').selectOption('quality');
+  await createSheet(page, '质量监测');
   // V4 FR-49.6：统计条默认收起（高度预算），点一下展开全部 12 项
   await expect(page.locator('.stats--collapsed')).toContainText('本次统计');
   await page.locator('.stats--collapsed').click();

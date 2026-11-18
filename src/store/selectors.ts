@@ -13,6 +13,7 @@ import { buildPosterModel, buildSummaryModel, type PosterDisplayOptions } from '
 import { buildWeekModel } from '../domain/posterWeek';
 import { snapshotDay, hasContent } from '../domain/summary';
 import { isPassed } from '../domain/passRule';
+import { schemeAllowsGrade, schemeAllowsScore } from '../domain/scoring';
 import { weekStartOf } from '../domain/date';
 import type { DigitKeyMode } from '../domain/digitKey';
 import type { AppState } from './store-types';
@@ -26,7 +27,13 @@ const countOf = (s: AppState) => currentClass(s)?.count ?? 0;
  * 内核（useInputEngine）与 UI（HintBar chip）都只能从这里取，保证两处永远一致。
  */
 export function selectDigitKeyMode(s: AppState): DigitKeyMode {
-  return s.draft.digitKey ?? s.settings.digitKey ?? 'auto';
+  const mode = s.draft.digitKey ?? s.settings.digitKey ?? 'auto';
+  const scheme = s.draft.scheme;
+  // 防御：全局默认可能残留别的表的「数字＝分数」；本表方案若不允许分数/等级，
+  // 就回到 auto，否则等级制按数字会被误判成「本表不接受分数」。
+  if (mode === 'score' && !schemeAllowsScore(scheme)) return 'auto';
+  if (mode === 'grade' && !schemeAllowsGrade(scheme)) return 'auto';
+  return mode;
 }
 
 /** 展示选项（两套色系 / 表情 / 过关规则）—— 所有渲染入口共用 */
@@ -175,6 +182,16 @@ export function selectSheetsOfDay(s: AppState) {
   return [...seen.values()];
 }
 
+/** 当前班级 / 日期 / 登记类型下是否已经存在一张「真正的表」（有名称或有录入） */
+export function selectCurrentTemplateHasSheet(s: AppState): boolean {
+  const hit = (r: { classId: string; date: string; templateId: string; content: string; entries: Entries }) =>
+    r.classId === s.activeClassId
+    && r.date === s.draft.date
+    && r.templateId === s.draft.templateId
+    && (r.content.trim() !== '' || hasEntries(r.entries));
+  if (hit(s.draft)) return true;
+  return Object.values(s.records).some(hit) || s.history.some(hit);
+}
 /** 当日汇总（含已固化历史；空表不进图） */
 export function selectSummary(s: AppState) {
   const cls = currentClass(s);

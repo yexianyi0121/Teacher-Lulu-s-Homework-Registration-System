@@ -95,21 +95,21 @@ test('E2E-24 数据健康：面板数字真实，导出 JSON 可再导入', asyn
       ]);
       await download.saveAs(file);
       const json = JSON.parse(readFileSync(file, 'utf8'));
-      expect(json.app).toBe('学情登记分析系统');
+      expect(json.app).toBe('学情登记管理系统');
       expect(json.version).toBe(4);
       expect(json.state.records.length).toBe(1);
       expect(json.state.classes[0].name).toBe('三年二班');
     });
 
-    await test.step('再录一格 → 用备份覆盖导入 → 第 3 格回到空', async () => {
+    await test.step('再录一格 → 合并导入备份 → 两份数据都在', async () => {
       await page.getByRole('dialog').getByRole('button', { name: '完成' }).click();
       await page.locator('[data-no="3"]').click();
       await page.keyboard.press('2');
       await expect(page.locator('[data-no="3"]')).toContainText('A');
       await page.getByTitle('设置').click();
       await page.locator('input[type="file"][aria-label="选择备份文件"]').setInputFiles(file);
-      await page.getByRole('button', { name: '覆盖导入' }).click();
-      await expect(page.locator('[data-no="3"]')).not.toContainText('A');
+      await page.getByRole('button', { name: '合并导入' }).click();
+      await expect(page.locator('[data-no="3"]')).toContainText('A');
       await expect(page.locator('[data-no="1"]')).toContainText('A');
     });
   } finally {
@@ -167,7 +167,7 @@ test('E2E-25 损坏自愈：主存写坏 → 从快照恢复并把坏数据另�
         localStorage.setItem('xq.state.v4', '{broken json');
       });
       await np.goto(BASE);
-      await np.waitForSelector('.cell');
+      await np.waitForSelector('.cell, .empty-cta');
       return np;
     })();
 

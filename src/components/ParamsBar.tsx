@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { selectSheetsOfDay } from '../store/selectors';
 import { SHEET_TEMPLATES, TEMPLATE_LIST } from '../domain/constants';
@@ -8,40 +7,37 @@ import { DatePicker } from './DatePicker';
 import { useGuardedSwitch } from '../hooks/useGuardedSwitch';
 
 /**
- * 参数行（PRD FR-14）：登记类型 / 日期 / 作业内容 / 选择登记表。
- * v2.5.10 用户反馈：同一天同一类型可以有多张表（作业内容不同），补了选择器。
- * v2.6.3 用户反馈（问题四）：以前在「作业内容」里每敲一个字就 switchRecord 建一张表，
- * 列表里凭空多出一堆删不完的表。现在作业内容只是**待新建**的名称，点「新建登记」才建表；
- * 想改已登记表的名称，先选中那张表再改这里的名字（改名 = 新建 + 删旧，不在本轮范围）。
+ * 参数行：登记类型 / 日期 / 作业内容 / 新建登记 / 修改表名 / 选择登记表。
+ *
+ * 作业内容框只读展示「当前这张表的名字」：
+ *   - 新建：点「＋ 新建登记」→ 弹窗输入作业内容 → 确定后建表并显示；
+ *   - 改名：点「✏️ 修改表名」→ 原地改名，保留已录数据；
+ *   - 没有表时，输入框为空且不可输入，也不显示改名按钮。
  */
 export function ParamsBar() {
   const draft = useStore((s) => s.draft);
   const switchTemplate = useStore((s) => s.switchTemplate);
   const setDate = useStore((s) => s.setDate);
-  const newSheet = useStore((s) => s.newSheet);
   const switchRecord = useStore((s) => s.switchRecord);
   const deleteRecord = useStore((s) => s.deleteRecord);
   const openConfirm = useStore((s) => s.openConfirm);
+  const openSheetDialog = useStore((s) => s.openSheetDialog);
   const guarded = useGuardedSwitch();
-  const sheets = useStore(selectSheetsOfDay).filter((s) => s.templateId === draft.templateId);
-  // v2.6.5 需求5：选择登记表**常驻**——建出第一张表就能在这里看到/切回，
-  // 不再等第二张表出现才冒出来（以前只有 multi 时才渲染，老师找不到入口）。
-  const showPicker = sheets.length > 0;
 
-  // 输入框只是「下一张表的作业内容」，不随每敲一个字写库
-  const [content, setContent] = useState(draft.content);
-  useEffect(() => {
-    setContent(draft.content);
-  }, [draft.key, draft.content]);
+  // 只把「真正的表」放进选择器：空的占位草稿不算
+  const sheets = useStore(selectSheetsOfDay).filter(
+    (s) => s.templateId === draft.templateId && (s.content.trim() !== '' || s.entered > 0),
+  );
+  const showPicker = sheets.length > 0;
+  const hasSheet = draft.content.trim() !== '' || hasEntries(draft.entries);
 
   const pickSheet = (key: string) => {
     const hit = sheets.find((s) => s.key === key);
     if (!hit || hit.key === draft.key) return;
-    // 作业内容就是同模板多张表的区分点（sheetId 相同），带上它才能落回原记录
     guarded(() => switchRecord({ content: hit.content, sheetId: hit.sheetId, templateId: hit.templateId as SheetTemplateId }), '切换登记表');
   };
 
-  /** v2.6.2 FR-71.2：删除当前这张表（常见于作业内容随手打字打出来的空表） */
+  /** 删除当前这张表 */
   const deleteCurrentSheet = () => {
     const st = useStore.getState();
     const rec = st.records[st.draft.key] ?? st.draft;
@@ -54,9 +50,6 @@ export function ParamsBar() {
       onConfirm: () => deleteRecord(st.draft.key),
     });
   };
-
-  const createSheet = () => guarded(() => newSheet(content), '新建登记');
-  const dirty = content.trim() !== draft.content;
 
   return (
     <div className="params">
@@ -85,30 +78,37 @@ export function ParamsBar() {
         <span className="field-label">作业内容</span>
         <input
           type="text"
-          className="params-content"
+          className="params-content params-content--readonly"
           aria-label="作业内容"
-          maxLength={20}
-          placeholder="如：第3单元字词"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              createSheet();
-            }
-          }}
+          readOnly
+          value={draft.content}
+          placeholder="点「＋ 新建登记」创建"
+          title="作业内容在新建登记时填写；建好后可点「修改表名」"
+          onChange={() => undefined}
         />
       </label>
 
       <button
         type="button"
-        className={`pill pill--create${dirty ? ' pill--primary' : ''}`}
+        className="pill pill--create pill--primary"
         aria-label="新建登记"
-        title="用上面的作业内容新建一张登记表（同名则直接切过去）"
-        onClick={createSheet}
+        title="新建一张登记表：先输入作业内容，再开始登记"
+        onClick={() => guarded(() => openSheetDialog('create'), '新建登记')}
       >
         ＋ 新建登记
       </button>
+
+      {hasSheet ? (
+        <button
+          type="button"
+          className="pill pill--ghost"
+          aria-label="修改表名"
+          title="修改当前登记表的作业内容（保留已录数据）"
+          onClick={() => openSheetDialog('rename')}
+        >
+          ✏️ 修改表名
+        </button>
+      ) : null}
 
       {showPicker ? (
         <label className="params-field">
@@ -128,7 +128,7 @@ export function ParamsBar() {
         </label>
       ) : null}
 
-      {sheets.length > 1 || hasEntries(draft.entries) ? (
+      {hasSheet ? (
         <button
           type="button"
           className="pill pill--ghost pill--danger"

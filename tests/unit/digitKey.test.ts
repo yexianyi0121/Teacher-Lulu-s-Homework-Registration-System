@@ -10,6 +10,7 @@ import {
 } from '../../src/domain/digitKey';
 import { makeScheme } from '../fixtures';
 import { SHEET_TEMPLATES } from '../../src/domain/constants';
+import { selectDigitKeyMode } from '../../src/store/selectors';
 
 const SCHEMES = {
   grade: makeScheme('grade'),
@@ -115,5 +116,26 @@ describe('与模板默认方案的联动', () => {
     const scheme = makeScheme(quality.defaultScheme);
     expect(digitKeyAmbiguous(scheme)).toBe(false);
     expect(resolveDigitMeaning('auto', scheme, quality.id)).toBe('score');
+  });
+});
+
+describe('selectDigitKeyMode：不兼容的全局默认必须回退 auto（等级制仍能按数字打等级）', () => {
+  const fake = (scheme: ReturnType<typeof makeScheme>, globalDigitKey: DigitKeyMode) =>
+    ({ draft: { scheme, digitKey: undefined }, settings: { digitKey: globalDigitKey } }) as any;
+
+  it('等级制 + 全局残留 score → auto（数字=等级）', () => {
+    expect(selectDigitKeyMode(fake(makeScheme('grade'), 'score'))).toBe('auto');
+  });
+
+  it('听写/打勾制 + 全局残留 score → auto', () => {
+    expect(selectDigitKeyMode(fake(makeScheme('check'), 'score'))).toBe('auto');
+  });
+
+  it('分数制 + 全局残留 grade → auto（数字=分数）', () => {
+    expect(selectDigitKeyMode(fake(makeScheme('score'), 'grade'))).toBe('auto');
+  });
+
+  it('混合制保留用户选择的 score', () => {
+    expect(selectDigitKeyMode(fake(makeScheme('mixed'), 'score'))).toBe('score');
   });
 });

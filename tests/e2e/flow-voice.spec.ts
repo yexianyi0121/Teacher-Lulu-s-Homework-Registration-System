@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { createSheet } from './v3-fixtures';
 
 test('flow-voice：注入假识别结果「十二号优秀」落到 12 号并给出回显（AC-58）', async ({ page }) => {
   await page.addInitScript(() => {
@@ -24,7 +25,8 @@ test('flow-voice：注入假识别结果「十二号优秀」落到 12 号并给
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
+  await createSheet(page, '默写');
 
   await page.getByRole('button', { name: /语音/ }).click();
   await page.waitForTimeout(200);
@@ -69,7 +71,8 @@ test('flow-voice：低置信度/超出范围的学号只提示，不写入（AC-
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
+  await createSheet(page, '默写');
 
   await page.getByRole('button', { name: /语音/ }).click();
   await page.waitForTimeout(200);

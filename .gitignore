@@ -8,3 +8,5 @@ test-results/
 playwright-report/
 .workbuddy/
 .dsh-ops-*.lock
+
+docs/assets/

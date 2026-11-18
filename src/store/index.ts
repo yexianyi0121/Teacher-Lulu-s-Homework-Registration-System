@@ -78,6 +78,7 @@ export const useStore = create<AppState>()((set, get) => ({
   searchOpen: false,
   searchQuery: '',
   modal: null,
+  sheetDialog: null,
   confirmRequest: null,
   toast: null,
   posterUrl: null,

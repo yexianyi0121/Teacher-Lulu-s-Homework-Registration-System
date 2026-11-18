@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { closeJump, pickTemplate, resetApp, typeCell } from './v3-fixtures';
+import { closeJump, pickTemplate, resetApp, typeCell, createSheet } from './v3-fixtures';
 
 /**
  * v2.6.5 需求1/2/4：
@@ -12,8 +12,7 @@ test('FR-76.2 按表导出 Excel：下载 .xlsx（日期按文本，不会显示
   await closeJump(page);
   await pickTemplate(page, 'homework');
 
-  await page.getByLabel('作业内容').fill('默写');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
   await typeCell(page, 1, ['1']);
   await expect(page.locator('[data-no="1"]')).toContainText('A+');
 
@@ -38,8 +37,7 @@ test('FR-76.3 取消「请假算过关」后，请假学生参与「只看未过
   await closeJump(page);
   await pickTemplate(page, 'homework');
 
-  await page.getByLabel('作业内容').fill('默写');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
 
   // 1 号过关（A+），2 号请假
   await typeCell(page, 1, ['1']);

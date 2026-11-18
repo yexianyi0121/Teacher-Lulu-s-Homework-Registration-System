@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useStore } from './store';
 import { hasEntries } from './store/initial';
-import { selectSheetsOfDay, selectStats, selectVisibleNos } from './store/selectors';
+import { selectCurrentTemplateHasSheet, selectSheetsOfDay, selectStats, selectVisibleNos } from './store/selectors';
 import { SHEET_TEMPLATES, SCHEME_LABEL } from './domain/constants';
 import { APP_NAME, APP_VERSION } from './domain/appInfo';
 import { addDaysISO, todayISO, weekStartOf } from './domain/date';
@@ -22,6 +22,7 @@ import { StatsBar } from './components/StatsBar';
 import { ChartsCard } from './components/ChartsCard';
 import { HintBar } from './components/HintBar';
 import { Grid } from './components/Grid';
+import { NewSheetEmptyState } from './components/NewSheetEmptyState';
 import { MobileKeypad } from './components/MobileKeypad';
 import { MobileNotices } from './components/MobileNotices';
 import { PosterRaster } from './components/PosterRaster';
@@ -31,6 +32,7 @@ import { ReportModal } from './components/modals/ReportModal';
 import { PosterModal } from './components/modals/PosterModal';
 import { ImportRosterModal } from './components/modals/ImportRosterModal';
 import { ConfirmModal } from './components/modals/ConfirmModal';
+import { SheetNameModal } from './components/modals/SheetNameModal';
 import { SchemeModal } from './components/modals/SchemeModal';
 import { MakeupModal } from './components/modals/MakeupModal';
 import { PointsModal } from './components/modals/PointsModal';
@@ -77,6 +79,7 @@ export function App() {
   const stats = useStore(selectStats);
   const visibleNos = useStore(selectVisibleNos);
   const modal = useStore((s) => s.modal);
+  const hasSheet = useStore(selectCurrentTemplateHasSheet);
   const setModal = useStore((s) => s.setModal);
   const storageDegraded = useStore((s) => s.storageDegraded);
   const storageErrorReason = useStore((s) => s.storageErrorReason);
@@ -379,34 +382,40 @@ export function App() {
           onSummary={() => handlePoster({ mode: 'daily' }, 'daily')}
           onWeek={() => handlePoster({ mode: 'week', weekStart: weekStartOf(draft.date) }, 'week')}
         />
-        <InputBar
-          onVoice={toggleVoice}
-          voiceListening={listening}
-          voiceSupported={supported}
-          onClear={handleClear}
-          onSave={() => useStore.getState().commitToHistory()}
-        />
+        {hasSheet ? (
+          <>
+            <InputBar
+              onVoice={toggleVoice}
+              voiceListening={listening}
+              voiceSupported={supported}
+              onClear={handleClear}
+              onSave={() => useStore.getState().commitToHistory()}
+            />
 
-        {tpl.showStatBar ? (
-          <div className="stats-slot">
-            <StatsBar metrics={stats} schemeLabel={SCHEME_LABEL[draft.scheme.kind]} />
-          </div>
-        ) : null}
+            {tpl.showStatBar ? (
+              <div className="stats-slot">
+                <StatsBar metrics={stats} schemeLabel={SCHEME_LABEL[draft.scheme.kind]} />
+              </div>
+            ) : null}
 
-        {tpl.showGraph ? (
-          <div className="charts-slot">
-            <ChartsCard />
-          </div>
-        ) : null}
+            {tpl.showGraph ? (
+              <div className="charts-slot">
+                <ChartsCard />
+              </div>
+            ) : null}
 
-        <HintBar
-          templateId={draft.templateId}
-          scheme={draft.scheme}
-          filterNotPassed={filterNotPassed}
-          notPassedCount={visibleNos.length}
-          total={total}
-        />
-        <Grid />
+            <HintBar
+              templateId={draft.templateId}
+              scheme={draft.scheme}
+              filterNotPassed={filterNotPassed}
+              notPassedCount={visibleNos.length}
+              total={total}
+            />
+            <Grid />
+          </>
+        ) : (
+          <NewSheetEmptyState />
+        )}
         {/* v2.6.3 改进1：界面最下方的版本号（发版时由 APP_VERSION 带出来） */}
         <footer className="app-footer" aria-label="版本信息">
           🌸 {APP_NAME} · v{APP_VERSION}
@@ -430,6 +439,7 @@ export function App() {
       {modal === 'points' ? <PointsModal /> : null}
       {modal === 'export' ? <ExportModal /> : null}
       {modal === 'manual' ? <ManualModal /> : null}
+      <SheetNameModal />
       <ConfirmModal />
       <Toast />
       <VoiceConfirm />

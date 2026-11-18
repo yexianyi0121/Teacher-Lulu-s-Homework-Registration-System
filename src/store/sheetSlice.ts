@@ -12,7 +12,7 @@ type SheetSlice = Pick<
   | 'switchTemplate' | 'switchSheet' | 'setDate' | 'setContent' | 'switchRecord'
   | 'setScheme' | 'resetScheme' | 'setComment' | 'setSheetComment' | 'commitToHistory' | 'clearCurrentRecord'
   | 'deleteHistory' | 'clearHistory' | 'setDigitKey' | 'deleteRecord'
-  | 'newSheet' | 'applySchemePrune'
+  | 'newSheet' | 'renameCurrentSheet' | 'applySchemePrune'
 >;
 
 function upsert(history: HistoryEntry[], entry: HistoryEntry): HistoryEntry[] {
@@ -34,9 +34,13 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
 
   return {
     switchTemplate(templateId) {
-      // FR-64.3（v2.5.9 问题3）：当天该模板已有登记时切回来落到最近的记录，不新建空表。
-      const hit = Object.values(get().records).filter((r) => r.classId === get().activeClassId && r.date === get().draft.date && r.templateId === templateId).sort((a, b) => b.updatedAt - a.updatedAt)[0];
-      get().switchRecord(hit ? { content: hit.content, sheetId: hit.sheetId, templateId } : { sheetId: DEFAULT_SHEET_ID[templateId], templateId });
+      // 当天该模板已有「真正的表」（有名称或有录入）时，落到最近的一张；否则留在空态。
+      const hit = Object.values(get().records)
+        .filter((r) => r.classId === get().activeClassId && r.date === get().draft.date && r.templateId === templateId && (r.content.trim() !== '' || hasEntries(r.entries)))
+        .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      get().switchRecord(hit
+        ? { content: hit.content, sheetId: hit.sheetId, templateId }
+        : { sheetId: DEFAULT_SHEET_ID[templateId], templateId, content: '' });
     },
 
     switchSheet(sheetId, templateId) {
@@ -44,7 +48,14 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
     },
 
     setDate(v) {
-      get().switchRecord({ date: v });
+      const s = get();
+      // 切到已有表就落回那张表；该日期该类型还没有表 → 保持空态（不把旧内容带过去）
+      const hit = Object.values(s.records)
+        .filter((r) => r.classId === s.activeClassId && r.date === v && r.templateId === s.draft.templateId && (r.content.trim() !== '' || hasEntries(r.entries)))
+        .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      get().switchRecord(hit
+        ? { date: v, content: hit.content, sheetId: hit.sheetId, templateId: hit.templateId }
+        : { date: v, content: '' });
     },
 
     setContent(v) {
@@ -136,6 +147,36 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
       get().showToast(existed ? `已切换到「${c}」` : `已新建登记「${c}」`, 'ok');
     },
 
+    /** 原地修改当前表名（作业内容）：保留录入数据；当天同类型重名则拒绝 */
+    renameCurrentSheet(name) {
+      const s = get();
+      const rec = s.draft;
+      if (!rec.content.trim()) {
+        s.showToast('还没有登记表可改名', 'warn');
+        return false;
+      }
+      const content = name.trim().slice(0, 20);
+      if (!content) {
+        s.showToast('请填写作业内容', 'warn');
+        return false;
+      }
+      if (content === rec.content) return true;
+      const key = recordKey({ classId: rec.classId, date: rec.date, content, sheetId: rec.sheetId });
+      if (s.records[key]) {
+        s.showToast('当天已有同名登记表，请换个名称', 'warn');
+        return false;
+      }
+      const records = { ...s.records };
+      delete records[rec.key];
+      const updated = { ...rec, key, content, updatedAt: Date.now() };
+      records[key] = updated;
+      // 历史记录里的同一条跟着改名，避免汇总里出现两个名字
+      const history = s.history.map((h) => (h.key === rec.key ? { ...h, key, content } : h));
+      // key 变了，旧的撤销补丁不再指向正确记录，清空更安全
+      set({ records, history, draft: updated, activeKey: key, undoStack: [], redoStack: [], buffer: null });
+      s.showToast(`表名已改为「${content}」`, 'ok');
+      return true;
+    },
     /**
      * v2.6.3 问题三：方案改动经二次确认后，按新方案清理不再适用的已登记值。
      * 返回被清空的格子数（0 表示不需要清理）。

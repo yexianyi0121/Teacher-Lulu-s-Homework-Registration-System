@@ -25,7 +25,7 @@ for (const vp of VIEWPORTS) {
       await hint.getByRole('button', { name: '知道了' }).click();
       await expect(hint).toHaveCount(0);
       await page.reload();
-      await page.waitForSelector('.cell');
+      await page.waitForSelector('.cell, .empty-cta');
       // 刷新后空表不会留在 records 里（没有登记内容就不落库），作业内容要重新填
       await ensureSheet(page);
       await expect(page.getByTestId('install-hint')).toHaveCount(0);

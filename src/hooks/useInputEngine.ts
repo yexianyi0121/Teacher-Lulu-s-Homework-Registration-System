@@ -7,7 +7,7 @@ import type { GradeLetter, ScoringScheme, SheetTemplateId } from '../domain/type
 import { gridColumns } from '../domain/layout';
 import { buildGradeKeyMap } from '../domain/keymap';
 import { checkScore, maxScoreOf, reasonText, sanitizeScoreChar } from '../domain/scoreInput';
-import { nextDigitKeyModeFor, resolveDigitMeaning, describeDigitMeaning } from '../domain/digitKey';
+import { nextDigitKeyModeFor, resolveDigitMeaning, describeDigitMeaning, digitKeyAmbiguous } from '../domain/digitKey';
 
 /** 键位引擎（设计 04 §9.2 / V3 06 §3.3）：命令键挂 document，弹窗内仍生效 */
 
@@ -224,6 +224,10 @@ export function useInputEngine() {
       /* ---------- 反引号：切换数字键语义（V4 FR-46.3） ---------- */
       if (key === '`') {
         e.preventDefault();
+        if (!digitKeyAmbiguous(scheme)) {
+          s.showToast('本表只有一种数字键含义，不需要切换', 'warn');
+          return;
+        }
         const next = nextDigitKeyModeFor(selectDigitKeyMode(s), scheme, s.draft.templateId);
         s.setDigitKey(next);
         s.showToast(`数字键已切到「${describeDigitMeaning(resolveDigitMeaning(next, scheme, s.draft.templateId))}」`, 'ok');

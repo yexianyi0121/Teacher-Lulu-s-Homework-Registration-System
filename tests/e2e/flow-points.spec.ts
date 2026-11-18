@@ -1,21 +1,20 @@
 import { expect, test } from '@playwright/test';
+import { createSheet } from './v3-fixtures';
 
-test('flow-points：连续 3 次听写过关 → 账本 +5 且只加一次（AC-26.1 / AC-26.2）', async ({ page }) => {
+test('flow-points：连续 3 次听写全对 → 账本 +5 且只加一次（AC-26.1 / AC-26.2）', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
 
   await page.getByLabel('登记类型').selectOption('dictation');
   await page.getByLabel('秒跳开关').click(); // 关秒跳，便于固定 1 号
 
   for (const day of ['11', '12', '13']) {
     await page.getByLabel('日期').fill(`2026-03-${day}`);
-    await page.getByLabel('作业内容').fill('第3单元字词');
-    await page.getByLabel('新建登记').click();
-    await page.getByLabel('作业内容').blur();
+    await createSheet(page, '第3单元字词');
     await page.locator('[data-no="1"]').click();
-    await page.keyboard.press('Enter');   // 过关
+    await page.keyboard.press('0');       // 0 = 全对（streak 只认真正的全对）
     await page.keyboard.press('Control+s'); // 固化到历史
     await page.waitForTimeout(150);
   }
@@ -38,14 +37,12 @@ test('flow-points：月度表显示本人积分与名次', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
 
   await page.getByLabel('登记类型').selectOption('dictation');
   await page.getByLabel('秒跳开关').click();
   await page.getByLabel('日期').fill('2026-03-13');
-  await page.getByLabel('作业内容').fill('第3单元');
-  await page.getByLabel('新建登记').click();
-  await page.getByLabel('作业内容').blur();
+  await createSheet(page, '第3单元');
   await page.locator('[data-no="4"]').click();
   await page.keyboard.press('x');           // 缺交 → −3
   await page.keyboard.press('Control+s');

@@ -10,12 +10,12 @@
  */
 import { expect, test } from '@playwright/test';
 
-const TITLE = '刘露老师的学情登记本';
+const TITLE = '学情登记管理系统';
 
 test('E2E-43a 网址根路径直接是完整应用（镜像，无跳转）', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle(TITLE);
-  await expect(page.locator('.cell')).toHaveCount(50);
+  await expect(page.locator('.empty-cta')).toBeVisible();
 });
 
 test('E2E-43b 双击 dist/学情登记系统.html（file://）：50 格、favicon 引用、无脚本错误', async ({
@@ -26,11 +26,11 @@ test('E2E-43b 双击 dist/学情登记系统.html（file://）：50 格、favico
 
   const url = new URL('../../dist/学情登记系统.html', import.meta.url).href;
   await page.goto(url);
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
 
   await expect(page).toHaveTitle(TITLE);
-  await expect(page.locator('.cell')).toHaveCount(50);
-  await expect(page.locator('[data-no="1"]')).toBeVisible();
+  await expect(page.locator('.empty-cta')).toBeVisible();
+  await expect(page.getByRole('button', { name: '＋ 新建登记' })).toBeVisible();
 
   // favicon 引用存活（文件存在性由单测 app-entry.test.ts 的 existsSync 守护；
   // Playwright request 上下文不支持 file: 协议，无法在此发请求）
@@ -53,9 +53,9 @@ test('E2E-43c 双击 dist/index.html（file:// 镜像）：同样直接起应用
   page.on('pageerror', (e) => errs.push(e.message));
 
   await page.goto(new URL('../../dist/index.html', import.meta.url).href);
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
 
   await expect(page).toHaveTitle(TITLE);
-  await expect(page.locator('.cell')).toHaveCount(50);
+  await expect(page.locator('.empty-cta')).toBeVisible();
   expect(errs).toEqual([]);
 });

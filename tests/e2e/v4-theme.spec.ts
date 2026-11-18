@@ -60,7 +60,7 @@ test('E2E-37 6 套主题：切换生效、刷新保持、备份含 theme（A-92 
 
   await test.step('刷新后主题保持（A-93）', async () => {
     await page.reload();
-    await page.waitForSelector('.cell');
+    await page.waitForSelector('.cell, .empty-cta');
     const t = await readTheme();
     expect(t.attr).toBe('night');
   });

@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
+import { createSheet } from './v3-fixtures';
 
 test('persistence：录入 → 刷新 → 数据仍在（V1 回归）', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
   // v2.6.3 FR-73.4：作业内容是登记前提
-  await page.getByLabel('作业内容').fill('默写');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
 
   await page.getByLabel('秒跳开关').click();
   await page.locator('[data-no="1"]').click();
@@ -22,10 +22,9 @@ test('persistence：人数 50→40→50 不丢隐藏数据（INV-8）', async ({
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
   // v2.6.3 FR-73.4：作业内容是登记前提
-  await page.getByLabel('作业内容').fill('默写');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
 
   await page.getByLabel('秒跳开关').click();
   await page.locator('[data-no="45"]').click();
@@ -72,6 +71,9 @@ test('persistence：v1 数据自动迁移后可继续使用（AC-60 / M-1~M-3）
     localStorage.setItem('xq.state.v1', JSON.stringify(seed));
   }, v1);
   await page.goto('/');
+  await page.waitForSelector('.cell, .empty-cta');
+  // 迁移过来的数据在 2026-03-13，切到那天查看
+  await page.getByLabel('日期').fill('2026-03-13');
   await page.waitForSelector('.cell');
 
   // A+ 原样保留；输入 √ → 过关，显示 ✓（FR-65）；× → 缺交
@@ -85,6 +87,8 @@ test('persistence：v1 数据自动迁移后可继续使用（AC-60 / M-1~M-3）
   await page.keyboard.press(' ');
   await page.waitForTimeout(600);
   await page.reload();
+  await page.getByLabel('日期').fill('2026-03-13');
+  await page.waitForSelector('.cell');
   await expect(page.locator('[data-no="1"]')).toContainText('A+');
 });
 
@@ -92,10 +96,9 @@ test('persistence：清空当前记录可 Ctrl+Z 一次恢复', async ({ page })
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
   // v2.6.3 FR-73.4：作业内容是登记前提
-  await page.getByLabel('作业内容').fill('默写');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
 
   await page.getByLabel('秒跳开关').click();
   for (const no of [1, 2, 3]) {

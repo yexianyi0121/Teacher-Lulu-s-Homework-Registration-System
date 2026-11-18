@@ -12,7 +12,7 @@
 export const APP_NAME = '学情登记管理系统';
 
 /** 产品版本，与 package.json version 同步 */
-export const APP_VERSION = '2.7.0';
+export const APP_VERSION = '2.8.0';
 
 /** 作者 GitHub 账号（仓库 owner） */
 export const APP_AUTHOR = 'yexianyi0121';

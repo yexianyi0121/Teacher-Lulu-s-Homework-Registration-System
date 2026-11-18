@@ -4,7 +4,7 @@ type UiSlice = Pick<
   AppState,
   | 'setFocusedNo' | 'moveFocus' | 'setSelection' | 'exitSelection' | 'toggleSelectAll'
   | 'setCurrentStamp' | 'setEditing' | 'setBuffer' | 'setSearchOpen' | 'setSearchQuery'
-  | 'setModal' | 'openConfirm' | 'closeConfirm' | 'showToast' | 'clearToast'
+  | 'setModal' | 'openSheetDialog' | 'closeSheetDialog' | 'openConfirm' | 'closeConfirm' | 'showToast' | 'clearToast'
   | 'setPoster' | 'setPosterPages' | 'setPosterLoading' | 'setPosterTarget' | 'setStorageDegraded' | 'setReadOnly'
   | 'setCellError' | 'setEnvMismatch' | 'setBlockedOverwrite' | 'setWeekParts'
   | 'markSaved' | 'setPulsingNo' | 'setFlashNo' | 'setChartsOpen' | 'setStatsOpen' | 'setCompareId'
@@ -111,6 +111,14 @@ export function createUiSlice(set: StoreSet, get: StoreGet): UiSlice {
 
     setSearchQuery(q) {
       set({ searchQuery: q });
+    },
+
+    openSheetDialog(mode) {
+      set({ sheetDialog: { mode } });
+    },
+
+    closeSheetDialog() {
+      set({ sheetDialog: null });
     },
 
     setModal(modal) {

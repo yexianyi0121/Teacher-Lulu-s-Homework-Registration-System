@@ -43,7 +43,7 @@ test('E2E-42 设置 → 关于：版本/作者/邮箱/GitHub 链接真实可点�
   await expect(about.getByTestId('about-version')).toHaveText(`v${pkg.version}`);
 
   // 系统名 / 作者 / 邮箱 / 仓库地址四行齐全
-  await expect(about).toContainText('学情登记分析系统');
+  await expect(about).toContainText('学情登记管理系统');
   await expect(about).toContainText('yexianyi0121');
   await expect(about).toContainText('xianyiye0121@163.com');
   await expect(about).toContainText('https://github.com/yexianyi0121/Teacher-Lulu-s-Homework-Registration-System');

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { closeJump, pickTemplate, resetApp, typeCell } from './v3-fixtures';
+import { closeJump, pickTemplate, resetApp, typeCell, createSheet } from './v3-fixtures';
 
 /**
  * FR-78（v2.6.8）：听写表数字键自动按听写语义记「错几」。
@@ -10,8 +10,7 @@ test.beforeEach(async ({ page }) => {
   await resetApp(page);
   await closeJump(page);
   await pickTemplate(page, 'dictation');
-  await page.getByLabel('作业内容').fill('默写');
-  await page.getByLabel('新建登记').click();
+  await createSheet(page, '默写');
 });
 
 test('FR-78.1 听写表敲 2 = 错2（不会提示「本表不接受分数」）', async ({ page }) => {

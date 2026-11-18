@@ -4,7 +4,7 @@ test('flow-manual：从头部打开手册，20 章齐全，搜索「补交」可
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
 
   await page.getByTitle('使用手册').click();
   const dialog = page.getByRole('dialog');
@@ -38,7 +38,7 @@ test('flow-manual：设置里也能打开手册', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForSelector('.cell');
+  await page.waitForSelector('.cell, .empty-cta');
 
   await page.getByTitle('设置').click();
   await expect(page.getByRole('dialog')).toContainText('班级信息');

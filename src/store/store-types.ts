@@ -81,6 +81,8 @@ export interface AppState {
   searchOpen: boolean;
   searchQuery: string;
   modal: ModalKind | null;
+  /** 新建 / 修改表名弹窗（null = 关闭） */
+  sheetDialog: { mode: 'create' | 'rename' } | null;
   confirmRequest: ConfirmRequest | null;
   toast: { id: number; text: string; tone: ToastTone } | null;
   posterUrl: string | null;
@@ -130,6 +132,8 @@ export interface AppState {
   setSearchOpen: (open: boolean) => void;
   setSearchQuery: (q: string) => void;
   setModal: (modal: ModalKind | null) => void;
+  openSheetDialog: (mode: 'create' | 'rename') => void;
+  closeSheetDialog: () => void;
   openConfirm: (req: ConfirmRequest) => void;
   closeConfirm: () => void;
   showToast: (text: string, tone?: 'ok' | 'warn' | 'error', ms?: number) => void;
@@ -184,6 +188,8 @@ export interface AppState {
   deleteRecord: (key: string) => void;
   /** v2.6.3 问题四：点「新建登记」才建表（内容非空由调用方保证） */
   newSheet: (content: string) => void;
+  /** 原地修改当前表名（保留录入数据；重名则拒绝） */
+  renameCurrentSheet: (name: string) => boolean;
   /** v2.6.3 问题三：方案改动确认后按新方案清理不再适用的已登记值，返回清空格数 */
   applySchemePrune: (prevScheme: ScoringScheme) => number;
   resetScheme: () => void;

@@ -94,7 +94,7 @@ test('改进1 顶栏显示当前时间与学期，页脚显示版本号，默认
 
   const footer = page.getByLabel('版本信息');
   await expect(footer).toBeVisible();
-  await expect(footer).toContainText('学情登记分析系统');
+  await expect(footer).toContainText('学情登记管理系统');
   await expect(footer).toContainText(/v\d+\.\d+\.\d+/);
 
   const theme = await page.evaluate(() => ({

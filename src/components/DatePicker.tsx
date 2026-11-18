@@ -134,11 +134,17 @@ export function DatePicker({
     });
   };
 
-  const commitText = () => {
-    const v = text.trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { setText(value); return; }
+  const parseISO = (raw: string): string | null => {
+    const v = raw.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
     const d = new Date(`${v}T00:00:00`);
-    if (Number.isNaN(d.getTime()) || todayISO(d) !== v) { setText(value); return; }
+    if (Number.isNaN(d.getTime()) || todayISO(d) !== v) return null;
+    return v;
+  };
+
+  const commitText = () => {
+    const v = parseISO(text);
+    if (!v) { setText(value); return; }
     onChange(v);
   };
 
@@ -235,7 +241,14 @@ export function DatePicker({
         maxLength={10}
         value={text}
         title="点击选择日期；有登记的日期会高亮显示"
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value;
+          setText(v);
+          // 一填完整就生效：不等 blur，避免「刚输完日期就去点新建登记」时
+          // blur 触发的重渲染把这次点击吞掉。
+          const iso = parseISO(v);
+          if (iso) onChange(iso);
+        }}
         onBlur={commitText}
         onFocus={() => setShowCalendar(true)}
         onClick={() => setShowCalendar(true)}
