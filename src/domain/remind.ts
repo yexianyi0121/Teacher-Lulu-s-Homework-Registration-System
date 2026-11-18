@@ -28,9 +28,16 @@ export function shouldRemindExport(
   lastExportAt: string | null,
   now: Date,
   days: number = EXPORT_REMIND_DAYS,
+  /**
+   * 第一次产生数据的时间（毫秒）。用于「从未导出过」的场景：
+   * 老逻辑一进来就提醒，老师每天开系统都被打扰；现在只有数据已存在 ≥ days 天才提醒。
+   * 传 null/undefined 时保持旧行为（立即提醒），方便单测与特殊场景。
+   */
+  firstDataAt: number | null = null,
 ): boolean {
   if (!days || days <= 0) return false;
   const since = daysSinceExport(lastExportAt, now);
-  if (since === null) return true;
-  return since >= days;
+  if (since !== null) return since >= days;
+  if (firstDataAt === null || firstDataAt === undefined) return true;
+  return now.getTime() - firstDataAt >= days * DAY_MS;
 }

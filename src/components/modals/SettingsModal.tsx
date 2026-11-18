@@ -623,6 +623,23 @@ export function SettingsModal() {
             </span>
           </li>
         </ul>
+
+        <div className="about-update">
+          <a
+            className="pill pill--primary about-update-link"
+            href={`${APP_REPO_URL}/releases/latest`}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="about-update"
+          >
+            ⬆️ 一键更新（下载最新版）
+          </a>
+          <div className="field-hint" style={{ marginTop: 6 }}>
+            当前 v{APP_VERSION}。按钮会打开 GitHub 的 Releases 页面下载最新版本；替换文件后照常双击启动即可。
+            升级前建议先【导出全部数据】备份一次——更新不会动浏览器里的数据。
+          </div>
+        </div>
+
         <div className="field-hint">
           纯前端、纯本地：数据只存在这台设备的浏览器里，不上传任何服务器。有问题欢迎发邮件或到 GitHub 提 Issue。
         </div>

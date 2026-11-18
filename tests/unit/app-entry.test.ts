@@ -19,7 +19,7 @@ describe('app-entry：入口 App 化产物形态（FR-53）', () => {
     // 内联单文件（file:// 双击不被 CORS 拦的核心）
     expect(html).toContain('<script type="module">');
     // 品牌与图标链
-    expect(html).toContain('<title>刘露老师的学情登记本</title>');
+    expect(html).toContain('<title>学情登记管理系统</title>');
     expect(html).toContain('href="./favicon.svg"');
     expect(html).toContain('apple-mobile-web-app-capable');
     expect(html).toContain('apple-mobile-web-app-title');

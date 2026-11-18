@@ -10,6 +10,8 @@ export interface CellProps {
   no: number;
   name?: string;
   showName: boolean;
+  /** 搜学号命中 */
+  matched?: boolean;
 }
 
 function InlineEditor({ no, draft }: { no: number; draft: string }) {
@@ -64,7 +66,7 @@ function InlineEditor({ no, draft }: { no: number; draft: string }) {
   );
 }
 
-export const Cell = memo(function Cell({ no, name, showName }: CellProps) {
+export const Cell = memo(function Cell({ no, name, showName, matched }: CellProps) {
   const entry = useStore((s) => s.draft.entries[String(no)] as Entry | undefined);
   const scheme = useStore((s) => s.draft.scheme);
   const settings = useStore((s) => s.settings);
@@ -122,6 +124,7 @@ export const Cell = memo(function Cell({ no, name, showName }: CellProps) {
         makeup={!!entry?.makeup}
         focused={focused}
         selected={selected}
+        matched={matched}
         error={error}
         title={[
           `${no}号${name ? ` ${name}` : ''}`,

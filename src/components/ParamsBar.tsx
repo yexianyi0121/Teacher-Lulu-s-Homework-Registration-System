@@ -5,6 +5,7 @@ import { SHEET_TEMPLATES, TEMPLATE_LIST } from '../domain/constants';
 import type { SheetTemplateId } from '../domain/types';
 import { hasEntries } from '../store/initial';
 import { DatePicker } from './DatePicker';
+import { useGuardedSwitch } from '../hooks/useGuardedSwitch';
 
 /**
  * 参数行（PRD FR-14）：登记类型 / 日期 / 作业内容 / 选择登记表。
@@ -21,6 +22,7 @@ export function ParamsBar() {
   const switchRecord = useStore((s) => s.switchRecord);
   const deleteRecord = useStore((s) => s.deleteRecord);
   const openConfirm = useStore((s) => s.openConfirm);
+  const guarded = useGuardedSwitch();
   const sheets = useStore(selectSheetsOfDay).filter((s) => s.templateId === draft.templateId);
   // v2.6.5 需求5：选择登记表**常驻**——建出第一张表就能在这里看到/切回，
   // 不再等第二张表出现才冒出来（以前只有 multi 时才渲染，老师找不到入口）。
@@ -36,7 +38,7 @@ export function ParamsBar() {
     const hit = sheets.find((s) => s.key === key);
     if (!hit || hit.key === draft.key) return;
     // 作业内容就是同模板多张表的区分点（sheetId 相同），带上它才能落回原记录
-    switchRecord({ content: hit.content, sheetId: hit.sheetId, templateId: hit.templateId as SheetTemplateId });
+    guarded(() => switchRecord({ content: hit.content, sheetId: hit.sheetId, templateId: hit.templateId as SheetTemplateId }), '切换登记表');
   };
 
   /** v2.6.2 FR-71.2：删除当前这张表（常见于作业内容随手打字打出来的空表） */
@@ -53,7 +55,7 @@ export function ParamsBar() {
     });
   };
 
-  const createSheet = () => newSheet(content);
+  const createSheet = () => guarded(() => newSheet(content), '新建登记');
   const dirty = content.trim() !== draft.content;
 
   return (
@@ -64,7 +66,7 @@ export function ParamsBar() {
           className="pill pill--select"
           aria-label="登记类型"
           value={draft.templateId}
-          onChange={(e) => switchTemplate(e.target.value as SheetTemplateId)}
+          onChange={(e) => { const id = e.target.value as SheetTemplateId; guarded(() => switchTemplate(id), '切换类型'); }}
         >
           {TEMPLATE_LIST.map((id) => (
             <option key={id} value={id}>
@@ -76,7 +78,7 @@ export function ParamsBar() {
 
       <label className="params-field params-date-field">
         <span className="field-label">日期</span>
-        <DatePicker value={draft.date} onChange={setDate} />
+        <DatePicker value={draft.date} onChange={(v) => guarded(() => setDate(v), '切换日期')} />
       </label>
 
       <label className="params-field params-grow">

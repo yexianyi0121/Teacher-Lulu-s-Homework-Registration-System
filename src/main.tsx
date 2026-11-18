@@ -4,7 +4,8 @@ import './styles/global.css';
 import { App } from './App';
 import { useStore } from './store';
 import { loadState, markBooted, saveState } from './infra/storage';
-import { readEnvMark, shouldRemindBackup, writeEnvMark } from './infra/backup';
+import { readEnvMark, readLastBackupAt, writeEnvMark } from './infra/backup';
+import { shouldRemindExport } from './domain/remind';
 
 async function bootstrap() {
   const root = createRoot(document.getElementById('root') as HTMLElement);
@@ -34,9 +35,18 @@ async function bootstrap() {
     }
     writeEnvMark();
 
-    // 自动备份提醒（BR-78）：只提醒，不自动下载
+    // 自动备份提醒：严格按【设置 → 备份提醒】的天数执行。
+    // 上次导出时间取「settings.lastExportAt」与本地标记中较新的一个；
+    // 从未导出过时，以第一条数据的时间为基准——数据不满 N 天不打扰老师。
     const s = useStore.getState();
-    if (shouldRemindBackup(s.settings.autoBackupDays)) {
+    const recs = Object.values(s.records);
+    const firstDataAt = recs.length
+      ? Math.min(...recs.map((r) => r.createdAt))
+      : (s.history.length ? Math.min(...s.history.map((h) => h.createdAt)) : null);
+    const fromSettings = s.settings.lastExportAt ? Date.parse(s.settings.lastExportAt) : NaN;
+    const fromLocal = readLastBackupAt();
+    const lastAt = Math.max(Number.isNaN(fromSettings) ? 0 : fromSettings, fromLocal ?? 0) || null;
+    if (shouldRemindExport(lastAt ? new Date(lastAt).toISOString() : null, new Date(), s.settings.autoBackupDays, firstDataAt)) {
       window.setTimeout(() => {
         useStore.getState().showToast('已有一段时间没导出备份了，建议【设置 → 数据 → 导出全部数据】', 'warn');
       }, 1200);

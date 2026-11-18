@@ -52,4 +52,15 @@ describe('shouldRemindExport（FR-51.2 / A-96 可注入时钟）', () => {
   it('默认周期常量为 7', () => {
     expect(EXPORT_REMIND_DAYS).toBe(7);
   });
-});
+
+  it('从未导出：数据不足 N 天不打扰（firstDataAt 生效）', () => {
+    const threeDaysAgo = NOW.getTime() - 3 * 24 * 60 * 60 * 1000;
+    expect(shouldRemindExport(null, NOW, 7, threeDaysAgo)).toBe(false);
+    const eightDaysAgo = NOW.getTime() - 8 * 24 * 60 * 60 * 1000;
+    expect(shouldRemindExport(null, NOW, 7, eightDaysAgo)).toBe(true);
+  });
+
+  it('按设置的天数执行：30 天设置下 8 天前导出不提醒、31 天前才提醒', () => {
+    expect(shouldRemindExport(iso(daysAgo(8)), NOW, 30)).toBe(false);
+    expect(shouldRemindExport(iso(daysAgo(31)), NOW, 30)).toBe(true);
+  });});

@@ -23,6 +23,12 @@ function isStandalone(): boolean {
 export function MobileNotices() {
   const installDismissed = useStore((s) => s.settings.installHintDismissed);
   const lastExportAt = useStore((s) => s.settings.lastExportAt);
+  const autoBackupDays = useStore((s) => s.settings.autoBackupDays);
+  const firstDataAt = useStore((s) => {
+    const recs = Object.values(s.records);
+    if (recs.length) return Math.min(...recs.map((r) => r.createdAt));
+    return s.history.length ? Math.min(...s.history.map((h) => h.createdAt)) : null;
+  });
   const hasData = useStore(
     (s) => Object.values(s.records).some((r) => hasEntries(r.entries)) || s.history.length > 0,
   );
@@ -31,7 +37,7 @@ export function MobileNotices() {
   const installed = useMemo(() => isStandalone(), []);
   const days = daysSinceExport(lastExportAt, now);
   const showInstall = !installed && !installDismissed;
-  const showExport = hasData && shouldRemindExport(lastExportAt, now);
+  const showExport = hasData && shouldRemindExport(lastExportAt, now, autoBackupDays, firstDataAt);
 
   if (!showInstall && !showExport) return null;
 

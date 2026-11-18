@@ -4,6 +4,7 @@ import { matchStudents } from '../domain/search';
 import { formatClock, semesterOf } from '../domain/date';
 import { APP_NAME } from '../domain/appInfo';
 import { IconButton } from './ui/controls';
+import { useGuardedSwitch } from '../hooks/useGuardedSwitch';
 
 export interface HeaderProps {
   onImport: () => void;
@@ -22,6 +23,7 @@ export function Header({ onImport, onSettings, onManual }: HeaderProps) {
   const classes = useStore((s) => s.classes);
   const activeClassId = useStore((s) => s.activeClassId);
   const switchClass = useStore((s) => s.switchClass);
+  const guarded = useGuardedSwitch();
   const secondsJump = useStore((s) => s.settings.secondsJump);
   const updateSettings = useStore((s) => s.updateSettings);
   const searchOpen = useStore((s) => s.searchOpen);
@@ -86,7 +88,8 @@ export function Header({ onImport, onSettings, onManual }: HeaderProps) {
               onSettings();
               return;
             }
-            switchClass(e.target.value);
+            const id = e.target.value;
+            guarded(() => switchClass(id), '切换班级');
           }}
         >
           {classes.map((c) => (

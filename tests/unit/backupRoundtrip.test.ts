@@ -45,7 +45,7 @@ describe('exportAllBlob → importAll：完整往返（FR-44 / E2E-24）', () =>
   it('信封里带 app / version / exportedAt', async () => {
     const text = await blobText(exportAllBlob(v3()));
     const env = JSON.parse(text);
-    expect(env.app).toBe('学情登记分析系统');
+    expect(env.app).toBe('学情登记管理系统');
     expect(env.version).toBe(4);
     expect(typeof env.exportedAt).toBe('string');
     expect(env.state.records).toHaveLength(1);

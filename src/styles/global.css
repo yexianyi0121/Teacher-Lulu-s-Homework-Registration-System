@@ -62,6 +62,8 @@ pre {
 .app {
   min-height: 100vh;
   padding: 24px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* v2.5.10 FR-69.1：屏幕适配。
@@ -73,6 +75,10 @@ pre {
   width: 100%;
   max-width: 1920px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* 超宽屏（>=2560）再放一桩，避免全屏展开时内容过宽 */
@@ -135,7 +141,9 @@ pre {
 
 /* v2.6.3 改进1：界面最下方的版本号 */
 .app-footer {
-  margin: 10px 0 4px;
+  /* 沉到页面最下方：不再紧贴表格，拉满视口底部 */
+  margin-top: auto;
+  padding: 12px 0 4px;
   text-align: center;
   font-size: 12px;
   color: var(--text-3);
@@ -632,7 +640,18 @@ pre {
 }
 
 .cell[data-selected="1"] { box-shadow: 0 0 0 2px rgba(255,111,165,.55); }
-.cell[data-match="1"]     { outline: 2px dashed #F0B429; outline-offset: 2px; }
+/* 搜学号命中：强高亮（金色描边 + 光晕），其余格子压暗，找人一眼就看见 */
+.cell[data-match="1"] {
+  outline: 3px solid #F0B429;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(240, 180, 41, 0.18), 0 4px 14px rgba(240, 180, 41, 0.35);
+  position: relative;
+  z-index: 2;
+}
+.grid[data-searching="1"] .cell:not([data-match="1"]) {
+  opacity: 0.45;
+  filter: saturate(0.55);
+}
 .cell[data-pulse="1"]     { animation: pulse .12s ease; }
 
 @keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.06)} 100%{transform:scale(1)} }
@@ -2437,3 +2456,8 @@ pre {
 .cal-day--has-data:hover {
   background: #fde3e3;
 }
+
+/* 设置 → 关于：一键更新按钮 */
+.about-update { margin-top: 10px; }
+.about-update-link { text-decoration: none; }
+.about-update-link:hover { text-decoration: none; }
