@@ -7,6 +7,7 @@ import { pruneEntries } from '../../domain/scheme';
 import type { GradeLetter, SchemeKind, ScorePassTier } from '../../domain/types';
 import { Modal } from '../ui/Modal';
 import { Pill } from '../ui/controls';
+import { NumberField } from '../ui/NumberField';
 
 const KINDS: SchemeKind[] = ['grade', 'score', 'check', 'mixed', 'text'];
 
@@ -123,13 +124,13 @@ export function SchemeModal() {
       {scheme.kind === 'score' || scheme.kind === 'mixed' ? (
         <div className="field">
           <label className="field-label" htmlFor="scheme-max">满分（1–200）</label>
-          <input
+          <NumberField
             id="scheme-max"
-            type="number"
+            ariaLabel="满分（1–200）"
+            value={scheme.maxScore ?? 100}
             min={1}
             max={200}
-            value={scheme.maxScore ?? 100}
-            onChange={(e) => setScheme({ maxScore: Math.min(200, Math.max(1, Number(e.target.value) || 100)) })}
+            onCommit={(n) => { setScheme({ maxScore: n }); }}
           />
           <div className="field-hint">
             已有 {scores} 条分数不会等比缩放；改满分后判定按新百分比重算
@@ -145,21 +146,21 @@ export function SchemeModal() {
         ] as const).map(([label, key]) => (
           <div className="field" key={key}>
             <label className="field-label" htmlFor={`scheme-${key}`}>{label}</label>
-            <input
+            <NumberField
               id={`scheme-${key}`}
-              type="number"
+              ariaLabel={label}
+              value={pct(scheme[key])}
               min={0}
               max={100}
-              value={pct(scheme[key])}
-              onChange={(e) => {
+              decimals={1}
+              onCommit={(n) => {
                 // v2.6.1 FR-70.2：及格% 下限 5%。老师曾把它误设成 7%，导致 7 分以上全判过关。
                 const MIN_PASS = 5;
-                const raw = Number(e.target.value);
-                if (key === 'passRate' && Number.isFinite(raw) && raw < MIN_PASS) {
+                if (key === 'passRate' && n < MIN_PASS) {
                   showToast(`及格% 不能低于 ${MIN_PASS}%，否则几乎人人过关`, 'warn');
-                  return;
+                  return false;
                 }
-                const v = Math.min(100, Math.max(0, Number(e.target.value) || 0)) / 100;
+                const v = n / 100;
                 const next = { ...scheme, [key]: v };
                 // 夹取关系：0 ≤ 及格 ≤ 良好 ≤ 优秀 ≤ 100
                 const pass = Math.min(next.passRate, next.goodRate);

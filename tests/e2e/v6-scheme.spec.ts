@@ -186,3 +186,33 @@ test('E2E-34 v2.6.4 需求1：设置里按登记表导出表格（CSV 下载）'
   ]);
   expect(download.suggestedFilename()).toMatch(/登记表.*\.csv$/);
 });
+
+test('v2.8.1 本表设置：清空百分比/满分输入框时允许暂时为空，失焦才提交', async ({ page }) => {
+  await resetApp(page);
+  await closeJump(page);
+  await page.getByRole('button', { name: /本表设置/ }).click();
+
+  const ex = page.getByLabel('优秀%');
+  await ex.click();
+  await ex.press('Control+a');
+  await ex.press('Backspace');
+  await expect(ex).toHaveValue('');       // 不再瞬间变 0
+  await ex.pressSequentially('92');
+  await ex.blur();
+  await expect(ex).toHaveValue('92');
+  const rate = await page.evaluate(() => (window as any).__xq.getState().draft.scheme.excellentRate);
+  expect(Math.round(rate * 100)).toBe(92);
+
+  // 满分框同样处理
+  await page.locator('#scheme-kind').selectOption('score');
+  const max = page.getByLabel('满分（1–200）');
+  await max.click();
+  await max.press('Control+a');
+  await max.press('Backspace');
+  await expect(max).toHaveValue('');
+  await max.pressSequentially('120');
+  await max.blur();
+  await expect(max).toHaveValue('120');
+  const maxScore = await page.evaluate(() => (window as any).__xq.getState().draft.scheme.maxScore);
+  expect(maxScore).toBe(120);
+});
