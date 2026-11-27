@@ -15,11 +15,29 @@ rem Percent-encode the file:// URL (non-ASCII breaks --app).
 rem Path is taken inside PowerShell, never from %CD% (cmd substring on %CD%
 rem without quotes does not substitute, leaving backslashes in the URL).
 for /f "delims=" %%u in ('powershell -NoProfile -ExecutionPolicy Bypass -Command "$sep=[char]92; $p=((Get-Location).Path).Replace($sep,[char]47); [uri]::EscapeUriString($p+[char]47+$env:APP_HTML)"') do endlocal & set "APP_PATH=%%u" & setlocal
+setlocal enabledelayedexpansion
 set "APP_URL=file:///%APP_PATH%"
+rem ---- v2.8.2: choose the Edge profile that really holds XueQing data ----
+set "PROFILE="
+for /f "usebackq delims=" %%p in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\find-profile.ps1"`) do set "PROFILE=%%p"
+rem ---- v2.8.2: snapshot this profile before launching (machine-level backup) ----
+if defined PROFILE (
+  set "BAK=%LocalAppData%\XueQingBackup"
+  if not exist "!BAK!" mkdir "!BAK!" >nul 2>&1
+  for /f "delims=" %%t in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set "TS=%%t"
+  set "DST=!BAK!\!PROFILE!_!TS!"
+  if not exist "!DST!\LocalStorage" mkdir "!DST!\LocalStorage" >nul 2>&1
+  if not exist "!DST!\IndexedDB" mkdir "!DST!\IndexedDB" >nul 2>&1
+  xcopy "%LocalAppData%\Microsoft\Edge\User Data\!PROFILE!\Local Storage\leveldb\*" "!DST!\LocalStorage\" /Y /Q >nul 2>&1
+  xcopy "%LocalAppData%\Microsoft\Edge\User Data\!PROFILE!\IndexedDB\file__0.indexeddb.leveldb\*" "!DST!\IndexedDB\" /Y /Q >nul 2>&1
+  > "!DST!\profile.txt" echo !PROFILE!
+  powershell -NoProfile -Command "Get-ChildItem -LiteralPath '!BAK!' -Directory | Sort-Object Name -Descending | Select-Object -Skip 20 | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue" >nul 2>&1
+)
 rem Edge/Chrome are usually NOT on PATH: probe install dirs directly.
 set "EDGE="
 if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" set "EDGE=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
 if not defined EDGE if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" set "EDGE=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
+if defined EDGE if defined PROFILE (start "" "%EDGE%" --profile-directory="!PROFILE!" --app="%APP_URL%" & exit /b 0)
 if defined EDGE (start "" "%EDGE%" --app="%APP_URL%" & exit /b 0)
 set "CHROME="
 if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "CHROME=%ProgramFiles%\Google\Chrome\Application\chrome.exe"

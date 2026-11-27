@@ -10,6 +10,7 @@ export function NewSheetEmptyState() {
   const draft = useStore((s) => s.draft);
   const openSheetDialog = useStore((s) => s.openSheetDialog);
   const setModal = useStore((s) => s.setModal);
+  const history = useStore((s) => s.history);
   const cls = currentClass();
   const hasRoster = !!cls?.students.some((st) => st.name?.trim());
   const tpl = SHEET_TEMPLATES[draft.templateId];
@@ -31,6 +32,18 @@ export function NewSheetEmptyState() {
       </button>
 
       <div className="empty-cta-hint">先点上面的按钮，输入作业内容后即可开始登记。</div>
+
+      {history.length > 0 ? (
+        <div className="empty-cta-hint empty-cta-hint--ok">
+          本地历史数据仍在：共 {history.length} 条（最近 {formatDateCN(history[0].date)}）。
+          <button type="button" className="empty-cta-link" onClick={() => setModal('settings')}>查看历史记录</button>
+        </div>
+      ) : (
+        <div className="empty-cta-hint empty-cta-hint--warn">
+          这个浏览器里没有历史数据。若你之前登记过，请用<strong>原来打开系统的浏览器/窗口</strong>打开；
+          或用【设置 → 导入恢复】导入备份文件。
+        </div>
+      )}
 
       {!hasRoster ? (
         <div className="empty-cta-hint empty-cta-hint--warn">

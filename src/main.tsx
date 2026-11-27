@@ -3,7 +3,8 @@ import './styles/tokens.css';
 import './styles/global.css';
 import { App } from './App';
 import { useStore } from './store';
-import { loadState, markBooted, saveState } from './infra/storage';
+import { hasUserClearedMarker, loadState, markBooted, saveState, takeSnapshot } from './infra/storage';
+import { getSnapshots } from './infra/idb';
 import { readEnvMark, readLastBackupAt, writeEnvMark } from './infra/backup';
 import { shouldRemindExport } from './domain/remind';
 
@@ -14,6 +15,31 @@ async function bootstrap() {
   if (result.state) {
     useStore.getState().replaceState(result.state);
     markBooted();
+    // v2.8.2：每次成功打开都留一份「已知良好」快照，主存出问题时还能回到今天这一步
+    void takeSnapshot(useStore.getState().exportState());
+
+    // v2.8.2 自愈：主存储是空的，但本机还有快照 → 自动恢复最近一份有数据快照。
+    // 用户明确清空过的（有 marker）不打扰。
+    const cur = useStore.getState();
+    const realRecords = Object.values(cur.records).filter((r) => Object.keys(r.entries ?? {}).length > 0).length;
+    const work = realRecords + cur.history.length + cur.pointLedger.length;
+    let hadEnv = false;
+    try { hadEnv = !!localStorage.getItem('xq.env'); } catch { /* ignore */ }
+    if (work === 0 && hadEnv && !hasUserClearedMarker()) {
+      const snaps = await getSnapshots();
+      for (const snap of snaps) {
+        try {
+          const st = JSON.parse(snap.payload);
+          const n = (st.records?.length ?? 0) + (st.history?.length ?? 0) + (st.pointLedger?.length ?? 0);
+          if (n > 0) {
+            useStore.getState().replaceState(st);
+            saveState(useStore.getState().exportState());
+            window.setTimeout(() => useStore.getState().showToast('主数据为空，已自动从本机快照恢复', 'ok', 6000), 400);
+            break;
+          }
+        } catch { /* 跳过坏快照 */ }
+      }
+    }
 
     if (result.recovered) {
       // 从快照恢复后立刻固化：主存此刻仍是坏数据，不写回的话下次刷新还得靠快照

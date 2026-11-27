@@ -54,6 +54,10 @@ interface LooseState {
  * 老师当天还没开始登记时 records=[]、history=[] 是**正常态**，旧判据据此判空，
  * 结果是「打开一个空当天 → 被判只读 → 点清空并重来 → 还是空 → 还是只读」，永远出不来。
  */
+function countOf(v: unknown): number {
+  return Array.isArray(v) ? v.length : 0;
+}
+
 function workCount(s: LooseState): number {
   const n = (v: unknown) => (Array.isArray(v) ? v.length : 0);
   return n(s.records) + n(s.history) + n(s.points);
@@ -78,7 +82,11 @@ function rosterCount(s: LooseState): number {
  *   - 本次要写的内容**连名单都没有了**、而磁盘上有人有成绩 → 拦截（这才是真丢数据）
  *   - 本次只是「当天还没录入」、名单还在 → **放行**（正常态，不许拦）
  */
-export function shouldBlockOverwrite(next: PersistedStateV4, prevRaw: string | null): boolean {
+export function shouldBlockOverwrite(
+  next: PersistedStateV4,
+  prevRaw: string | null,
+  opts: { allowEmpty?: boolean } = {},
+): boolean {
   if (!prevRaw) return false;
   let prev: LooseState;
   try {
@@ -88,8 +96,20 @@ export function shouldBlockOverwrite(next: PersistedStateV4, prevRaw: string | n
   }
   if (!prev || typeof prev !== 'object') return false;
 
+  const prevWork = workCount(prev);
   // 磁盘上没有可失去的东西，没必要拦
-  if (workCount(prev) === 0) return false;
+  if (prevWork === 0) return false;
+
   // 磁盘上有人有成绩，而现在要写的东西连名单都没了 → 真丢了，拦住
-  return rosterCount(next) === 0;
+  if (rosterCount(next) === 0) return true;
+
+  // 以下两类「成果清零」只能由用户显式操作（清空/删除/导入）触发，
+  // 否则一律视为启动异常把空库写回（v2.8.2 事故防线）：
+  //   1) 新数据里 records/history/points 全为 0，磁盘上却有成果；
+  //   2) 磁盘有历史记录，新数据把历史清零（哪怕还录了 1 条新数据）。
+  if (!opts.allowEmpty) {
+    if (workCount(next) === 0) return true;
+    if (countOf(prev.history) > 0 && countOf(next.history) === 0) return true;
+  }
+  return false;
 }

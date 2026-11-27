@@ -9,6 +9,7 @@ import { buildSheetTableBlocks, buildSheetTableCsv } from '../../domain/exporter
 import { downloadBlob, downloadCsv, downloadText, downloadXlsx, safeName } from '../../infra/download';
 import { getSnapshots, getVoiceLogs } from '../../infra/idb';
 import { exportAllBlob, importAll, markBackupDone } from '../../infra/backup';
+import { allowEmptyOverwriteOnce } from '../../infra/storage';
 import { readHealth, type StorageHealth } from '../../infra/storageHealth';
 import { Modal } from '../ui/Modal';
 import { Pill, Toggle } from '../ui/controls';
@@ -486,6 +487,7 @@ export function SettingsModal() {
               s.showToast('回退数据已损坏', 'error');
               return;
             }
+            allowEmptyOverwriteOnce();
             s.replaceState(parsed.state);
             s.showToast('已回退到导入前的数据', 'ok');
           }}>

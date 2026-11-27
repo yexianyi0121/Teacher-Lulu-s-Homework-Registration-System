@@ -1,4 +1,5 @@
 import type { ClassDoc, RecordDoc, Settings, Student } from '../domain/types';
+import { allowEmptyOverwriteOnce } from '../infra/storage';
 import { DEFAULT_SHEET_ID, MAX_STUDENTS, MIN_STUDENTS } from '../domain/constants';
 import type { AppState, StoreGet, StoreSet } from './store-types';
 import { createClass, createRecord, createStudents } from './initial';
@@ -49,6 +50,7 @@ export function createClassSlice(set: StoreSet, get: StoreGet): ClassSlice {
     },
 
     deleteClass(id) {
+      allowEmptyOverwriteOnce();
       const s = get();
       if (s.classes.length <= 1) {
         s.showToast('至少要保留一个班级', 'warn');

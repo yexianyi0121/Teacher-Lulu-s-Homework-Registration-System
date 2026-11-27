@@ -5,6 +5,7 @@ import type { AppState, StoreGet, StoreSet } from './store-types';
 import { cloneEntries, cloneScheme, createRecord, hasEntries, toHistoryEntry } from './initial';
 import { classCount } from './entrySlice';
 import { recordKey } from '../utils/id';
+import { allowEmptyOverwriteOnce } from '../infra/storage';
 import { pruneEntries } from '../domain/scheme';
 
 type SheetSlice = Pick<
@@ -182,6 +183,7 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
      * 返回被清空的格子数（0 表示不需要清理）。
      */
     applySchemePrune(prevScheme) {
+      allowEmptyOverwriteOnce();
       const s = get();
       const rec = s.draft;
       const { entries, cleared } = pruneEntries(rec.entries, rec.scheme, prevScheme);
@@ -232,6 +234,7 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
     },
 
     clearCurrentRecord() {
+      allowEmptyOverwriteOnce();
       const s = get();
       const rec = s.draft;
       if (!hasEntries(rec.entries)) return;
@@ -244,6 +247,7 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
     },
 
     deleteHistory(key) {
+      allowEmptyOverwriteOnce();
       const s = get();
       set({ history: s.history.filter((h) => h.key !== key) });
       s.showToast('已删除该条历史记录', 'ok');
@@ -251,6 +255,7 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
 
     /** v2.6.2 FR-71.2：删除一整张登记表（作业内容随手打出来的空表、录错的表） */
     deleteRecord(key) {
+      allowEmptyOverwriteOnce();
       const s = get();
       const target = s.records[key] ?? s.history.find((h) => h.key === key) ?? s.draft;
       const records = { ...s.records };
@@ -286,6 +291,7 @@ export function createSheetSlice(set: StoreSet, get: StoreGet): SheetSlice {
     },
 
     clearHistory() {
+      allowEmptyOverwriteOnce();
       const s = get();
       set({ history: [] });
       s.showToast('已清空历史记录', 'ok');

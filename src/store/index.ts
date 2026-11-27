@@ -5,6 +5,7 @@ import { DEFAULT_SETTINGS } from '../domain/constants';
 import type { AppState } from './store-types';
 import { createEmptyState, createRecord, hasEntries } from './initial';
 import { todayISO } from '../domain/date';
+import { allowEmptyOverwriteOnce } from '../infra/storage';
 import { createUndoSlice } from './undoSlice';
 import { createEntrySlice } from './entrySlice';
 import { createSheetSlice } from './sheetSlice';
@@ -239,6 +240,7 @@ replaceState(next) {
   },
 
   resetAll() {
+    allowEmptyOverwriteOnce();
     get().replaceState(createEmptyState(Date.now()));
     // 「清空并重来」的唯一目的是**让老师重新可写**。
     // 原来只换 state、不清这两个标志，结果：拦截横幅还在、只读横幅还在，

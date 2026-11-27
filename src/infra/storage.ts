@@ -26,6 +26,23 @@ import { getSnapshots, putSnapshot } from './idb';
 
 export const CURRENT_VERSION = 4;
 
+/**
+ * 允许下一次写入「把有成果的数据清成 0」（清空全部 / 清空历史 / 删除记录 / 导入）。
+ * 必须由用户显式操作调用，防止启动异常时把空库默默写回。
+ */
+let allowEmptyWrite = false;
+const CLEARED_MARK = 'xq.userCleared';
+
+export function allowEmptyOverwriteOnce(): void {
+  allowEmptyWrite = true;
+  try { localStorage.setItem(CLEARED_MARK, '1'); } catch { /* ignore */ }
+}
+
+/** 用户是否明确清空/删除过数据（用于避免自动“复活”旧快照） */
+export function hasUserClearedMarker(): boolean {
+  try { return !!localStorage.getItem(CLEARED_MARK); } catch { return false; }
+}
+
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
@@ -177,7 +194,7 @@ export function saveState(state: PersistedStateV4, expectStamp: string | null = 
     prevRaw = null;
   }
 
-  if (shouldBlockOverwrite(state, prevRaw)) {
+  if (shouldBlockOverwrite(state, prevRaw, { allowEmpty: allowEmptyWrite })) {
     quarantine('blocked', JSON.stringify(state));
     return { ok: false, blocked: true };
   }
@@ -194,6 +211,10 @@ export function saveState(state: PersistedStateV4, expectStamp: string | null = 
 
   try {
     localStorage.setItem(STORAGE_KEY, payload);
+    allowEmptyWrite = false;
+    if (state.records.length + state.history.length + state.pointLedger.length > 0) {
+      try { localStorage.removeItem(CLEARED_MARK); } catch { /* ignore */ }
+    }
     // stamp 直接用刚写下去的原文算，避免「返回值与磁盘实际内容不一致」
     return { ok: true, stamp: fingerprint(payload) ?? undefined };
   } catch (e) {

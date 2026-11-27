@@ -2521,3 +2521,5 @@ pre {
   .empty-cta { min-height: 260px; padding: 18px; }
   .empty-cta-btn { height: 56px; font-size: 18px; min-width: 200px; }
 }
+
+.empty-cta-hint--ok { color: #2F7A4E; }
