@@ -55,6 +55,12 @@ scan_stores() {
 
 backup_all() {
   local ts dest manifest dir rel n=0
+  if pgrep -x Safari >/dev/null 2>&1; then
+    say "提示：Safari 正在运行。为保证备份完整，建议先 ⌘Q 完全退出 Safari 再备份。"
+    printf '仍然继续？(y/N)：'
+    read -r yn
+    case "${yn:-}" in y|Y) ;; *) return ;; esac
+  fi
   ts="$(date +%Y%m%d-%H%M%S)"
   dest="$BACKUP_ROOT/$ts"
   mkdir -p "$dest" || { say "无法创建备份目录：$dest"; return; }
